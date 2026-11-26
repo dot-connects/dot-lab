@@ -1,294 +1,353 @@
 <title>스탠드 스크린 체험 끝 안내 시안</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@800;900&family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap">
 <style>
-/* Layout: one column of steps (day 0 → after day 14); each step = phone mockup(s) + why, app's own dark tokens */
+/* Layout: a 14-day track is the spine of the page; each stop on it opens one scene (phone / notification / charging board) beside two or three plain reasons. Single dark world, same tokens as the app. */
 :root{
-  --page:#0b0b0d; --panel:#141416; --ink:#f5f3ef; --ink2:#98989f; --ink3:#3a3a3c; --ink4:#1c1c1e;
-  --acc:#ffad5c; --acc-dim:rgba(255,173,92,.16); --ok:#30d158; --lock:#8e8e93;
-  --sans:"Noto Sans KR","Pretendard","Malgun Gothic",sans-serif; --num:"Inter","Noto Sans KR",sans-serif;
+  --page:#09090b; --panel:#131316; --panel2:#1a1a1e; --line:#26262b;
+  --ink:#f5f2ec; --ink2:#9b9aa1; --ink3:#3a3a3f; --ink4:#1c1c20;
+  --acc:#ffad5c; --acc2:#ff8a3d; --acc-dim:rgba(255,173,92,.14);
+  --ok:#3ddc84; --ok-dim:rgba(61,220,132,.13); --blue:#76a6f3; --lock:#8e8e93;
+  --kr:"Noto Sans KR","Pretendard","Malgun Gothic",sans-serif; --ui:"Inter","Noto Sans KR",sans-serif; --clock:"Nunito","Inter",sans-serif;
   color-scheme:dark;
 }
-body{background:var(--page);color:var(--ink);font:15px/1.6 var(--sans);word-break:keep-all}
-.wrap{max-width:1040px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:40px}
-h1{font-size:clamp(24px,5vw,34px);line-height:1.25;margin:0;text-wrap:balance}
-h1 em{font-style:normal;color:var(--acc)}
-.lead{color:var(--ink2);margin:8px 0 0;max-width:62ch}
-h2{font-size:20px;margin:0;text-wrap:balance}
-.day{font:700 12px var(--num);letter-spacing:.08em;color:var(--acc);text-transform:uppercase}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--ink);font:15px/1.65 var(--kr);word-break:keep-all;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding-block:32px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:56px}
 p{margin:0}
-.muted{color:var(--ink2)}
-/* timeline */
-.tl{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
-.tl div{background:var(--panel);border-radius:12px;padding:12px;display:grid;gap:4px;min-width:0}
-.tl b{font:800 15px var(--num)}
-.tl span{font-size:13px;color:var(--ink2);line-height:1.45}
-.tl .hot{outline:1.5px solid var(--acc)}
-@media (max-width:700px){.tl{grid-template-columns:1fr 1fr}}
-/* step */
-.step{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:24px;align-items:start}
-.step .why{display:grid;gap:10px;min-width:0}
-.step ul{margin:0;padding-left:18px;color:var(--ink2);display:grid;gap:4px}
-.step ul b{color:var(--ink)}
-.shots{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;min-width:0}
-@media (max-width:760px){.step{grid-template-columns:1fr}}
-/* phone (portrait app) */
-.phone{width:260px;max-width:100%;border-radius:30px;background:#000;border:6px solid #2a2a2e;padding:14px 12px 16px;display:grid;gap:10px;align-content:start;min-height:470px}
-.sb{display:flex;justify-content:space-between;font:600 11px var(--num);color:var(--ink2);padding:0 6px}
-.apptitle{font-weight:800;font-size:19px;padding:2px 6px}
-.cap{font-size:12px;color:var(--ink2);text-align:center;width:260px;max-width:100%}
-.group{background:var(--ink4);border-radius:14px;overflow:hidden}
-.row{display:flex;align-items:center;gap:10px;padding:11px 12px;font-size:13.5px;border-top:1px solid #000}
-.row:first-child{border-top:0}
-.row .t{flex:1;min-width:0}
-.row .s{color:var(--ink2);font-size:12px}
-.chip{font:700 10.5px var(--sans);padding:2px 7px;border-radius:999px;background:var(--acc-dim);color:var(--acc);white-space:nowrap}
-.chip.free{background:rgba(48,209,88,.14);color:var(--ok)}
-.chip.lock{background:#2c2c2e;color:var(--lock)}
-.dot{width:26px;height:26px;border-radius:8px;flex:none}
-/* trial bar */
-.trial{background:var(--ink4);border-radius:14px;padding:12px;display:grid;gap:8px}
-.trial .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.trial .top b{font-size:14px}
-.trial .top span{font:700 13px var(--num);color:var(--acc)}
-.bar{display:grid;grid-template-columns:repeat(14,1fr);gap:3px}
-.bar i{height:6px;border-radius:3px;background:var(--ink3)}
-.bar i.on{background:var(--acc)}
-.trial small{font-size:11.5px;color:var(--ink2);line-height:1.45}
-/* sheet / onboarding */
-.sheet{background:var(--panel);border-radius:18px;padding:16px 14px;display:grid;gap:12px}
-.sheet h3{margin:0;font-size:18px;line-height:1.35}
-.sheet h3 em{font-style:normal;color:var(--acc)}
-.cols{display:grid;gap:8px}
-.col{background:#000;border-radius:12px;padding:10px 12px;display:grid;gap:4px;font-size:12.5px}
-.col b{font-size:12px}
-.col.free b{color:var(--ok)}
-.col.paid b{color:var(--acc)}
-.btn{display:block;text-align:center;border-radius:14px;padding:11px;font-weight:700;font-size:14px;background:var(--acc);color:#1b1208}
-.btn.ghost{background:transparent;color:var(--ink2);font-weight:500;padding:6px}
-.price{font:800 26px var(--num)}
-.price small{font:500 12px var(--sans);color:var(--ink2);margin-left:6px}
-/* notification */
-.notif{background:#2a2a2e;border-radius:18px;padding:12px 14px;display:grid;gap:4px;width:300px;max-width:100%}
-.notif .h{display:flex;gap:6px;align-items:center;font-size:11.5px;color:var(--ink2)}
-.notif .h i{width:16px;height:16px;border-radius:5px;background:linear-gradient(135deg,#ffad5c,#e8590c);display:inline-block}
-.notif b{font-size:14px}
-.notif p{font-size:13px;color:#d6d4d0;line-height:1.5}
-.notif .acts{display:flex;gap:16px;font-size:12.5px;font-weight:700;color:var(--acc);padding-top:4px}
-/* board (landscape StandBy) */
-.board{width:440px;max-width:100%;aspect-ratio:2.05/1;border-radius:22px;background:#000;border:6px solid #2a2a2e;position:relative;overflow:hidden;display:grid;grid-template-columns:1.15fr 1fr;gap:8px;padding:12px}
-.board .clock{border-radius:14px;display:grid;place-items:center;align-content:center;gap:2px}
-.board .clock .t{font:800 64px/0.9 var(--num);letter-spacing:-.04em}
-.board .clock .d{font:600 11px var(--num);color:var(--ink2)}
-.board .card{border-radius:14px;padding:10px;display:grid;align-content:start;gap:4px}
-.board .card .big{font:300 40px/1 var(--num)}
-.board .card .s{font:500 10.5px var(--sans);color:var(--ink2)}
-.mine .clock{background:#1d1c22}.mine .clock .t{color:#ffad5c}.mine .card{background:#1d1c22}
-.basic .clock{background:#111113}.basic .clock .t{color:#76a6f3}.basic .card{background:#111113}
-.toast{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);background:rgba(28,28,30,.94);border-radius:999px;padding:6px 12px;font-size:11px;white-space:nowrap;display:flex;gap:6px;align-items:center}
-.toast b{color:var(--acc);font-weight:700}
-.corner{position:absolute;right:10px;top:8px;font:600 10px var(--sans);color:var(--ink2);background:rgba(28,28,30,.9);padding:3px 8px;border-radius:999px}
-.opt{display:grid;gap:8px;min-width:0}
-.opt h4{margin:0;font-size:15px;display:flex;gap:8px;align-items:center}
-.pick{font:700 11px var(--sans);color:#1b1208;background:var(--acc);padding:2px 8px;border-radius:999px}
-.rule{border:0;border-top:1px solid var(--ink3);margin:0}
-.note{background:var(--panel);border-radius:14px;padding:14px 16px;display:grid;gap:6px}
-.note b{color:var(--acc)}
+.eyebrow{font:600 12px var(--ui);letter-spacing:.12em;text-transform:uppercase;color:var(--ink2)}
+h1{font:900 clamp(28px,6vw,46px)/1.15 var(--kr);margin:10px 0 0;letter-spacing:-.02em;text-wrap:balance}
+h1 em{font-style:normal;background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{color:var(--ink2);margin-top:14px;max-width:60ch;font-size:16px}
+
+/* ---- 14-day track (signature) ---- */
+.track{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:22px 20px 18px;display:grid;gap:14px}
+.days{display:grid;grid-template-columns:repeat(15,minmax(0,1fr));gap:4px;align-items:end}
+.days span{height:34px;border-radius:7px;background:var(--ink4);position:relative}
+.days span.done{background:linear-gradient(180deg,#ffbe7a,#ff9a4a)}
+.days span.warn{background:repeating-linear-gradient(135deg,#ff9a4a 0 5px,#ffc28a 5px 10px)}
+.days span.end{background:var(--blue);height:44px}
+.marks{display:grid;grid-template-columns:repeat(15,minmax(0,1fr));gap:4px;font:600 11px var(--ui);color:var(--ink2);text-align:center}
+.marks b{color:var(--ink);font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12.5px;color:var(--ink2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* ---- scene ---- */
+.scene{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.2fr);gap:36px;align-items:center}
+.scene.flip{grid-template-columns:minmax(0,1.2fr) minmax(0,.9fr)}
+.scene.flip .text{order:2}
+@media (max-width:820px){.scene,.scene.flip{grid-template-columns:1fr;gap:22px}.scene.flip .text{order:0}}
+.text{display:grid;gap:14px;min-width:0}
+.stop{display:flex;align-items:center;gap:10px}
+.stop .n{font:800 13px var(--ui);width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--acc-dim);color:var(--acc)}
+.stop .when{font:700 13px var(--ui);color:var(--acc);letter-spacing:.04em}
+h2{font:800 24px/1.3 var(--kr);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.reasons{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.reasons li{display:grid;grid-template-columns:18px 1fr;gap:10px;color:var(--ink2);font-size:14.5px}
+.reasons li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--acc);margin-top:10px;justify-self:center}
+.reasons b{color:var(--ink);font-weight:700}
+.stage{min-width:0;display:flex;flex-wrap:wrap;gap:22px;justify-content:center;align-items:flex-start;padding:26px 14px;border-radius:26px;background:radial-gradient(120% 90% at 50% 0%,#1d1a17 0%,var(--panel) 55%,var(--page) 100%);border:1px solid var(--line)}
+.cap{font-size:12px;color:var(--ink2);text-align:center;margin-top:10px}
+figure{margin:0;display:grid;justify-items:center;min-width:0;max-width:100%}
+
+/* ---- phone ---- */
+.phone{width:262px;max-width:100%;aspect-ratio:9/19.2;border-radius:38px;background:#000;padding:8px;box-shadow:0 0 0 1.5px #3a3a40,0 30px 60px -20px rgba(0,0,0,.8),inset 0 0 0 1px #111}
+.screen{height:100%;border-radius:31px;background:#0c0c0e;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.sbar{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 6px;font:600 11.5px var(--ui);color:#e8e6e1}
+.sbar .cam{width:9px;height:9px;border-radius:50%;background:#000;box-shadow:0 0 0 2px #1a1a1d}
+.body{flex:1;padding:6px 12px 14px;display:flex;flex-direction:column;gap:10px;min-height:0}
+.hdr{display:flex;align-items:center;gap:9px;padding:6px 4px 2px}
+.hdr .ic{width:30px;height:30px;border-radius:9px;background:#141416;display:grid;place-items:center;box-shadow:inset 0 0 0 1px #2a2a2e}
+.hdr .ic::after{content:"";width:16px;height:9px;border:2px solid var(--acc2);border-radius:3px}
+.hdr b{font:800 17px var(--kr)}
+
+.card{background:var(--panel2);border-radius:18px;padding:14px;display:grid;gap:10px}
+.card h3{margin:0;font:800 19px/1.35 var(--kr);letter-spacing:-.01em}
+.card h3 em{font-style:normal;color:var(--acc)}
+.tile{border-radius:13px;padding:10px 12px;display:grid;gap:3px;font-size:12.5px;line-height:1.5;background:#0d0d0f}
+.tile .k{font:800 11.5px var(--kr);display:flex;align-items:center;gap:6px}
+.tile.free .k{color:var(--ok)} .tile.paid .k{color:var(--acc)}
+.tile .k::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.fine{font-size:11.5px;color:var(--ink2);line-height:1.5}
+.btn{display:block;text-align:center;border-radius:14px;padding:12px;font:800 14px var(--kr);background:linear-gradient(180deg,#ffb66b,#ff9443);color:#231306}
+.btn.quiet{background:transparent;color:var(--ink2);font-weight:500;padding:4px}
+
+/* trial meter in settings */
+.meter{background:var(--panel2);border-radius:18px;padding:14px;display:grid;gap:10px}
+.meter .top{display:flex;justify-content:space-between;align-items:baseline}
+.meter .top b{font:800 14px var(--kr)}
+.meter .big{font:900 26px/1 var(--clock);color:var(--acc)}
+.meter .big small{font:600 12px var(--kr);color:var(--ink2);margin-left:3px}
+.mini{display:grid;grid-template-columns:repeat(14,1fr);gap:3px}
+.mini i{height:7px;border-radius:4px;background:var(--ink3)}
+.mini i.on{background:var(--acc)}
+.list{background:var(--panel2);border-radius:18px;overflow:hidden}
+.li{display:flex;align-items:center;gap:10px;padding:11px 13px;font-size:13px;border-top:1px solid #0c0c0e}
+.li:first-child{border-top:0}
+.li .sw{width:28px;height:28px;border-radius:9px;flex:none}
+.li .t{flex:1;min-width:0;line-height:1.35}
+.li .t small{display:block;color:var(--ink2);font-size:11.5px}
+.li.off .t{color:var(--ink2)} .li.off .sw{opacity:.4}
+.tag{font:800 10.5px var(--kr);padding:3px 8px;border-radius:999px;white-space:nowrap}
+.tag.try{background:var(--acc-dim);color:var(--acc)}
+.tag.free{background:var(--ok-dim);color:var(--ok)}
+.tag.lock{background:#2a2a2e;color:var(--lock)}
+
+/* lock screen + notifications */
+.lock{background:radial-gradient(130% 70% at 30% 10%,#3b2a4f 0%,#16121f 45%,#08080a 100%)}
+.lock .time{font:300 58px/1 var(--ui);text-align:center;margin-top:18px;letter-spacing:-.03em}
+.lock .date{text-align:center;font-size:12px;color:#d9d4e2;margin-top:4px}
+.ntf{margin:0 9px;background:rgba(40,38,46,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:20px;padding:11px 13px;display:grid;gap:3px}
+.ntf .h{display:flex;align-items:center;gap:6px;font-size:10.5px;color:#c9c5d0}
+.ntf .h i{width:15px;height:15px;border-radius:5px;background:linear-gradient(135deg,#ffad5c,#e8590c)}
+.ntf .h span{margin-left:auto}
+.ntf b{font-size:13px;line-height:1.4}
+.ntf p{font-size:12px;color:#e3e0e8;line-height:1.5}
+.ntf .acts{display:flex;gap:14px;font:800 12px var(--kr);color:var(--acc);padding-top:5px}
+.ntf .acts span+span{color:#c9c5d0;font-weight:500}
+
+/* charging board (landscape) */
+.boardwrap{width:470px;max-width:100%}
+.board{aspect-ratio:2.1/1;border-radius:26px;background:#000;padding:7px;box-shadow:0 0 0 1.5px #3a3a40,0 30px 60px -20px rgba(0,0,0,.8)}
+.bscreen{height:100%;border-radius:20px;background:#000;display:grid;grid-template-columns:1.25fr 1fr;gap:8px;padding:10px;position:relative;overflow:hidden}
+.slot{border-radius:16px;background:#1c1c1f;position:relative;overflow:hidden;display:grid}
+.slot::after{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.2px);background-size:3px 3px;pointer-events:none}
+.clock{place-items:center;align-content:center;gap:4px}
+.clock .t{font:900 clamp(44px,13vw,74px)/.85 var(--clock);color:var(--blue);letter-spacing:-.02em}
+.clock .d{font:600 11px var(--ui);color:var(--ink2)}
+.clock .d b{color:#ff6b5e;font-weight:700}
+.wx{align-content:start;padding:12px;gap:2px}
+.wx .c{font:700 11px var(--kr)}
+.wx .v{font:900 40px/1 var(--clock);color:#f2ece2}
+.wx .s{font:500 10.5px var(--kr);color:var(--ink2)}
+.toast{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:max-content;max-width:calc(100% - 24px);background:rgba(24,24,27,.96);border:1px solid #33333a;border-radius:16px;padding:9px 14px 11px;display:grid;gap:2px;font-size:11.5px;line-height:1.45;box-shadow:0 12px 30px rgba(0,0,0,.6);overflow:hidden}
+.toast b{font:800 12px var(--kr)}
+.toast span{color:var(--ink2)}
+.toast::after{content:"";position:absolute;left:0;bottom:0;height:2px;width:62%;background:var(--acc)}
+
+/* paywall sheet */
+.dim{background:#0c0c0e}
+.dim .ghost{flex:1;opacity:.25;display:flex;flex-direction:column;gap:10px;padding:0 12px}
+.sheet{margin-top:auto;background:var(--panel2);border-radius:26px 26px 31px 31px;padding:10px 16px 16px;display:grid;gap:11px;box-shadow:0 -20px 40px rgba(0,0,0,.6)}
+.sheet .grab{width:36px;height:4px;border-radius:2px;background:#3a3a40;justify-self:center}
+.sheet h3{margin:0;font:800 18px var(--kr)}
+.price{font:900 34px/1 var(--clock)}
+.price small{font:600 12px var(--kr);color:var(--ink2);margin-left:6px}
+.back{display:flex;gap:6px;flex-wrap:wrap}
+.back span{font:600 11px var(--kr);background:#0d0d0f;border-radius:999px;padding:5px 9px;color:#e8e4dd}
+
+/* decisions + tester answer */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:22px;display:grid;gap:16px}
+.panel h2{font-size:20px}
+.decided{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:760px){.decided{grid-template-columns:1fr}}
+.decided div{background:var(--panel2);border-radius:16px;padding:14px;display:grid;gap:6px;align-content:start}
+.decided .k{font:800 11px var(--ui);color:var(--ok);letter-spacing:.06em}
+.decided b{font-size:15px}
+.decided p{font-size:13px;color:var(--ink2)}
+.qa{display:grid;gap:12px}
+.qa .row{display:grid;grid-template-columns:150px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.qa .row:first-child{border-top:0;padding-top:0}
+.qa .row b{font-size:14px}
+.qa .row p{color:var(--ink2);font-size:14px}
+.qa .row p strong{color:var(--ink)}
+@media (max-width:600px){.qa .row{grid-template-columns:1fr;gap:4px}}
+@media (prefers-reduced-motion:no-preference){.toast::after{animation:drain 8s linear infinite}@keyframes drain{from{width:100%}to{width:0}}}
 </style>
 
 <div class="wrap">
   <header>
-    <div class="day">스탠드 스크린 · 결제 안내 시안</div>
-    <h1>14일 체험이 <em>갑자기 끝나지 않게</em></h1>
-    <p class="lead">지금 앱에는 체험·결제 안내가 아직 없어요(결제 기능 자체가 다음 작업이에요). 아래는 첫날부터 14일 뒤까지 사용자가 보게 될 화면이에요. 원칙은 세 가지예요. 충전 화면(보드)은 끝날 때까지 건드리지 않아요. 무엇이 잠기는지는 첫날부터 보여 줘요. 만든 테마는 지우지 않아요.</p>
+    <div class="eyebrow">스탠드 스크린 · 체험 안내 시안 v2</div>
+    <h1>14일이 끝나는 날,<br><em>놀랄 일이 없게</em></h1>
+    <p class="lead">첫날부터 무엇이 계속 무료이고 무엇이 잠기는지 보여 주고, 끝나기 전에 두 번 알려요. 끝나는 날에도 충전 화면은 결제 화면으로 막지 않아요. 만든 테마는 지우지 않고 저장해 둬요.</p>
   </header>
 
-  <section class="tl" aria-label="안내 일정">
-    <div><b>첫 실행</b><span>14일 전부 무료 + 끝나도 계속 무료인 것과 잠기는 것을 한 화면에</span></div>
-    <div><b>1~11일</b><span>설정 맨 위에 남은 날짜 막대. 잠길 기능엔 '체험' 표시</span></div>
-    <div class="hot"><b>D-3 · D-1</b><span>알림 두 번. 내 테마를 쓰고 있을 때만 '기본 테마로 바뀌어요'를 덧붙여요</span></div>
-    <div class="hot"><b>15일째 첫 충전</b><span>보드는 그대로 켜져요. 기본 테마로 바뀌었다고 한 줄만 알려요</span></div>
-    <div><b>그 뒤</b><span>앱을 열면 위쪽 카드 하나. 결제 창은 눌렀을 때만</span></div>
+  <section class="track" aria-label="14일 일정">
+    <div class="days">
+      <span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="warn"></span><span class="done"></span><span class="warn"></span><span class="end"></span>
+    </div>
+    <div class="marks"><b>1일</b><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><b>D-3</b><span></span><b>D-1</b><b>15일</b></div>
+    <div class="legend"><span><i style="background:var(--acc)"></i>전부 무료 · 설정에 남은 날짜</span><span><i style="background:repeating-linear-gradient(135deg,#ff9a4a 0 3px,#ffc28a 3px 6px)"></i>알림 (오전 10시, 충전 중 아닐 때)</span><span><i style="background:var(--blue)"></i>기본 테마로 전환</span></div>
   </section>
 
-  <hr class="rule">
-
-  <section class="step">
-    <div class="why">
-      <div class="day">첫 실행</div>
-      <h2>처음부터 '끝나도 남는 것'을 같이 보여요</h2>
-      <ul>
-        <li>"14일 무료"만 쓰면 끝날 때 배신감이 들어요. <b>끝나도 무료인 것</b>을 먼저 적어요.</li>
-        <li>잠기는 것은 세 줄로만. 가격(4,900원, 한 번)도 첫날 보여 줘요. 구독이 아니라는 게 안심 포인트예요.</li>
-        <li>버튼은 '시작하기' 하나. 첫날엔 결제 버튼을 두지 않아요.</li>
+  <section class="scene">
+    <div class="text">
+      <div class="stop"><span class="n">1</span><span class="when">첫 실행</span></div>
+      <h2>'끝나도 남는 것'부터 보여요</h2>
+      <ul class="reasons">
+        <li><span><b>계속 무료</b>를 위에 둬요. "14일 무료"만 보면 끝날 때 다 사라진다고 느껴요.</span></li>
+        <li><span>잠기는 것은 세 줄, 가격은 <b>4,900원 한 번</b>. 구독이 아니라는 걸 첫날 알려요.</span></li>
+        <li><span>첫날엔 결제 버튼이 없어요. '시작하기' 하나만.</span></li>
       </ul>
     </div>
-    <div class="shots">
-      <div class="opt">
-        <div class="phone">
-          <div class="sb"><span>9:41</span><span>100%</span></div>
-          <div class="sheet">
-            <h3>14일 동안 <em>전부</em> 써 보세요</h3>
-            <div class="cols">
-              <div class="col free"><b>끝나도 계속 무료</b>기본 테마 7개 · 시계 전부<br>시계·달력·날씨 카드 · 충전하면 자동으로 켜짐 · 밤 화면</div>
-              <div class="col paid"><b>14일 뒤 4,900원 (한 번만)</b>내 테마 만들기 · 시계 꾸미기<br>음악·사진·일정 등 나머지 카드</div>
+    <div class="stage">
+      <figure>
+        <div class="phone"><div class="screen">
+          <div class="sbar"><span>9:41</span><span class="cam"></span><span>100%</span></div>
+          <div class="body" style="justify-content:flex-end">
+            <div class="card">
+              <h3>14일 동안<br><em>전부</em> 써 보세요</h3>
+              <div class="tile free"><span class="k">끝나도 계속 무료</span>기본 테마 7개 · 시계 전부<br>시계·달력·날씨 카드 · 충전하면 자동으로 켜짐 · 밤 화면</div>
+              <div class="tile paid"><span class="k">14일 뒤 4,900원 · 한 번만</span>내 테마 · 시계 꾸미기<br>알림·음악·사진·일정 등 나머지 카드</div>
+              <p class="fine">만든 테마는 지우지 않아요. 결제하면 바로 다시 켜져요.</p>
+              <span class="btn">시작하기</span>
             </div>
-            <p class="muted" style="font-size:12px">만든 테마는 체험이 끝나도 지우지 않아요. 결제하면 바로 다시 켜져요.</p>
-            <span class="btn">시작하기</span>
           </div>
-        </div>
-        <div class="cap">첫 실행 안내</div>
-      </div>
+        </div></div>
+        <figcaption class="cap">첫 실행</figcaption>
+      </figure>
     </div>
   </section>
 
-  <hr class="rule">
-
-  <section class="step">
-    <div class="why">
-      <div class="day">1~11일</div>
-      <h2>설정 맨 위에 조용한 남은 날짜 막대</h2>
-      <ul>
-        <li>14칸 막대라 몇 번 열어 봐도 한눈에 '얼마 남았는지'가 보여요. 팝업이 없어요.</li>
-        <li>잠길 기능 옆에 <b>'체험'</b>, 계속 쓸 수 있는 건 <b>'무료'</b> 표시. 쓰는 동안 자연스럽게 익혀요.</li>
-        <li>D-3부터 막대 문구만 바뀌어요("3일 남음 · 내 테마 2개 사용 중").</li>
+  <section class="scene flip">
+    <div class="text">
+      <div class="stop"><span class="n">2</span><span class="when">1~11일</span></div>
+      <h2>설정 맨 위, 조용한 남은 날짜</h2>
+      <ul class="reasons">
+        <li><span>팝업 없이 <b>14칸 막대</b>. 앱을 열 때마다 얼마 남았는지 보여요.</span></li>
+        <li><span>잠길 기능엔 <b>'체험'</b>, 남는 기능엔 <b>'무료'</b>. 쓰면서 자연스럽게 익혀요.</span></li>
+        <li><span>D-3부터는 문구만 바뀌어요. "3일 남음 · 내 테마와 알림 카드 사용 중".</span></li>
       </ul>
     </div>
-    <div class="shots">
-      <div class="opt">
-        <div class="phone">
-          <div class="sb"><span>9:41</span><span>82%</span></div>
-          <div class="apptitle">스탠드 스크린</div>
-          <div class="trial">
-            <div class="top"><b>무료 체험 중</b><span>9일 남음</span></div>
-            <div class="bar"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-            <small>12월 10일까지 전부 무료. 그 뒤에도 기본 테마와 시계는 계속 무료예요.</small>
+    <div class="stage">
+      <figure>
+        <div class="phone"><div class="screen">
+          <div class="sbar"><span>9:41</span><span class="cam"></span><span>82%</span></div>
+          <div class="body">
+            <div class="hdr"><span class="ic"></span><b>스탠드 스크린</b></div>
+            <div class="meter">
+              <div class="top"><b>무료 체험 중</b><span class="big">9<small>일 남음</small></span></div>
+              <div class="mini"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              <p class="fine">12월 10일까지 전부 무료. 그 뒤에도 기본 테마·시계·날씨는 계속 무료예요.</p>
+            </div>
+            <div class="list">
+              <div class="li"><span class="sw" style="background:linear-gradient(135deg,#ffbe7a,#ff8a3d)"></span><span class="t">테마<small>밤하늘 · 내 테마</small></span><span class="tag try">체험</span></div>
+              <div class="li"><span class="sw" style="background:#5b5b63"></span><span class="t">알림 카드<small>카톡 · 문자</small></span><span class="tag try">체험</span></div>
+              <div class="li"><span class="sw" style="background:#5b5b63"></span><span class="t">날씨 카드</span><span class="tag free">무료</span></div>
+              <div class="li"><span class="sw" style="background:#5b5b63"></span><span class="t">충전하면 켜기</span><span class="tag free">무료</span></div>
+            </div>
           </div>
-          <div class="group">
-            <div class="row"><span class="dot" style="background:#ffad5c"></span><span class="t">테마<div class="s">밤하늘 (내 테마)</div></span><span class="chip">체험</span></div>
-            <div class="row"><span class="dot" style="background:#76a6f3"></span><span class="t">시계 꾸미기</span><span class="chip">체험</span></div>
-            <div class="row"><span class="dot" style="background:#3a3a3c"></span><span class="t">카드<div class="s">날씨 · 달력 · 음악</div></span><span class="chip">음악은 체험</span></div>
-            <div class="row"><span class="dot" style="background:#3a3a3c"></span><span class="t">충전하면 켜기</span><span class="chip free">무료</span></div>
-          </div>
-        </div>
-        <div class="cap">설정 화면 · 5일째</div>
-      </div>
+        </div></div>
+        <figcaption class="cap">설정 · 5일째</figcaption>
+      </figure>
     </div>
   </section>
 
-  <hr class="rule">
-
-  <section class="step">
-    <div class="why">
-      <div class="day">D-3 · D-1</div>
-      <h2>알림은 딱 두 번, 할 일을 같이</h2>
-      <ul>
-        <li>D-3: 무엇이 바뀌는지. D-1: 내일 바뀐다는 것 + 결제 버튼.</li>
-        <li><b>내 테마를 쓰는 사람에게만</b> "내일부터 기본 테마로 바뀌어요"를 덧붙여요. 그래야 다음 날 화면이 바뀌어도 놀라지 않아요.</li>
-        <li>알림은 충전 중이 아닐 때, 낮 시간(오전 10시)에만 보내요. 밤에 보드 위로 뜨지 않게요.</li>
+  <section class="scene">
+    <div class="text">
+      <div class="stop"><span class="n">3</span><span class="when">D-3 · D-1</span></div>
+      <h2>알림 두 번, 꺼지는 것을 구체적으로</h2>
+      <ul class="reasons">
+        <li><span>D-3은 무엇이 바뀌는지, D-1은 <b>"내일 꺼지는 것"</b>을 이름으로 적어요. 테마, 알림 카드, 음악 카드.</span></li>
+        <li><span>지금 쓰고 있는 것만 적어요. 알림 카드를 켜 둔 사람에겐 "카톡·문자 알림이 충전 화면에 안 떠요"가 들어가요.</span></li>
+        <li><span>오전 10시, 충전 중이 아닐 때만. 밤에 충전 화면 위로 뜨지 않아요.</span></li>
       </ul>
     </div>
-    <div class="shots" style="flex-direction:column">
-      <div class="notif">
-        <div class="h"><i></i>스탠드 스크린 · 오전 10:00</div>
-        <b>무료 체험 3일 남았어요</b>
-        <p>12월 10일부터 내 테마·시계 꾸미기·음악 카드가 잠겨요. 기본 테마와 시계는 계속 무료예요.</p>
-        <div class="acts"><span>무엇이 바뀌나요</span></div>
-      </div>
-      <div class="notif">
-        <div class="h"><i></i>스탠드 스크린 · 오전 10:00</div>
-        <b>내일부터 기본 테마로 바뀌어요</b>
-        <p>지금 쓰는 '밤하늘'은 지우지 않고 저장해 둬요. 4,900원 한 번이면 계속 쓸 수 있어요.</p>
-        <div class="acts"><span>4,900원으로 계속 쓰기</span><span style="color:var(--ink2)">괜찮아요</span></div>
-      </div>
-      <div class="cap" style="width:300px">D-3 · D-1 알림 (내 테마 사용자)</div>
+    <div class="stage">
+      <figure>
+        <div class="phone"><div class="screen lock">
+          <div class="sbar"><span>10:00</span><span class="cam"></span><span>71%</span></div>
+          <div class="time">10:00</div>
+          <div class="date">12월 9일 화요일</div>
+          <div style="flex:1"></div>
+          <div style="display:grid;gap:8px;padding-bottom:18px">
+            <div class="ntf"><div class="h"><i></i>스탠드 스크린<span>D-3 · 12월 7일</span></div><b>무료 체험이 3일 남았어요</b><p>12월 10일부터 내 테마와 알림·음악 카드가 꺼져요. 기본 테마·시계·날씨는 계속 무료예요.</p></div>
+            <div class="ntf"><div class="h"><i></i>스탠드 스크린<span>지금</span></div><b>내일부터 충전 화면이 바뀌어요</b><p>'밤하늘' 대신 기본 테마로 켜지고, 카톡·문자 알림 카드는 꺼져요. 밤하늘은 지우지 않고 저장해 둬요.</p><div class="acts"><span>4,900원으로 계속 쓰기</span><span>괜찮아요</span></div></div>
+          </div>
+        </div></div>
+        <figcaption class="cap">잠금 화면 · D-1 (아래), D-3 (위)</figcaption>
+      </figure>
     </div>
   </section>
 
-  <hr class="rule">
-
-  <section class="step">
-    <div class="why">
-      <div class="day">15일째 첫 충전</div>
-      <h2>보드는 절대 결제 화면으로 막지 않아요</h2>
-      <ul>
-        <li>충전기에 꽂으면 언제나 시계가 켜져요. 내 테마만 <b>가장 비슷한 기본 테마</b>로 바뀌어요.</li>
-        <li>그 순간을 어떻게 알릴지 두 가지 중 고르시면 돼요.</li>
+  <section class="scene flip">
+    <div class="text">
+      <div class="stop"><span class="n">4</span><span class="when">15일째 첫 충전 · A안</span></div>
+      <h2>시계는 그대로 켜지고, 바뀐 것만 한 번</h2>
+      <ul class="reasons">
+        <li><span>충전기에 꽂으면 언제나 시계가 켜져요. 내 테마는 <b>가장 비슷한 기본 테마</b>로 바뀌어요.</span></li>
+        <li><span>아래에 8초 동안 두 줄. 테마가 바뀐 것과 <b>알림 카드가 꺼진 것</b>, 둘 다 적어요.</span></li>
+        <li><span>한 번만 보여요. 다음 충전부터는 그냥 기본 테마 시계예요.</span></li>
       </ul>
-      <div class="note"><p><b>추천 A.</b> 알림 두 번으로 이미 예고했으니 그날 바로 바꾸고 한 줄로 알려요. B는 부드럽지만 3일 동안 보드 모서리에 글자가 남아요.</p></div>
     </div>
-    <div class="shots" style="flex-direction:column">
-      <div class="opt">
-        <h4><span class="pick">추천</span>A. 기본 테마로 바꾸고 한 줄 안내 (8초 뒤 사라짐)</h4>
-        <div class="board basic">
-          <div class="clock"><div class="t">9:24</div><div class="d">12월 11일 목요일</div></div>
-          <div class="card"><div class="s">서울</div><div class="big">2°</div><div class="s">최고 5° · 최저 −3°</div></div>
-          <div class="toast">체험이 끝나 기본 테마로 바꿨어요 · <b>밤하늘은 저장돼 있어요</b></div>
-        </div>
-      </div>
-      <div class="opt">
-        <h4>B. 3일 동안 내 테마 그대로 + 모서리 표시</h4>
-        <div class="board mine">
-          <div class="clock"><div class="t">9:24</div><div class="d">12월 11일 목요일</div></div>
-          <div class="card"><div class="s">서울</div><div class="big">2°</div><div class="s">최고 5° · 최저 −3°</div></div>
-          <div class="corner">체험 끝 · 3일 뒤 기본 테마</div>
-        </div>
-      </div>
+    <div class="stage">
+      <figure class="boardwrap">
+        <div class="board"><div class="bscreen">
+          <div class="slot clock"><div class="t">9:24</div><div class="d"><b>목</b> 12월 11일 · 알람 6:30</div></div>
+          <div class="slot wx"><div class="c">서울</div><div class="v">2°</div><div class="s">최고 5° · 최저 −3°</div></div>
+          <div class="toast"><b>체험이 끝나 기본 테마로 켰어요</b><span>알림·음악 카드는 꺼졌어요 · '밤하늘'은 저장돼 있어요</span></div>
+        </div></div>
+        <figcaption class="cap">충전 화면 · 8초 뒤 안내가 사라져요</figcaption>
+      </figure>
     </div>
   </section>
 
-  <hr class="rule">
-
-  <section class="step">
-    <div class="why">
-      <div class="day">그 뒤 · 앱을 열면</div>
-      <h2>잠긴 건 '저장됨'으로, 결제는 사용자가 누를 때만</h2>
-      <ul>
-        <li>앱을 열면 막대 자리에 카드 하나. "결제하세요"가 아니라 <b>무엇이 저장돼 있는지</b>를 말해요.</li>
-        <li>잠긴 항목은 지우지 않고 자물쇠만. 누르면 결제 창이 열려요.</li>
-        <li>결제 창엔 구독이 아니라는 것, 기기를 바꿔도 같은 Google 계정이면 다시 받을 수 있다는 것을 적어요. '기본으로 쓸게요'를 누르면 카드는 7일 동안 접혀요.</li>
+  <section class="scene">
+    <div class="text">
+      <div class="stop"><span class="n">5</span><span class="when">그 뒤 · 앱을 열면</span></div>
+      <h2>잠긴 건 '저장됨', 결제는 누를 때만</h2>
+      <ul class="reasons">
+        <li><span>남은 날짜 막대 자리에 카드 하나. <b>무엇이 저장돼 있는지</b>를 말해요.</span></li>
+        <li><span>잠긴 항목은 지우지 않고 자물쇠만. 누르면 결제 창.</span></li>
+        <li><span>'기본으로 쓸게요'를 누르면 카드는 7일 동안 접혀요.</span></li>
       </ul>
     </div>
-    <div class="shots">
-      <div class="opt">
-        <div class="phone">
-          <div class="sb"><span>9:41</span><span>64%</span></div>
-          <div class="apptitle">스탠드 스크린</div>
-          <div class="trial">
-            <div class="top"><b>무료 체험이 끝났어요</b><span>12월 10일</span></div>
-            <small>내 테마 '밤하늘'과 꾸민 시계 1개를 저장해 뒀어요. 4,900원 한 번이면 바로 다시 켜져요.</small>
-            <span class="btn">4,900원으로 계속 쓰기</span>
-            <span class="btn ghost">기본으로 쓸게요</span>
+    <div class="stage">
+      <figure>
+        <div class="phone"><div class="screen">
+          <div class="sbar"><span>9:41</span><span class="cam"></span><span>64%</span></div>
+          <div class="body">
+            <div class="hdr"><span class="ic"></span><b>스탠드 스크린</b></div>
+            <div class="card">
+              <h3 style="font-size:16px">무료 체험이 끝났어요</h3>
+              <p class="fine" style="font-size:12px">'밤하늘' 테마와 알림 카드 설정을 저장해 뒀어요. 4,900원 한 번이면 바로 다시 켜져요.</p>
+              <span class="btn">4,900원으로 계속 쓰기</span>
+              <span class="btn quiet">기본으로 쓸게요</span>
+            </div>
+            <div class="list">
+              <div class="li"><span class="sw" style="background:var(--blue)"></span><span class="t">테마<small>기본 · 파랑</small></span><span class="tag free">무료</span></div>
+              <div class="li off"><span class="sw" style="background:linear-gradient(135deg,#ffbe7a,#ff8a3d)"></span><span class="t">밤하늘<small>내 테마 · 저장됨</small></span><span class="tag lock">잠김</span></div>
+              <div class="li off"><span class="sw" style="background:#5b5b63"></span><span class="t">알림 카드</span><span class="tag lock">잠김</span></div>
+            </div>
           </div>
-          <div class="group">
-            <div class="row"><span class="dot" style="background:#76a6f3"></span><span class="t">테마<div class="s">기본 · 파랑</div></span><span class="chip free">무료</span></div>
-            <div class="row"><span class="dot" style="background:#ffad5c;opacity:.45"></span><span class="t" style="color:var(--ink2)">밤하늘 (내 테마)</span><span class="chip lock">잠김</span></div>
-            <div class="row"><span class="dot" style="background:#3a3a3c"></span><span class="t" style="color:var(--ink2)">음악 카드</span><span class="chip lock">잠김</span></div>
-          </div>
-        </div>
-        <div class="cap">체험 끝난 뒤 앱 첫 화면</div>
-      </div>
-      <div class="opt">
-        <div class="phone">
-          <div class="sb"><span>9:41</span><span>64%</span></div>
-          <div class="sheet" style="margin-top:auto">
-            <h3>스탠드 스크린 <em>전체 열기</em></h3>
+        </div></div>
+        <figcaption class="cap">앱 첫 화면</figcaption>
+      </figure>
+      <figure>
+        <div class="phone"><div class="screen dim">
+          <div class="sbar"><span>9:41</span><span class="cam"></span><span>64%</span></div>
+          <div class="ghost"><div class="card" style="height:120px"></div><div class="list" style="height:90px"></div></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <h3>스탠드 스크린 전체 열기</h3>
             <div class="price">₩4,900<small>한 번 결제 · 구독 아님</small></div>
-            <div class="col paid"><b>다시 켜지는 것</b>내 테마 만들기 · 시계 꾸미기 · 음악·사진·일정 카드<br>저장해 둔 '밤하늘'이 바로 돌아와요</div>
-            <p class="muted" style="font-size:12px">같은 Google 계정이면 폰을 바꿔도 다시 받을 수 있어요.</p>
+            <div class="back"><span>밤하늘 테마</span><span>시계 꾸미기</span><span>알림 카드</span><span>음악·사진·일정</span></div>
+            <p class="fine">같은 Google 계정이면 폰을 바꿔도 다시 받을 수 있어요.</p>
             <span class="btn">결제하기</span>
-            <span class="btn ghost">나중에</span>
+            <span class="btn quiet">나중에</span>
           </div>
-        </div>
-        <div class="cap">결제 창 (누를 때만)</div>
-      </div>
+        </div></div>
+        <figcaption class="cap">결제 창</figcaption>
+      </figure>
     </div>
   </section>
 
-  <div class="note">
-    <p><b>정할 것 두 가지</b></p>
-    <p>1. 15일째 보드: A(바로 기본 테마 + 한 줄) 또는 B(3일 유예).</p>
-    <p>2. 알림 시각: 오전 10시(충전 중이 아닐 때) 그대로 둘지.</p>
-    <p>3. 이미 쓰고 있는 테스터: 결제가 들어간 버전을 받은 날부터 14일을 새로 셀지(제안).</p>
-  </div>
+  <section class="panel">
+    <h2>정한 것</h2>
+    <div class="decided">
+      <div><span class="k">확정</span><b>15일째는 A안</b><p>바로 기본 테마로 켜고 8초 안내. 알림·음악 카드가 꺼진 것도 같이 적어요.</p></div>
+      <div><span class="k">확정</span><b>알림은 오전 10시</b><p>D-3, D-1 두 번. 충전 중이면 충전이 끝난 뒤로 미뤄요.</p></div>
+      <div><span class="k">확정</span><b>14일은 결제 버전부터</b><p>지금 테스터도 결제가 들어간 버전을 받은 날부터 새로 14일이에요.</p></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>테스트 버전으로 계속 쓰면?</h2>
+    <div class="qa">
+      <div class="row"><b>지금 버전 (0.6.x)</b><p>체험 기간·결제 코드가 아예 없어요. <strong>이 버전으로 남아 있는 동안은 기한 없이 전부 무료</strong>예요.</p></div>
+      <div class="row"><b>결제 버전이 나오면</b><p>같은 테스트 트랙에 올리면 테스터 폰도 Play가 자동으로 업데이트해요. 그날부터 14일이 시작되고, 버전을 고정해 둘 방법은 사실상 없어요(자동 업데이트를 끄는 정도).</p></div>
+      <div class="row"><b>테스트 중 결제</b><p>비공개 테스트에서도 결제는 <strong>실제 돈</strong>이 나가요. Play Console '라이선스 테스트'에 넣은 계정(운영자)만 돈 없이 시험돼요.</p></div>
+      <div class="row"><b>제안</b><p>14일 테스트에 끝까지 참여한 분께는 Play <strong>프로모션 코드</strong>(무료로 여는 코드, 분기 500개)를 보내 평생 무료로 열어 드려요. 테스터 모집 글에 "끝까지 쓰면 정식판 무료"라고 적으면 모집에도 도움이 돼요.</p></div>
+    </div>
+  </section>
 </div>
