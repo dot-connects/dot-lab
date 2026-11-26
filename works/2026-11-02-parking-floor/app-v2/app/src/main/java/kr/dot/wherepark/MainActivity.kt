@@ -53,6 +53,7 @@ import kr.dot.wherepark.core.ParkState
 import kr.dot.wherepark.core.SpotParser
 import kr.dot.wherepark.core.newCarId
 import kr.dot.wherepark.data.Api
+import kr.dot.wherepark.data.ApiException
 import kr.dot.wherepark.data.CarLinkStore
 import kr.dot.wherepark.data.CarStore
 import kr.dot.wherepark.data.GroupStore
@@ -438,7 +439,15 @@ class MainActivity : ComponentActivity() {
     private fun deleteAll() {
         val app = applicationContext
         Thread {
-            if (GroupStore.joined(app)) Api.deleteMe(app)
+            // the server must forget this member first: wiping the phone offline would orphan its server data (T-0203).
+            // 401 = the server already forgot it, so the wipe goes ahead.
+            if (GroupStore.joined(app)) {
+                val r = runCatching { Api.deleteMe(app).getOrThrow() }
+                if (r.isFailure && (r.exceptionOrNull() as? ApiException)?.status != 401) {
+                    onUi { Toast.makeText(this, "서버에 닿지 않아 지우지 못했어요. 인터넷을 켜고 다시 해 주세요", Toast.LENGTH_LONG).show() }
+                    return@Thread
+                }
+            }
             LocalData.wipe(app)
             app.getSystemService(ShortcutManager::class.java)?.removeAllDynamicShortcuts()
             WidgetRefresh.request(app)
