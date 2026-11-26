@@ -72,6 +72,7 @@ flutter:
     - assets/book/
     - assets/book/fonts/
     - assets/book/themes/a/
+    - assets/book/themes/photo/
     - assets/covers/
     - assets/sample/
 

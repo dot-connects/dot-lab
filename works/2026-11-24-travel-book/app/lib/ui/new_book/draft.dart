@@ -42,6 +42,6 @@ class NewBookDraft {
   }
 }
 
-const themeNames = {'a': '여백의 책', 'b': '기록 카드', 'c': '여행 수첩', 'diary': '일기', 'mag': '잡지', 'album': '앨범'};
+const themeNames = {'a': '여백의 책', 'b': '기록 카드', 'c': '여행 수첩', 'diary': '일기', 'mag': '잡지', 'album': '앨범', 'photo': '사진만'};
 const lengthNames = {'short': '짧게', 'normal': '보통', 'long': '길게'};
 const lengthPages = {'short': 16, 'normal': 24, 'long': 36};

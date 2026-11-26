@@ -4,7 +4,7 @@
 import 'models.dart';
 import 'text_shape.dart';
 
-const themes = ['a', 'b', 'c', 'diary', 'mag', 'album'];
+const themes = ['a', 'b', 'c', 'diary', 'mag', 'album', 'photo'];
 
 /// Photos and videos one book may carry into /write (its 48-image cap).
 const maxPickPhotos = 44, maxPickVideos = 4, maxBookImages = 48;

@@ -293,7 +293,8 @@ class Pipeline {
   /// "picked" with its picks untouched: [다시 시도] calls this again (no new /pick).
   Future<AiState> write(Book b, {List<NoteInput> notes = const []}) async {
     final shape = shapeOf(b.theme);
-    if (!b.texts.containsKey(shape)) {
+    // 사진만 has no words inside: no /write call, the cover takes the default title (operator 11-26)
+    if (b.theme != 'photo' && !b.texts.containsKey(shape)) {
       final pool = _pool(b);
       final picked = [for (final p in b.picks) pool[p.id]].whereType<Candidate>().toList();
       final images = <AiImage>[];

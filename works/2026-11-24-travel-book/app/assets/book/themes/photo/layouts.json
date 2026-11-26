@@ -1,0 +1,13 @@
+[
+ {"id": "photo/c1", "kind": "cover", "slots": ["A"], "texts": ["title", "period"]},
+ {"id": "photo/c3", "kind": "cover", "slots": ["L"], "texts": ["title", "period"]},
+ {"id": "photo/op", "kind": "chapter", "slots": ["A"], "texts": []},
+ {"id": "photo/one", "kind": "photo", "slots": ["P"], "texts": []},
+ {"id": "photo/band", "kind": "photo", "slots": ["L"], "texts": []},
+ {"id": "photo/two", "kind": "photo", "slots": ["L", "L"], "texts": []},
+ {"id": "photo/side", "kind": "photo", "slots": ["P", "A", "A"], "texts": []},
+ {"id": "photo/duo", "kind": "photo", "slots": ["P", "P"], "texts": []},
+ {"id": "photo/big3", "kind": "photo", "slots": ["L", "A", "A", "A"], "texts": []},
+ {"id": "photo/six", "kind": "photo", "slots": ["A", "A", "A", "A", "A", "A"], "texts": []},
+ {"id": "photo/vd", "kind": "video", "slots": ["V"], "texts": []}
+]

@@ -13,6 +13,7 @@ const _themeNotes = {
   'diary': '사진과 두세 줄',
   'mag': '큰 제목, 기사처럼',
   'album': '인화한 사진첩',
+  'photo': '글 없이 사진만',
 };
 
 const _toneExample = {
