@@ -4,7 +4,7 @@ compatibility_date = "2026-10-01"
 
 [vars]
 LINK_BASE = "https://dot-lab-parking.dotconnects.workers.dev/j"
-ASSETLINKS_SHA256 = "A0:76:B2:C4:7A:25:9D:0D:54:52:0B:C9:9C:16:2A:00:0E:CC:80:0D:11:CE:43:B9:AB:0F:ED:3B:7E:AF:13:CB"
+ASSETLINKS_SHA256 = "A0:76:B2:C4:7A:25:9D:0D:54:52:0B:C9:9C:16:2A:00:0E:CC:80:0D:11:CE:43:B9:AB:0F:ED:3B:7E:AF:13:CB,97:F6:E9:D0:85:FE:D8:07:99:89:48:8E:78:9A:E8:00:F9:0D:82:E5:94:7D:2E:4D:E1:A1:89:78:1C:FE:3E:32"  # upload key, Play app signing key
 
 [triggers]
 crons = ["0 18 * * *"]
