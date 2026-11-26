@@ -1,15 +1,15 @@
 {
- "title": "제주 여행 앨범",
- "plan": "첫날 비행기 창에서 협재와 신창의 저녁까지 빛을 따라간다\n둘째 날 배로 우도에 들어가 해녀와 동쪽 해변을 거쳐 성산에서 닫는다\n셋째 날 안개 낀 어리목에서 오름과 돌담을 지나 귤밭으로 향한다\n빽빽한 연속 대지 뒤에는 큰 한 장을 두고 마지막 귤 뒤 공항으로 돌아간다",
+ "title": "제주",
+ "plan": "비행기 창에서 시작해 협재의 차가운 물과 해안도로의 노을로 첫날을 닫는다.\n둘째 날은 배와 우도를 지나 하도의 해녀, 월정리의 긴 오후, 성산의 저녁으로 이어 붙인다.\n셋째 날은 안개 낀 어리목에서 억새와 돌담을 거쳐 남원의 귤밭으로 내려온다.\n귤을 손에 든 조용한 한 장 뒤에 공항으로 향하는 마지막 컷과 판권을 둔다.",
  "pages": [
   {
-   "layout": "album/cover-board",
-   "intent": "성산의 바다와 저녁빛으로 제주 사흘의 표지를 연다",
+   "layout": "album/cover-side",
+   "intent": "협재의 맑은 바다를 세로 인화로 세워 제주 앨범의 색을 먼저 보여준다",
    "photos": [
     {
-     "id": "seongsan",
-     "fx": 55,
-     "fy": 50
+     "id": "hyeopjae_2",
+     "fx": 50,
+     "fy": 61
     }
    ],
    "texts": [
@@ -20,126 +20,170 @@
     {
      "key": "period",
      "text": "2026년 6월 12일부터 사흘"
+    },
+    {
+     "key": "place",
+     "text": "협재 바다"
     }
    ]
   },
   {
    "layout": "album/day-tall",
-   "intent": "비행기 창밖의 날개를 크게 두어 첫날 도착을 시작한다",
+   "intent": "비행기 창밖을 크게 붙여 도착하는 첫날을 연다",
    "photos": [
     {
      "id": "d8",
-     "fx": 63,
-     "fy": 59
+     "fx": 56,
+     "fy": 55
     }
    ],
    "texts": [
     {
      "key": "dayline",
-     "text": "첫날 제주에 도착"
+     "text": "첫날 협재로"
+    },
+    {
+     "key": "memo",
+     "text": "비행기에서는 거의 잤다"
     }
    ]
   },
   {
-   "layout": "album/pano",
-   "intent": "협재의 넓은 물빛과 물에 들어간 사람들을 한 장면으로 묶는다",
+   "layout": "album/offset",
+   "intent": "한림의 차창에서 협재의 넓은 바다로 시선을 옮긴다",
    "photos": [
     {
-     "id": "hyeopjae",
-     "fx": 50,
-     "fy": 55
+     "id": "d5",
+     "fx": 60,
+     "fy": 50
     },
     {
-     "id": "hyeopjae_2",
-     "fx": 48,
-     "fy": 65
+     "id": "hyeopjae",
+     "fx": 51,
+     "fy": 48
     }
    ],
    "texts": []
   },
   {
    "layout": "album/big",
-   "intent": "차가운 물에 발만 담근 작은 일을 한 장으로 남긴다",
+   "intent": "둘이 발만 담근 장면을 첫날 바다 장면의 끝에 크게 남긴다",
    "photos": [
     {
      "id": "d9",
-     "fx": 48,
-     "fy": 70
+     "fx": 49,
+     "fy": 73
     }
    ],
    "texts": [
     {
      "key": "memo",
-     "text": "협재 물이 차가워 발만 담갔다"
+     "text": "우리 둘 다 발만 담갔다"
     }
    ]
   },
   {
-   "layout": "album/full",
-   "intent": "첫날의 마지막 빛과 풍차를 글 없이 크게 쉰다",
+   "layout": "album/pano",
+   "intent": "해안도로의 넓은 길에서 풍차 노을로 첫날의 빛을 낮춘다",
    "photos": [
     {
+     "id": "road_2",
+     "fx": 71,
+     "fy": 55
+    },
+    {
      "id": "road",
-     "fx": 45,
-     "fy": 44
+     "fx": 53,
+     "fy": 52
     }
    ],
-   "texts": []
+   "texts": [
+    {
+     "key": "memo",
+     "text": "풍차 앞에서 해 질 때까지"
+    }
+   ]
   },
   {
    "layout": "album/day-tall",
-   "intent": "배 난간과 바다로 둘째 날의 이동을 연다",
+   "intent": "배 난간과 바다를 이동 컷으로 삼아 둘째 날을 연다",
    "photos": [
     {
      "id": "d3",
      "fx": 50,
-     "fy": 60
+     "fy": 54
     }
    ],
    "texts": [
     {
      "key": "dayline",
      "text": "둘째 날 우도로"
+    },
+    {
+     "key": "memo",
+     "text": "아침 배로 우도"
     }
    ]
   },
   {
-   "layout": "album/stack",
-   "intent": "우도의 바닷가 탈것과 빈 의자를 시간 순서로 포갠다",
+   "layout": "album/column",
+   "intent": "갈매기 떼와 우도 도착 뒤 바닷가 의자까지 오전의 순서로 잇는다",
    "photos": [
     {
+     "id": "udo",
+     "fx": 46,
+     "fy": 43
+    },
+    {
      "id": "udo_2",
-     "fx": 66,
-     "fy": 60
+     "fx": 61,
+     "fy": 66
     },
     {
      "id": "d7",
-     "fx": 46,
-     "fy": 68
+     "fx": 47,
+     "fy": 70
     }
    ],
    "texts": []
   },
   {
    "layout": "album/full",
-   "intent": "노래하는 해녀 한 사람을 크게 두어 장면의 힘을 살린다",
+   "intent": "하도 바닷가의 해녀 한 사람을 글 없이 크게 세운다",
    "photos": [
     {
      "id": "haenyeo",
-     "fx": 55,
-     "fy": 68
+     "fx": 53,
+     "fy": 66
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/stack",
+   "intent": "노래하는 해녀들과 손에 올린 조개를 사람에서 물건 순으로 붙인다",
+   "photos": [
+    {
+     "id": "haenyeo_2",
+     "fx": 53,
+     "fy": 41
+    },
+    {
+     "id": "d4",
+     "fx": 51,
+     "fy": 60
     }
    ],
    "texts": []
   },
   {
    "layout": "album/big",
-   "intent": "월정리 카페의 빈 자리와 바다를 느슨하게 놓는다",
+   "intent": "월정리의 빈 야외 자리를 크게 두어 오래 앉아 있던 오후를 늦춘다",
    "photos": [
     {
      "id": "woljeongri",
-     "fx": 45,
-     "fy": 68
+     "fx": 51,
+     "fy": 66
     }
    ],
    "texts": [
@@ -150,130 +194,141 @@
    ]
   },
   {
-   "layout": "album/offset",
-   "intent": "월정리 해변에서 성산의 저녁까지 동쪽 길의 끝을 잇는다",
+   "layout": "album/column",
+   "intent": "두 잔의 음료에서 해변과 성산의 노을까지 오후의 빛을 순서대로 바꾼다",
    "photos": [
+    {
+     "id": "d2",
+     "fx": 64,
+     "fy": 57
+    },
     {
      "id": "woljeongri_2",
      "fx": 50,
-     "fy": 67
+     "fy": 69
     },
     {
      "id": "seongsan",
-     "fx": 55,
-     "fy": 50
+     "fx": 59,
+     "fy": 48
     }
    ],
-   "texts": [
-    {
-     "key": "memo",
-     "text": "월정리에서 성산으로 넘어갔다"
-    }
-   ]
+   "texts": []
   },
   {
    "layout": "album/day-tall",
-   "intent": "안개 속 봉우리로 셋째 날의 차가운 아침을 연다",
+   "intent": "안개 속 산봉우리를 셋째 날 첫 인화로 크게 붙인다",
    "photos": [
     {
      "id": "hallasan",
-     "fx": 36,
-     "fy": 41
+     "fx": 43,
+     "fy": 36
     }
    ],
    "texts": [
     {
      "key": "dayline",
-     "text": "셋째 날 어리목으로"
+     "text": "셋째 날 어리목부터"
+    },
+    {
+     "key": "memo",
+     "text": "안개 때문에 아무것도 안 보였다"
     }
    ]
   },
   {
-   "layout": "album/column",
-   "intent": "계단에서 억새와 오름으로 이어지는 오전의 걸음을 세로로 배열한다",
+   "layout": "album/stack",
+   "intent": "오름의 넓은 굼부리를 먼저 보고 억새 속 친구에게 가까이 간다",
    "photos": [
-    {
-     "id": "hallasan_2",
-     "fx": 50,
-     "fy": 50
-    },
-    {
-     "id": "oreum",
-     "fx": 66,
-     "fy": 52
-    },
     {
      "id": "oreum_2",
      "fx": 50,
-     "fy": 52
+     "fy": 54
+    },
+    {
+     "id": "oreum",
+     "fx": 65,
+     "fy": 45
     }
    ],
    "texts": []
   },
   {
    "layout": "album/big",
-   "intent": "오름 뒤 만난 돌담과 밭을 한 장으로 천천히 넘긴다",
+   "intent": "조천의 돌담 한 장으로 산길과 남원 사이에 여백을 둔다",
    "photos": [
     {
      "id": "doldam",
      "fx": 50,
-     "fy": 60
+     "fy": 58
     }
    ],
    "texts": []
   },
   {
-   "layout": "album/full",
-   "intent": "끝에서 셋째 쪽을 작은 의자와 돌담 한 장만으로 조용히 비운다",
-   "photos": [
-    {
-     "id": "doldam_2",
-     "fx": 50,
-     "fy": 65
-    }
-   ],
-   "texts": []
-  },
-  {
-   "layout": "album/pano",
-   "intent": "귤밭의 넓은 길에서 가지 사이 귤로 가까이 들어간다",
+   "layout": "album/satellite",
+   "intent": "남원의 귤밭을 넓게 열고 돌담 의자와 카페 탁자를 작은 인화로 붙인다",
    "photos": [
     {
      "id": "tangerine",
-     "fx": 55,
-     "fy": 53
+     "fx": 51,
+     "fy": 52
     },
     {
-     "id": "tangerine_2",
-     "fx": 59,
-     "fy": 60
+     "id": "doldam_2",
+     "fx": 50,
+     "fy": 59
+    },
+    {
+     "id": "d1",
+     "fx": 50,
+     "fy": 57
     }
    ],
    "texts": [
     {
      "key": "memo",
-     "text": "마지막은 남원 귤밭 카페"
+     "text": "남원 귤밭 안 카페"
     }
    ]
   },
   {
+   "layout": "album/full",
+   "intent": "귤이 달린 가지 한 장만 크게 두어 끝에서 가장 조용한 대지를 만든다",
+   "photos": [
+    {
+     "id": "tangerine_2",
+     "fx": 58,
+     "fy": 55
+    }
+   ],
+   "texts": []
+  },
+  {
    "layout": "album/last",
-   "intent": "마지막 귤 한 알과 공항으로 향하는 짧은 문장으로 앨범을 닫는다",
+   "intent": "공항으로 가기 전 손에 올린 마지막 귤로 여행을 닫는다",
    "photos": [
     {
      "id": "d6",
-     "fx": 55,
-     "fy": 55
+     "fx": 53,
+     "fy": 50
     }
    ],
    "texts": [
     {
      "key": "memo",
-     "text": "귤 하나 까먹고 공항으로"
-    },
+     "text": "귤 하나 까먹고 공항"
+    }
+   ]
+  },
+  {
+   "layout": "album/back",
+   "intent": "사진이 끝난 뒤 천 대지에 만든 시기와 사람만 남긴다",
+   "photos": [],
+   "texts": [
     {
      "key": "colophon",
-     "text": "2026년 6월 제주\n사진과 글"
+     "text": "2026년 6월 제주\n우리 둘이 찍고 붙임"
     }
    ]
   }

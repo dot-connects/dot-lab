@@ -1,0 +1,735 @@
+{
+ "title": "남미",
+ "plan": "리마의 밤 도착에서 시작해 페루의 도시와 계곡, 고원 지대를 찍은 순서로 잇는다.\n시장과 이동 경로는 여러 장으로 묶고, 마추픽추와 노을, 둘의 손은 큰 인화로 숨을 고른다.\n쿠스코·성스러운 계곡·산페드로·부에노스아이레스에 닿을 때 머리줄로 새 구간을 연다.\n마지막에서 셋째 쪽은 탱고 한 장만 남기고, 귀국편 창밖 불빛으로 닫는다.",
+ "pages": [
+  {
+   "layout": "album/cover-board",
+   "intent": "밤 열한 시에 도착한 리마의 불빛으로 긴 여정을 연다",
+   "photos": [
+    {
+     "id": "s_lima_night",
+     "fx": 47,
+     "fy": 54
+    }
+   ],
+   "texts": [
+    {
+     "key": "title",
+     "text": "남미"
+    },
+    {
+     "key": "period",
+     "text": "2026년 10월 7일부터 열나흘"
+    }
+   ]
+  },
+  {
+   "layout": "album/day-note",
+   "intent": "긴 비행 뒤 시작된 리마의 첫 구간을 세로 인화와 짧은 기록으로 연다",
+   "photos": [
+    {
+     "id": "s_barranco",
+     "fx": 48,
+     "fy": 61
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "리마에 닿은 첫 밤"
+    },
+    {
+     "key": "body",
+     "text": "비행기만 스물네 시간 넘게\n밤 열한 시에 도착했다"
+    }
+   ]
+  },
+  {
+   "layout": "album/pano",
+   "intent": "바랑코의 저녁빛과 둘이 마신 한 잔을 같은 장면으로 붙인다",
+   "photos": [
+    {
+     "id": "s_lima_sunset",
+     "fx": 55,
+     "fy": 47
+    },
+    {
+     "id": "s_pisco",
+     "fx": 45,
+     "fy": 53
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "피스코사워 한 잔씩, 해 질 때까지"
+    }
+   ]
+  },
+  {
+   "layout": "album/big",
+   "intent": "리마를 떠나기 전 중심가의 아침을 한 장 크게 남긴다",
+   "photos": [
+    {
+     "id": "s_lima_centro",
+     "fx": 61,
+     "fy": 43
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/day-tall",
+   "intent": "고도가 단번에 달라진 쿠스코의 첫 오후를 연다",
+   "photos": [
+    {
+     "id": "s_cusco_plaza",
+     "fx": 50,
+     "fy": 45
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "쿠스코에 닿은 오후"
+    },
+    {
+     "key": "memo",
+     "text": "내리자마자 숨이 찼다"
+    }
+   ]
+  },
+  {
+   "layout": "album/pair-wide",
+   "intent": "산블라스 골목과 거리의 알파카 뒤로 밤 광장을 펼친다",
+   "photos": [
+    {
+     "id": "s_cusco_walk",
+     "fx": 54,
+     "fy": 56
+    },
+    {
+     "id": "s_alpaca",
+     "fx": 46,
+     "fy": 60
+    },
+    {
+     "id": "s_cusco_night",
+     "fx": 49,
+     "fy": 61
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/day-tall",
+   "intent": "피삭 시장의 장사꾼과 담요 이야기를 성스러운 계곡의 첫 장으로 둔다",
+   "photos": [
+    {
+     "id": "s_pisac_fruit",
+     "fx": 50,
+     "fy": 59
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "성스러운 계곡으로"
+    },
+    {
+     "key": "memo",
+     "text": "피삭 시장에서 담요 하나"
+    }
+   ]
+  },
+  {
+   "layout": "album/column",
+   "intent": "모라이에서 소금밭과 우루밤바까지 이어진 길을 시간순으로 잇는다",
+   "photos": [
+    {
+     "id": "s_moray",
+     "fx": 52,
+     "fy": 50
+    },
+    {
+     "id": "s_maras",
+     "fx": 50,
+     "fy": 55
+    },
+    {
+     "id": "s_hacienda",
+     "fx": 50,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "모라이는 컸고 소금 한 봉지는 2솔"
+    }
+   ]
+  },
+  {
+   "layout": "album/day-tall",
+   "intent": "장식이 걸린 돌골목으로 올란타이탐보의 아침을 연다",
+   "photos": [
+    {
+     "id": "s_ollanta_st",
+     "fx": 50,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "올란타이탐보 아침"
+    },
+    {
+     "key": "memo",
+     "text": "돌계단에서는 자꾸 쉬었다"
+    }
+   ]
+  },
+  {
+   "layout": "album/stair",
+   "intent": "유적에서 역과 차창으로 이어지는 이동을 세 장에 담는다",
+   "photos": [
+    {
+     "id": "s_ollanta",
+     "fx": 50,
+     "fy": 54
+    },
+    {
+     "id": "s_train",
+     "fx": 50,
+     "fy": 58
+    },
+    {
+     "id": "s_trainwin",
+     "fx": 60,
+     "fy": 49
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "강을 따라 기차를 탔다"
+    },
+    {
+     "key": "place",
+     "text": "성스러운 계곡"
+    }
+   ]
+  },
+  {
+   "layout": "album/day-note",
+   "intent": "산 아래 마을에 도착해 다음 날 새벽 버스를 기다리는 밤을 연다",
+   "photos": [
+    {
+     "id": "s_aguas",
+     "fx": 50,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "아구아스에서 하룻밤"
+    },
+    {
+     "key": "body",
+     "text": "밤은 산 아래 마을에서\n내일 버스는 새벽 다섯 시 반"
+    }
+   ]
+  },
+  {
+   "layout": "album/stair",
+   "intent": "안개뿐이던 시야가 걷히고 라마까지 나타난 아침을 순서대로 놓는다",
+   "photos": [
+    {
+     "id": "s_machu_fog",
+     "fx": 55,
+     "fy": 44
+    },
+    {
+     "id": "s_machu",
+     "fx": 50,
+     "fy": 50
+    },
+    {
+     "id": "s_llama",
+     "fx": 62,
+     "fy": 51
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "처음엔 안개뿐이었다"
+    },
+    {
+     "key": "place",
+     "text": "마추픽추"
+    }
+   ]
+  },
+  {
+   "layout": "album/full",
+   "intent": "안개가 열린 뒤 둘 중 한 사람이 내려다본 풍경을 말 없이 크게 남긴다",
+   "photos": [
+    {
+     "id": "s_machu_her",
+     "fx": 50,
+     "fy": 58
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/big",
+   "intent": "돌창 사이로 다시 본 봉우리로 마추픽추 장면을 닫는다",
+   "photos": [
+    {
+     "id": "s_machu_window",
+     "fx": 55,
+     "fy": 48
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "여덟 시쯤 시야가 확 열렸다"
+    }
+   ]
+  },
+  {
+   "layout": "album/day-tall",
+   "intent": "밤기차 뒤 다시 만난 쿠스코 골목으로 귀환을 표시한다",
+   "photos": [
+    {
+     "id": "s_cusco_late",
+     "fx": 50,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "밤 기차로 쿠스코"
+    },
+    {
+     "key": "memo",
+     "text": "돌아와 골목만 걸었다"
+    }
+   ]
+  },
+  {
+   "layout": "album/big",
+   "intent": "다음 아침 지붕 너머로 펼쳐진 쿠스코를 조용히 크게 둔다",
+   "photos": [
+    {
+     "id": "s_cusco_roofs",
+     "fx": 50,
+     "fy": 49
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/offset",
+   "intent": "쿠스코의 한낮 시장에서 라파스의 밤까지 이동한 하루를 잇는다",
+   "photos": [
+    {
+     "id": "s_market",
+     "fx": 44,
+     "fy": 55
+    },
+    {
+     "id": "s_lapaz",
+     "fx": 50,
+     "fy": 49
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "한낮 시장 뒤 라파스의 밤"
+    }
+   ]
+  },
+  {
+   "layout": "album/column",
+   "intent": "지프 행렬과 소금 무늬, 선인장 섬을 넓은 순서로 이어 붙인다",
+   "photos": [
+    {
+     "id": "s_uyuni_jeeps",
+     "fx": 65,
+     "fy": 54
+    },
+    {
+     "id": "s_uyuni_hex",
+     "fx": 50,
+     "fy": 60
+    },
+    {
+     "id": "s_incahuasi",
+     "fx": 55,
+     "fy": 54
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "여섯 명이 지프 한 대에 탔다"
+    }
+   ]
+  },
+  {
+   "layout": "album/big",
+   "intent": "물 고인 소금사막의 노을을 한 장 크게 두어 하루를 닫는다",
+   "photos": [
+    {
+     "id": "s_uyuni_sunset",
+     "fx": 52,
+     "fy": 66
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "신발 젖고, 별은 오래 못 봤다"
+    }
+   ]
+  },
+  {
+   "layout": "album/offset",
+   "intent": "남쪽 고원의 차창 풍경과 플라밍고 무리를 차례로 놓는다",
+   "photos": [
+    {
+     "id": "s_altiplano",
+     "fx": 50,
+     "fy": 54
+    },
+    {
+     "id": "s_flamingo",
+     "fx": 50,
+     "fy": 60
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "차창 밖은 하루 종일 고원"
+    }
+   ]
+  },
+  {
+   "layout": "album/pano",
+   "intent": "붉은 호수의 넓은 색과 물가의 라마를 한 장면으로 묶는다",
+   "photos": [
+    {
+     "id": "s_colorada",
+     "fx": 50,
+     "fy": 55
+    },
+    {
+     "id": "s_colorada_2",
+     "fx": 55,
+     "fy": 70
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "콜로라다 숙소는 샤워가 안 나왔다"
+    }
+   ]
+  },
+  {
+   "layout": "album/stack",
+   "intent": "새벽 수증기에서 먼지 나는 국경길까지 이동을 이어 붙인다",
+   "photos": [
+    {
+     "id": "s_geyser",
+     "fx": 55,
+     "fy": 54
+    },
+    {
+     "id": "s_border",
+     "fx": 50,
+     "fy": 59
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/day-tall",
+   "intent": "흙담 골목으로 국경을 넘은 뒤의 산페드로 구간을 연다",
+   "photos": [
+    {
+     "id": "s_sanpedro",
+     "fx": 50,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "국경을 넘어 산페드로"
+    },
+    {
+     "key": "memo",
+     "text": "짐검사 한 시간, 씻고 바로 잠"
+    }
+   ]
+  },
+  {
+   "layout": "album/big",
+   "intent": "긴 그림자와 화산이 남은 산페드로의 저녁을 한 장으로 쉰다",
+   "photos": [
+    {
+     "id": "s_sanpedro_dusk",
+     "fx": 50,
+     "fy": 55
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/full",
+   "intent": "둘이 잡은 손을 말 없이 크게 남겨 다음 길로 넘어간다",
+   "photos": [
+    {
+     "id": "s_hands",
+     "fx": 50,
+     "fy": 44
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/offset",
+   "intent": "빈 길에서 달의 계곡 바위 안으로 들어가는 흐름을 잇는다",
+   "photos": [
+    {
+     "id": "s_valle_road",
+     "fx": 50,
+     "fy": 55
+    },
+    {
+     "id": "s_valle",
+     "fx": 50,
+     "fy": 50
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/big",
+   "intent": "붉어진 능선 하나로 달의 계곡에서 보낸 저녁을 닫는다",
+   "photos": [
+    {
+     "id": "s_valle_sunset",
+     "fx": 50,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "달의 계곡, 해 질 때까지"
+    }
+   ]
+  },
+  {
+   "layout": "album/pano",
+   "intent": "별 투어의 밤에서 다음 도시 상공까지 대륙 횡단을 이어 놓는다",
+   "photos": [
+    {
+     "id": "s_atacama_stars",
+     "fx": 65,
+     "fy": 44
+    },
+    {
+     "id": "s_ba_arrive",
+     "fx": 50,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "토성 고리를 보고 밤 비행기로"
+    }
+   ]
+  },
+  {
+   "layout": "album/day-tall",
+   "intent": "도착한 밤의 파리야로 부에노스아이레스 구간을 연다",
+   "photos": [
+    {
+     "id": "s_parrilla",
+     "fx": 55,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "부에노스아이레스 밤"
+    },
+    {
+     "key": "memo",
+     "text": "도착해서 고기부터 구웠다"
+    }
+   ]
+  },
+  {
+   "layout": "album/grid",
+   "intent": "커피에서 자카란다와 레콜레타까지 이어진 오전 산책을 네 칸에 담는다",
+   "photos": [
+    {
+     "id": "s_coffee",
+     "fx": 50,
+     "fy": 55
+    },
+    {
+     "id": "s_jacaranda",
+     "fx": 50,
+     "fy": 45
+    },
+    {
+     "id": "s_jacaranda_2",
+     "fx": 50,
+     "fy": 50
+    },
+    {
+     "id": "s_recoleta",
+     "fx": 50,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "자카란다가 딱 피는 때"
+    }
+   ]
+  },
+  {
+   "layout": "album/big",
+   "intent": "붐비는 라 보카의 색색 모퉁이를 세로 인화 한 장으로 남긴다",
+   "photos": [
+    {
+     "id": "s_boca",
+     "fx": 50,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "보카는 사람도 색도 많았다"
+    }
+   ]
+  },
+  {
+   "layout": "album/stack",
+   "intent": "둘이 나눠 먹은 스테이크와 말벡을 저녁 한 장면으로 포갠다",
+   "photos": [
+    {
+     "id": "s_steak",
+     "fx": 50,
+     "fy": 55
+    },
+    {
+     "id": "s_malbec",
+     "fx": 50,
+     "fy": 50
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/day-road",
+   "intent": "산텔모 시장의 바깥과 오래된 골목을 함께 두어 마지막 날을 연다",
+   "photos": [
+    {
+     "id": "s_santelmo_mkt",
+     "fx": 50,
+     "fy": 50
+    },
+    {
+     "id": "s_santelmo",
+     "fx": 50,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "산텔모에서 마지막 날"
+    },
+    {
+     "key": "memo",
+     "text": "엠파나다는 고기가 제일"
+    }
+   ]
+  },
+  {
+   "layout": "album/full",
+   "intent": "끝에서 셋째 쪽을 거리의 두 사람만 남긴 가장 조용한 대지로 둔다",
+   "photos": [
+    {
+     "id": "s_tango",
+     "fx": 50,
+     "fy": 50
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/offset",
+   "intent": "센터의 긴 대로와 레티로의 두 손을 마지막 산책처럼 잇는다",
+   "photos": [
+    {
+     "id": "s_9dejulio",
+     "fx": 50,
+     "fy": 45
+    },
+    {
+     "id": "s_rings",
+     "fx": 50,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "센터를 지나 레티로까지"
+    }
+   ]
+  },
+  {
+   "layout": "album/last",
+   "intent": "창 아래 멀어지는 도시 불빛으로 여행 앨범을 닫는다",
+   "photos": [
+    {
+     "id": "s_plane_home",
+     "fx": 55,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "창 아래 도시 두고 집으로"
+    },
+    {
+     "key": "colophon",
+     "text": "2026년 10월 남미에서\n우리 둘이 고르고 붙임"
+    }
+   ]
+  }
+ ]
+}

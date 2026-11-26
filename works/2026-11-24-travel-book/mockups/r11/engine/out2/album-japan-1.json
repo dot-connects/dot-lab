@@ -1,0 +1,387 @@
+{
+ "title": "간사이",
+ "plan": "비행기와 열차로 교토에 닿는 첫날을 열고 강가와 밤 골목으로 이어 간다.\n둘째 날은 이나리의 이른 아침부터 시장과 찻집을 지나 오사카의 밤으로 넘어간다.\n셋째 날은 벚꽃 핀 오사카성과 시장, 신세카이를 차례로 묶는다.\n공항과 구름 위 풍경으로 돌아오는 길을 닫는다.",
+ "pages": [
+  {
+   "layout": "album/cover-side",
+   "intent": "새벽 비행기 창밖의 강한 색으로 여행의 출발을 표지에 남긴다.",
+   "photos": [
+    {
+     "id": "j_plane",
+     "fx": 60,
+     "fy": 58
+    }
+   ],
+   "texts": [
+    {
+     "key": "title",
+     "text": "간사이"
+    },
+    {
+     "key": "period",
+     "text": "2026년 4월 3일부터 사흘"
+    },
+    {
+     "key": "place",
+     "text": "교토·오사카"
+    }
+   ]
+  },
+  {
+   "layout": "album/day-tall",
+   "intent": "헬로키티 하루카를 크게 붙여 교토에 도착한 첫날을 연다.",
+   "photos": [
+    {
+     "id": "j_haruka",
+     "fx": 66,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "첫날 교토로"
+    },
+    {
+     "key": "memo",
+     "text": "헬로키티 열차 걸림ㅋㅋ"
+    }
+   ]
+  },
+  {
+   "layout": "album/stair",
+   "intent": "차창과 교토역, 시내버스를 도착 순서대로 빠르게 넘긴다.",
+   "photos": [
+    {
+     "id": "j_trainwin",
+     "fx": 50,
+     "fy": 38
+    },
+    {
+     "id": "j_kyoto_sign",
+     "fx": 52,
+     "fy": 51
+    },
+    {
+     "id": "j_bus",
+     "fx": 52,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "교토역에서 다시 시내버스"
+    },
+    {
+     "key": "place",
+     "text": "교토 가는 길"
+    }
+   ]
+  },
+  {
+   "layout": "album/big",
+   "intent": "첫 끼 라멘을 한 장 크게 두어 먹으러 온 여행의 성격을 잡는다.",
+   "photos": [
+    {
+     "id": "j_ramen",
+     "fx": 50,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "역 앞 라멘집, 줄 20분"
+    }
+   ]
+  },
+  {
+   "layout": "album/offset",
+   "intent": "체크인 뒤 곧장 강가로 나간 흐름을 두 장으로 잇는다.",
+   "photos": [
+    {
+     "id": "j_hotel",
+     "fx": 50,
+     "fy": 52
+    },
+    {
+     "id": "j_kamo",
+     "fx": 52,
+     "fy": 52
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "체크인하고 바로 강가 벚꽃"
+    }
+   ]
+  },
+  {
+   "layout": "album/stack",
+   "intent": "기온에서 폰토초까지 저녁 골목이 어두워지는 순서를 겹쳐 붙인다.",
+   "photos": [
+    {
+     "id": "j_gion",
+     "fx": 55,
+     "fy": 54
+    },
+    {
+     "id": "j_pontocho",
+     "fx": 56,
+     "fy": 52
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/column",
+   "intent": "꼬치와 맥주, 숙소로 돌아가는 밤길을 시간 순서로 세운다.",
+   "photos": [
+    {
+     "id": "j_yakitori",
+     "fx": 52,
+     "fy": 55
+    },
+    {
+     "id": "j_beer",
+     "fx": 56,
+     "fy": 46
+    },
+    {
+     "id": "j_vending",
+     "fx": 58,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "맥주 세 잔씩 마시고 편의점"
+    }
+   ]
+  },
+  {
+   "layout": "album/day-tall",
+   "intent": "사람이 적었던 이른 이나리의 도리이 길로 둘째 날을 연다.",
+   "photos": [
+    {
+     "id": "j_inari",
+     "fx": 50,
+     "fy": 52
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "둘째 날 이나리로"
+    },
+    {
+     "key": "memo",
+     "text": "7시 50분 도착, 사람 별로 없음"
+    }
+   ]
+  },
+  {
+   "layout": "album/offset",
+   "intent": "이나리에서 기요미즈까지 이어진 오전의 넓은 풍경을 묶는다.",
+   "photos": [
+    {
+     "id": "j_inari_2",
+     "fx": 50,
+     "fy": 52
+    },
+    {
+     "id": "j_kiyomizu",
+     "fx": 72,
+     "fy": 45
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/square",
+   "intent": "진한 말차 아이스크림을 손에 든 모습 그대로 한 장 남긴다.",
+   "photos": [
+    {
+     "id": "j_matcha",
+     "fx": 50,
+     "fy": 48
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "말차 아이스크림 진짜 진함"
+    }
+   ]
+  },
+  {
+   "layout": "album/stack",
+   "intent": "니시키시장에서 먹은 뒤 찻집에 앉은 오후를 위아래로 붙인다.",
+   "photos": [
+    {
+     "id": "j_nishiki",
+     "fx": 51,
+     "fy": 50
+    },
+    {
+     "id": "j_coffee",
+     "fx": 55,
+     "fy": 56
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/big",
+   "intent": "벚꽃 사이로 지나간 배 한 척을 크게 두어 오후에 숨을 고른다.",
+   "photos": [
+    {
+     "id": "j_kamo_2",
+     "fx": 50,
+     "fy": 45
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/offset",
+   "intent": "교토를 떠나는 열차와 오사카의 첫 야경을 한 이동으로 잇는다.",
+   "photos": [
+    {
+     "id": "j_train_osaka",
+     "fx": 49,
+     "fy": 53
+    },
+    {
+     "id": "j_dotonbori",
+     "fx": 52,
+     "fy": 46
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "저녁엔 오사카로 넘어감"
+    }
+   ]
+  },
+  {
+   "layout": "album/offset",
+   "intent": "도톤보리에서 차례로 먹은 타코야키와 오코노미야키를 붙인다.",
+   "photos": [
+    {
+     "id": "j_takoyaki",
+     "fx": 48,
+     "fy": 50
+    },
+    {
+     "id": "j_okonomi",
+     "fx": 48,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "타코야키에 입천장 데임"
+    }
+   ]
+  },
+  {
+   "layout": "album/full",
+   "intent": "젖은 난바의 밤거리를 글 없이 한 장 가득 남긴다.",
+   "photos": [
+    {
+     "id": "j_osaka_night",
+     "fx": 50,
+     "fy": 55
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/day-road",
+   "intent": "같은 오사카성 장면을 넓은 컷에서 가까운 컷 순으로 바꿔 셋째 날을 연다.",
+   "photos": [
+    {
+     "id": "j_castle_2",
+     "fx": 50,
+     "fy": 52
+    },
+    {
+     "id": "j_castle",
+     "fx": 50,
+     "fy": 48
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "셋째 날 오사카에서"
+    },
+    {
+     "key": "memo",
+     "text": "오사카성 벚꽃 거의 만개"
+    }
+   ]
+  },
+  {
+   "layout": "album/full",
+   "intent": "끝에서 셋째 쪽은 구로몬시장의 한 장만 크게 붙이고 아무 말도 적지 않는다.",
+   "photos": [
+    {
+     "id": "j_kuromon",
+     "fx": 50,
+     "fy": 50
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/pair-wide",
+   "intent": "신세카이 거리와 쿠시카츠 가게를 짝짓고 아래에 공항 풍경을 둔다.",
+   "photos": [
+    {
+     "id": "j_shinsekai",
+     "fx": 52,
+     "fy": 48
+    },
+    {
+     "id": "j_kushikatsu",
+     "fx": 55,
+     "fy": 45
+    },
+    {
+     "id": "j_gate",
+     "fx": 48,
+     "fy": 52
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/last",
+   "intent": "구름 위로 돌아가는 마지막 한 장과 짧은 기록으로 앨범을 닫는다.",
+   "photos": [
+    {
+     "id": "j_plane_2",
+     "fx": 64,
+     "fy": 44
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "오는 길엔 둘 다 기절"
+    },
+    {
+     "key": "colophon",
+     "text": "2026년 4월, 교토·오사카\n대학 친구와 함께"
+    }
+   ]
+  }
+ ]
+}

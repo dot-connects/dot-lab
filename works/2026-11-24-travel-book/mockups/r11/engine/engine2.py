@@ -20,7 +20,34 @@ LIB = HERE.parent / "lib"
 OUT = HERE / "out2"
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent.parent / "r10"))
-from engine import load_trip, _b64  # noqa: E402
+import engine  # noqa: E402
+from PIL import Image  # noqa: E402
+
+TRIPS = HERE.parent.parent / "trips"
+TRIP_DIR = HERE  # set in main(): folder with trip.json; photos in IMG_DIR
+
+
+def load_trip(name: str) -> dict:
+    """jeju = the original set (engine/trip.json + mock/img5); others = mock/trips/<name>/{trip.json,img/}."""
+    global TRIP_DIR
+    if name == "jeju":
+        TRIP_DIR, engine.IMG5 = HERE, HERE.parent.parent / "img5"
+    else:
+        TRIP_DIR, engine.IMG5 = TRIPS / name, TRIPS / name / "img"
+    t = json.loads((TRIP_DIR / "trip.json").read_text(encoding="utf-8"))
+    t["aspect"] = {k: (lambda s: s[0] / s[1])(Image.open(engine.IMG5 / f"{k}.webp").size) for k, _, _ in t["shots"]}
+    small = TRIP_DIR / "img512"
+    small.mkdir(exist_ok=True)
+    for k, _, _ in t["shots"]:
+        if not (small / f"{k}.jpg").exists():
+            im = Image.open(engine.IMG5 / f"{k}.webp").convert("RGB")
+            im.thumbnail((512, 512))
+            im.save(small / f"{k}.jpg", quality=80)
+    return t
+
+
+def _b64(k: str) -> str:
+    return engine._b64(k)
 
 SCHEMA = {
     "type": "object", "additionalProperties": False, "required": ["title", "plan", "pages"],
@@ -64,6 +91,9 @@ def validate(book: dict, trip: dict, lays: list[dict], rules: dict) -> list[str]
     by = {l["id"]: l for l in lays}
     pages = book["pages"]
     lo, hi = rules["pages"]
+    n = len(trip["shots"])
+    if n > 40:
+        lo, hi = max(lo, round(n * 0.4)), max(hi, round(n * 0.75))
     if not lo <= len(pages) <= hi:
         errs.append(f"쪽 수 {len(pages)}: {lo}~{hi}")
     used: dict[str, int] = {}
@@ -99,6 +129,20 @@ def validate(book: dict, trip: dict, lays: list[dict], rules: dict) -> list[str]
             errs.append(f"{k}: {n}번 썼다 (표지 사진만 본문에 한 번 더)")
     if len(pages) > 1 and cover & {x["id"] for x in pages[1]["photos"]}:
         errs.append("2쪽: 표지 사진을 바로 다음 쪽에 다시 썼다 — 다른 사진으로")
+    texts = [t["text"] for p in pages[1:] for t in p["texts"] if t["key"] not in ("title", "period", "stamp", "colophon") and len(t["text"]) < 60]
+    timed = [bool(re.match(r"^[^,.]{1,14}[,.]\s*(오전|오후|아침|저녁|낮|밤|새벽|해 질|해질)", t)) for t in texts]
+    if texts and sum(timed) > max(2, len(texts) * 0.3):
+        errs.append(f"짧은 글 {len(texts)}개 중 {sum(timed)}개가 '장소, 시각' 으로 시작한다 — 같은 틀의 문장이 반복돼 기계처럼 보인다. 3할 이하로, 나머지는 본 것·한 일·들은 말로 시작해라")
+    for i in range(2, len(timed)):
+        if timed[i] and timed[i - 1] and timed[i - 2]:
+            errs.append("'장소, 시각' 으로 시작하는 글이 3번 연속")
+            break
+    mr = rules.get("memo_ratio")
+    if mr:
+        body = pages[1:-1]
+        withtext = sum(1 for p in body if any(t["key"] not in ("stamp",) for t in p["texts"]))
+        if body and withtext < len(body) * mr:
+            errs.append(f"글(메모·머리줄)이 있는 쪽이 {withtext}/{len(body)}쪽뿐이다. 최소 {round(mr * 100)}% — 빈 자리가 있는 틀이면 짧은 메모를 적어라")
     seq = [p["layout"] for p in pages]
     for i in range(2, len(seq)):
         if seq[i] == seq[i - 1] == seq[i - 2]:
@@ -115,7 +159,9 @@ def prompt(trip: dict, lays: list[dict], key: str, rules: dict) -> str:
     cat = "\n".join(f"- {l['id']} [{l.get('kind', '')}] 칸 {' '.join(l['slots']) or '없음'}"
                     + (f" · 글 {', '.join(f'{k}≤{v}자' for k, v in l['texts'].items())}" if l["texts"] else "")
                     + f" — {l.get('when', '')}" for l in lays)
-    guide = (HERE / "themes2" / f"{key}.md").read_text(encoding="utf-8")
+    guide = (HERE / "themes2" / f"{key}.md").read_text(encoding="utf-8") + "\n\n" + (HERE / "themes2" / "_common.md").read_text(encoding="utf-8")
+    n = len(trip["shots"])
+    pr = rules["pages"] if n <= 40 else [max(rules["pages"][0], round(n * 0.4)), max(rules["pages"][1], round(n * 0.75))]
     return f"""{guide}
 
 ## 쪽 틀 (디자이너가 만든 것. 모양은 못 바꾼다. 쪽마다 하나를 고르고 칸에 사진을 넣는다)
@@ -123,7 +169,7 @@ def prompt(trip: dict, lays: list[dict], key: str, rules: dict) -> str:
 {cat}
 
 ## 출력 규칙 (기계가 검사한다)
-- 1쪽은 cover 틀. 쪽 수 {rules['pages'][0]}~{rules['pages'][1]}. 같은 틀 3쪽 연속 금지. 본문 틀 최소 {rules.get('min_distinct', 6)}가지.
+- 1쪽은 cover 틀. 쪽 수 {pr[0]}~{pr[1]}. 같은 틀 3쪽 연속 금지. 본문 틀 최소 {rules.get('min_distinct', 6)}가지.
 - 칸의 방향과 사진 방향을 맞춘다. 한 사진은 한 번만(표지 사진은 본문에 한 번 더 가능). 약한 사진은 빼도 된다.
 - fx, fy(0~100): 칸에 맞춰 잘릴 때 남길 중심.
 - texts: 그 틀에 있는 글 칸만, 글자 수 이하. 글 칸이 있어도 비워 둘 거면 넣지 않는다(표지 title·period 는 꼭).
@@ -133,23 +179,37 @@ def prompt(trip: dict, lays: list[dict], key: str, rules: dict) -> str:
 사진(첨부 이미지 순서와 번호가 같다):
 {chr(10).join(lines)}
 
+여행한 사람이 적은 여행 성격: {trip.get('concept') or '(없음)'}
+
 여행한 사람의 메모:
 {notes}
 
 답은 스키마 JSON 만."""
 
 
+USAGE: list[dict] = []
+
+
 def call(trip: dict, p: str, key: str) -> tuple[dict, float]:
     OUT.mkdir(exist_ok=True)
     (OUT / "schema.json").write_text(json.dumps(SCHEMA), encoding="utf-8")
     out = OUT / f"_last-{key}.txt"
-    imgs = [str(HERE / "img512" / f"{k}.jpg") for k, _, _ in trip["shots"]]
+    imgs = [f"{k}.jpg" for k, _, _ in trip["shots"]]  # relative to cwd: codex.cmd goes through cmd.exe (8191-char line limit)
     cmd = [shutil.which("codex") or "codex", "exec", "--skip-git-repo-check", "--sandbox", "read-only",
-           "--output-schema", str(OUT / "schema.json"), "--output-last-message", str(out), "-i", *imgs, "--", "-"]
+           "--output-schema", str((OUT / "schema.json").resolve()), "--output-last-message", str(out.resolve()), "--json", "-i", *imgs, "--", "-"]
     t0 = time.time()
-    r = subprocess.run(cmd, input=p, capture_output=True, text=True, encoding="utf-8")
+    r = subprocess.run(cmd, input=p, capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=TRIP_DIR / "img512")
     if r.returncode != 0:
         raise SystemExit(f"codex failed {r.returncode}: {r.stderr[-600:]}")
+    usage = {}
+    for line in r.stdout.splitlines():
+        if '"usage"' in line:
+            try:
+                u = json.loads(line).get("usage") or {}
+                usage = {k: usage.get(k, 0) + v for k, v in u.items() if isinstance(v, int)}
+            except ValueError:
+                pass
+    USAGE.append(usage)
     return json.loads(out.read_text(encoding="utf-8")), time.time() - t0
 
 
@@ -220,7 +280,9 @@ PAGE = """<!doctype html><meta charset=utf-8><meta name=viewport content="width=
 
 def main() -> None:
     key, args = sys.argv[1], sys.argv[2:]
-    trip = load_trip()
+    tname = args[args.index("--trip") + 1] if "--trip" in args else "jeju"
+    trip = load_trip(tname)
+    tag = key if tname == "jeju" else f"{key}-{tname}"
     lays, _, _ = load_lib(key)
     lays = [l for l in lays if "/ix" not in l["id"]]  # the index page is appended by code
     rules = json.loads((HERE / "themes2" / f"{key}.json").read_text(encoding="utf-8"))
@@ -228,22 +290,24 @@ def main() -> None:
     if "--render" in args:
         book = json.loads(Path(args[args.index("--render") + 1]).read_text(encoding="utf-8"))
         print("\n".join(validate(book, trip, lays, rules)) or "valid")
-        (OUT / f"{key}.html").write_text(PAGE.format(body=render(book, trip, key)), encoding="utf-8")
+        (OUT / f"{tag}.html").write_text(PAGE.format(body=render(book, trip, key)), encoding="utf-8")
         return
     tries = int(args[args.index("--tries") + 1]) if "--tries" in args else 3
     base = prompt(trip, lays, key, rules)
     p = base
     for n in range(1, tries + 1):
-        book, sec = call(trip, p, key)
-        (OUT / f"{key}-{n}.json").write_text(json.dumps(book, ensure_ascii=False, indent=1), encoding="utf-8")
+        book, sec = call(trip, p, tag)
+        (OUT / f"{tag}-{n}.json").write_text(json.dumps(book, ensure_ascii=False, indent=1), encoding="utf-8")
         errs = validate(book, trip, lays, rules)
-        print(f"try {n}: {len(book['pages'])} pages, {len(errs)} errors, {sec:.0f}s")
+        print(f"try {n}: {len(book['pages'])} pages, {len(errs)} errors, {sec:.0f}s, usage {USAGE[-1]}")
         for e in errs[:12]:
             print("  ", e)
-        (OUT / f"{key}.html").write_text(PAGE.format(body=render(book, trip, key, f"(시도 {n})")), encoding="utf-8")
+        (OUT / f"{tag}.html").write_text(PAGE.format(body=render(book, trip, key, f"(시도 {n})")), encoding="utf-8")
         if not errs:
             break
-        p = base + "\n\n## 지난 답의 문제 (모두 고쳐서 책 전체를 다시 답해라)\n" + "\n".join(f"- {e}" for e in errs) + "\n\n지난 답:\n" + json.dumps(book, ensure_ascii=False)
+        p = (base + "\n\n## 지난 답의 문제 (모두 고쳐서 책 전체를 다시 답해라)\n" + "\n".join(f"- {e}" for e in errs)
+             + "\n\n지난 답:\n" + json.dumps(book, ensure_ascii=False))
+    (OUT / f"{tag}-usage.json").write_text(json.dumps(USAGE), encoding="utf-8")
 
 
 if __name__ == "__main__":

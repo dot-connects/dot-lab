@@ -1,0 +1,383 @@
+{
+ "title": "교토·오사카",
+ "plan": "비행기와 열차를 지나 교토의 첫 강변으로 들어간다.\n낮의 골목과 벚꽃에서 저녁 식탁, 귀갓길의 어둠으로 좁힌다.\n이나리의 고요한 아침 뒤 먹는 장면을 잇고, 열차로 오사카의 밤을 연다.\n마지막 날은 벚꽃과 시장 골목을 지나 공항과 조용한 창밖으로 닫는다.",
+ "pages": [
+  {
+   "layout": "photo/c1",
+   "intent": "주홍빛 도리이의 깊이로 교토와 오사카를 함께 떠올리게 하는 표지.",
+   "photos": [
+    {
+     "id": "j_inari",
+     "fx": 50,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "title",
+     "text": "교토·오사카"
+    },
+    {
+     "key": "period",
+     "text": "2026. 4. 3 — 5"
+    }
+   ]
+  },
+  {
+   "layout": "photo/opp",
+   "intent": "비행기 창과 공항 열차를 세로로 묶어 여행의 첫 이동을 연다.",
+   "photos": [
+    {
+     "id": "j_plane",
+     "fx": 56,
+     "fy": 48
+    },
+    {
+     "id": "j_haruka",
+     "fx": 63,
+     "fy": 49
+    }
+   ],
+   "texts": [
+    {
+     "key": "day",
+     "text": "교토로 가는 길, 4월 3일"
+    }
+   ]
+  },
+  {
+   "layout": "photo/duo",
+   "intent": "달리는 차창에서 교토역 표지까지, 열차 안에서 도착으로 이어지는 짝.",
+   "photos": [
+    {
+     "id": "j_trainwin",
+     "fx": 48,
+     "fy": 42
+    },
+    {
+     "id": "j_kyoto_sign",
+     "fx": 52,
+     "fy": 48
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/top2",
+   "intent": "숙소를 넓게 두고 버스와 첫 라멘을 붙여 교토에 자리 잡는 오후를 묶는다.",
+   "photos": [
+    {
+     "id": "j_hotel",
+     "fx": 50,
+     "fy": 51
+    },
+    {
+     "id": "j_bus",
+     "fx": 53,
+     "fy": 47
+    },
+    {
+     "id": "j_ramen",
+     "fx": 49,
+     "fy": 54
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/low",
+   "intent": "이동과 실내 장면 뒤 처음 만난 강변 벚꽃에 한 쪽을 온전히 내준다.",
+   "photos": [
+    {
+     "id": "j_kamo",
+     "fx": 48,
+     "fy": 50
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/two",
+   "intent": "기온의 해 질 무렵에서 폰토초의 등불까지 같은 골목의 빛 변화를 잇는다.",
+   "photos": [
+    {
+     "id": "j_gion",
+     "fx": 56,
+     "fy": 50
+    },
+    {
+     "id": "j_pontocho",
+     "fx": 51,
+     "fy": 52
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/n2",
+   "intent": "같은 저녁 식탁의 꼬치와 맥주를 가까운 두 장으로 묶는다.",
+   "photos": [
+    {
+     "id": "j_yakitori",
+     "fx": 51,
+     "fy": 50
+    },
+    {
+     "id": "j_beer",
+     "fx": 52,
+     "fy": 47
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/low",
+   "intent": "술자리 뒤 숙소로 걷는 밤을 사람 없는 골목 한 장으로 가라앉힌다.",
+   "photos": [
+    {
+     "id": "j_vending",
+     "fx": 59,
+     "fy": 52
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/op2",
+   "intent": "손에 든 아침과 빈 플랫폼을 위아래로 묶어 이나리행 아침을 연다.",
+   "photos": [
+    {
+     "id": "j_onigiri",
+     "fx": 48,
+     "fy": 50
+    },
+    {
+     "id": "j_platform",
+     "fx": 53,
+     "fy": 49
+    }
+   ],
+   "texts": [
+    {
+     "key": "day",
+     "text": "이나리 가는 길, 4월 4일"
+    }
+   ]
+  },
+  {
+   "layout": "photo/full",
+   "intent": "사람이 드문 도리이 길을 아침 장면의 절정으로 크게 펼친다.",
+   "photos": [
+    {
+     "id": "j_inari",
+     "fx": 50,
+     "fy": 57
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/b3",
+   "intent": "도리이의 밀도 뒤 야사카의 열린 길과 탑으로 숨을 돌린다.",
+   "photos": [
+    {
+     "id": "j_yasaka",
+     "fx": 52,
+     "fy": 48
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/low",
+   "intent": "기요미즈의 탑과 멀리 열린 도시를 조용한 넓은 풍경으로 둔다.",
+   "photos": [
+    {
+     "id": "j_kiyomizu",
+     "fx": 62,
+     "fy": 47
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/two",
+   "intent": "니시키의 북적이는 가게에서 조용한 찻집까지 먹으러 걷는 동선을 묶는다.",
+   "photos": [
+    {
+     "id": "j_nishiki",
+     "fx": 52,
+     "fy": 52
+    },
+    {
+     "id": "j_coffee",
+     "fx": 48,
+     "fy": 54
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/low",
+   "intent": "먹는 장면을 손에 든 진한 말차 한 점으로 가까이 좁힌다.",
+   "photos": [
+    {
+     "id": "j_matcha",
+     "fx": 48,
+     "fy": 48
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/b3l",
+   "intent": "먹거리의 밀도 뒤 벚꽃 사이 물길로 오후의 호흡을 길게 뺀다.",
+   "photos": [
+    {
+     "id": "j_kamo_2",
+     "fx": 51,
+     "fy": 48
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/op2",
+   "intent": "교토의 열차와 도톤보리의 첫 야경을 묶어 도시가 바뀌는 순간을 연다.",
+   "photos": [
+    {
+     "id": "j_train_osaka",
+     "fx": 48,
+     "fy": 51
+    },
+    {
+     "id": "j_dotonbori",
+     "fx": 52,
+     "fy": 49
+    }
+   ],
+   "texts": [
+    {
+     "key": "day",
+     "text": "오사카, 4월 4일 저녁"
+    }
+   ]
+  },
+  {
+   "layout": "photo/n2",
+   "intent": "도톤보리에서 바로 먹은 타코야키와 철판 요리를 같은 밤의 열기로 묶는다.",
+   "photos": [
+    {
+     "id": "j_takoyaki",
+     "fx": 47,
+     "fy": 52
+    },
+    {
+     "id": "j_okonomi",
+     "fx": 51,
+     "fy": 56
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/n1",
+   "intent": "식당 밖으로 나와 비에 젖은 난바의 푸른 밤을 크게 세운다.",
+   "photos": [
+    {
+     "id": "j_osaka_night",
+     "fx": 54,
+     "fy": 53
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/n1",
+   "intent": "화려한 밤거리 뒤 마지막 편의점 한 곳으로 하루를 조용히 닫는다.",
+   "photos": [
+    {
+     "id": "j_konbini",
+     "fx": 57,
+     "fy": 50
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/op",
+   "intent": "벚꽃 너머 처음 보인 오사카성으로 마지막 날의 아침을 연다.",
+   "photos": [
+    {
+     "id": "j_castle_2",
+     "fx": 50,
+     "fy": 47
+    }
+   ],
+   "texts": [
+    {
+     "key": "day",
+     "text": "오사카성, 4월 5일 아침"
+    }
+   ]
+  },
+  {
+   "layout": "photo/low",
+   "intent": "만개한 벚꽃과 성을 한 장에 넉넉히 담아 아침 풍경을 이어 간다.",
+   "photos": [
+    {
+     "id": "j_castle",
+     "fx": 50,
+     "fy": 48
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/side",
+   "intent": "신세카이의 큰 길에 구로몬과 쿠시카츠를 붙여 시장에서 먹거리 골목으로 좁힌다.",
+   "photos": [
+    {
+     "id": "j_shinsekai",
+     "fx": 52,
+     "fy": 50
+    },
+    {
+     "id": "j_kuromon",
+     "fx": 50,
+     "fy": 49
+    },
+    {
+     "id": "j_kushikatsu",
+     "fx": 51,
+     "fy": 45
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/low",
+   "intent": "먹거리 골목의 밀도 뒤 빈 탑승구와 저녁빛으로 돌아갈 시간을 만든다.",
+   "photos": [
+    {
+     "id": "j_gate",
+     "fx": 49,
+     "fy": 49
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/low",
+   "intent": "구름 위로 멀어지는 날개 한 장만 남겨 여행을 가장 조용하게 닫는다.",
+   "photos": [
+    {
+     "id": "j_plane_2",
+     "fx": 58,
+     "fy": 48
+    }
+   ],
+   "texts": []
+  }
+ ]
+}
