@@ -211,6 +211,9 @@ fun PetScreen(onBack: () -> Unit) {
         Text("개인정보 처리방침", fontFamily = Book.Body, fontSize = 14.sp, color = Book.Muted,
             modifier = Modifier.align(Alignment.CenterHorizontally).clip(RoundedCornerShape(50))
                 .clickable { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_URL))) }.padding(12.dp))
+        // the privacy page asks for this number when someone wants their server records deleted
+        Text("기기 번호 ${remember { kr.dot.catchpet.ai.AiClient.deviceId(ctx) }}", fontFamily = Book.Body, fontSize = 12.sp, color = Book.Muted,
+            modifier = Modifier.align(Alignment.CenterHorizontally))
         Spacer(Modifier.height(24.dp))
     }
 }
