@@ -76,7 +76,7 @@ footer a{color:var(--muted)}
 </main>
 <script>
 // The closed-test links (spec-release.md 9); empty until the Play account and the tester group exist.
-const LINKS = { group: "", optin: "" };
+const LINKS = { group: "https://groups.google.com/g/dot-testers", optin: "" };
 const LABEL = { group: "그룹 가입하기 →", optin: "참여 링크 열기 →" };
 for (const el of document.querySelectorAll("[data-link]")) {
   const url = LINKS[el.dataset.link];

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>앱 먼저 써 보기 · D:OT lab</title>
+<meta name="description" content="D:OT 가 만든 안드로이드 앱을 Play 스토어에 나오기 전에 먼저 써 보세요. 무료, 2분이면 끝나요.">
+<meta property="og:title" content="D:OT 앱, 스토어에 나오기 전에 먼저 써 보기">
+<meta property="og:description" content="스탠드 스크린 · 리얼뽑기 · 어디댔어. 무료, 안드로이드.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#161616;--muted:#66645f;--line:#dcd9d3;--acc:#ff6a13;
+  --f:"IBM Plex Sans KR","Malgun Gothic",sans-serif;color-scheme:light}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 var(--f);word-break:keep-all}
+main{max-width:480px;margin:0 auto;box-sizing:border-box;display:grid;gap:18px;
+  padding:28px max(18px,env(safe-area-inset-right)) calc(36px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}
+.top{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);text-decoration:none}
+h1{font-size:30px;line-height:1.25;margin:0}
+h1 em{font-style:normal;color:var(--acc)}
+.sub{margin:-6px 0 0;color:var(--muted)}
+h2{font-size:18px;margin:10px 0 0}
+.step{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:8px}
+.step p{margin:0}
+.btn{display:inline-block;justify-self:start;background:var(--ink);color:#fff;font-weight:700;text-decoration:none;border-radius:999px;padding:10px 18px}
+.btn:focus-visible,.app a:focus-visible{outline:3px solid var(--acc);outline-offset:3px}
+.app{display:grid;grid-template-columns:64px 1fr;gap:12px 14px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.app img{width:64px;height:64px;border-radius:16px}
+.app b{font-size:17px}
+.app span{display:block;color:var(--muted);font-size:14px;line-height:1.5}
+.app .go{grid-column:1/-1}
+.app a{display:block;text-align:center;background:var(--acc);color:#fff;font-weight:700;text-decoration:none;border-radius:12px;padding:10px}
+.app .soon{display:block;text-align:center;color:var(--muted);font-size:14px;border:1px dashed var(--line);border-radius:12px;padding:9px}
+ul{margin:0;padding-left:20px}
+li{margin:2px 0}
+.note{color:var(--muted);font-size:14px;margin:0}
+footer{display:flex;justify-content:center;gap:14px;font-size:13px}
+footer a{color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <a class="top" href="../">D:OT lab · 그냥 시켜봄</a>
+  <h1>스토어에 나오기 전에<br><em>먼저 써 보세요</em></h1>
+  <p class="sub">D:OT 가 만든 안드로이드 앱이에요. Play 스토어에 정식으로 내려면 14일 동안 써 줄 분들이 필요해요. 무료고, 2분이면 끝나요.</p>
+
+  <h2>1. 테스터 그룹 가입</h2>
+  <div class="step">
+    <p>Play 스토어에 쓰는 Google 계정으로 그룹에 들어와요.</p>
+    <a class="btn" href="https://groups.google.com/g/dot-testers" target="_blank" rel="noopener">그룹 가입하기 →</a>
+  </div>
+
+  <h2>2. 써 볼 앱 고르기</h2>
+  <p class="note">'테스터 되기'를 누른 뒤 Play 스토어에서 받아요. 여러 개 골라도 돼요.</p>
+  <div class="app" data-pkg="kr.dot.standscreen">
+    <img src="img/standby.webp" alt="스탠드 스크린 아이콘" width="64" height="64">
+    <div><b>스탠드 스크린</b><span>충전기에 꽂으면 큰 탁상시계로. 시계·날씨·일정·사진을 한 화면에.</span></div>
+  </div>
+  <div class="app" data-pkg="kr.dot.catchpet">
+    <img src="img/catch.webp" alt="리얼뽑기 아이콘" width="64" height="64">
+    <div><b>리얼뽑기</b><span>카메라로 우리 집 고양이를 집게로 뽑으면 털뭉치 펫이 돼서 홈 화면에 살아요. <a href="../works/2026-11-09-catch/page/" style="all:unset;text-decoration:underline;cursor:pointer">더 보기</a></span></div>
+  </div>
+  <div class="app" data-pkg="kr.dot.wherepark">
+    <img src="img/parking.webp" alt="어디댔어 아이콘" width="64" height="64">
+    <div><b>어디댔어</b><span>"지하 2층 C 37" 한마디면 주차 자리 저장. 가족 폰과 위젯에도 바로 떠요.</span></div>
+  </div>
+
+  <h2>부탁드려요</h2>
+  <ul>
+    <li>14일 동안 지우지 말아 주세요. 가끔 열어 보면 충분해요.</li>
+    <li>이상한 점은 Play 스토어 앱 화면의 '비공개 의견'이나 메일로 알려 주세요.</li>
+    <li>아이폰은 아직 안 돼요.</li>
+  </ul>
+  <footer><a href="mailto:dotconnects.lab@gmail.com">dotconnects.lab@gmail.com</a><a href="../">다른 작품</a></footer>
+</main>
+<script>
+// Apps whose closed test is live in Play Console (the opt-in link 404s before that): add the package when it opens.
+const OPEN = [];
+for (const el of document.querySelectorAll(".app[data-pkg]")) {
+  const pkg = el.dataset.pkg, go = document.createElement("div");
+  go.className = "go";
+  go.innerHTML = OPEN.includes(pkg)
+    ? `<a href="https://play.google.com/apps/testing/${pkg}" target="_blank" rel="noopener">테스터 되기 →</a>`
+    : `<span class="soon">곧 열려요 · 그룹에 먼저 가입해 두면 열릴 때 바로 받을 수 있어요</span>`;
+  el.append(go);
+}
+</script>
+</body>
+</html>
