@@ -98,9 +98,16 @@ class Pipeline {
   final BookStore store;
   final Future<String> Function(String theme) layoutsJson; // assets/book/themes/<t>/layouts.json
   final String Function() newId;
+  final Duration poll; // how often a running layout job is asked for its result
   final _places = <String, String?>{};
 
-  Pipeline({required this.src, required this.ai, required this.store, required this.layoutsJson, String Function()? newId})
+  Pipeline(
+      {required this.src,
+      required this.ai,
+      required this.store,
+      required this.layoutsJson,
+      String Function()? newId,
+      this.poll = const Duration(seconds: 5)})
       : newId = newId ?? (() => DateTime.now().millisecondsSinceEpoch.toString());
 
   Future<String?> _place(double lat, double lng) async {
@@ -291,34 +298,46 @@ class Pipeline {
   // ----- /layout (the AI editor) -----
 
   /// The AI editor lays out the whole book from the theme's designer layouts (order, layout per page, photos, texts).
-  /// One more call when checkLayout finds problems; whatever comes back is repaired into a usable book.
+  /// The work runs as a server job (b.job, saved at once): closing the app does not lose it, and calling this again
+  /// after a restart only waits for the same job (no second model call, no second charge).
+  /// One more job when checkLayout finds problems; whatever comes back is repaired into a usable book.
   /// A failure leaves the book at "picked" with its picks untouched: [다시 시도] calls this again (no new /pick).
   Future<AiState> write(Book b, {List<NoteInput> notes = const []}) async {
     final pool = _pool(b);
     final picked = [for (final p in b.picks) pool[p.id]].whereType<Candidate>().toList();
-    final images = <AiImage>[];
-    for (final c in picked) {
-      if (c.shot.isVideo) {
-        final fs = await src.videoFrames(c.id); // one scene per video
-        if (fs.isNotEmpty) images.add(AiImage(c.id, fs[fs.length > 1 ? 1 : 0]));
-      } else {
-        final j = await src.jpeg(c.id, 512);
-        if (j != null) images.add(AiImage(c.id, j));
-      }
-    }
     final defs = await _layouts(b.theme);
     final theme = layoutRules.containsKey(b.theme) ? b.theme : 'a';
     final rules = layoutRules[theme]!;
     final byId = {for (final c in picked) c.id: c};
     final shots = [for (final c in picked) _aiShot(c)];
-    Future<AiResult> ask({List<String>? fix, Map<String, dynamic>? prev}) => ai.layout(images, shots,
-        theme: theme, catalog: layoutCatalog(defs), rules: rules.toJson(picked.length), notes: _notes(notes), opts: b.opts.toJson(), fix: fix, prev: prev);
-    final r = await ask();
+    List<AiImage>? images;
+    Future<List<AiImage>> previews() async {
+      if (images != null) return images!;
+      final out = <AiImage>[];
+      for (final c in picked) {
+        if (c.shot.isVideo) {
+          final fs = await src.videoFrames(c.id); // one scene per video
+          if (fs.isNotEmpty) out.add(AiImage(c.id, fs[fs.length > 1 ? 1 : 0]));
+        } else {
+          final j = await src.jpeg(c.id, 512);
+          if (j != null) out.add(AiImage(c.id, j));
+        }
+      }
+      return images = out;
+    }
+
+    Future<AiResult> run({List<String>? fix, Map<String, dynamic>? prev}) => _job(
+        b,
+        (job) async => ai.layout(await previews(), shots,
+            job: job, theme: theme, catalog: layoutCatalog(defs), rules: rules.toJson(picked.length), notes: _notes(notes),
+            opts: b.opts.toJson(), fix: fix, prev: prev));
+    final r = await run();
     if (r is! AiOk) return r is AiOff ? AiState.off : AiState.failed;
     var body = r.body;
     final errs = checkLayout(body, defs, byId, rules);
     if (errs.isNotEmpty) {
-      final r2 = await ask(fix: errs.take(20).toList(), prev: body);
+      b.job = null; // the retry is a new job
+      final r2 = await run(fix: errs.take(20).toList(), prev: body);
       if (r2 is AiOk && checkLayout(r2.body, defs, byId, rules).length < errs.length) body = r2.body;
     }
     final out = repairLayout(body, defs, byId, fallbackTitle: _defaultTitle(b), coverPhoto: b.cover);
@@ -331,8 +350,33 @@ class Pipeline {
       ..spare = [for (final p in b.picks) if (!used.contains(p.id)) p.id]
       ..stage = 'written';
     await _copyMedia(b, used);
+    b.job = null;
     await store.save(b);
     return AiState.ok;
+  }
+
+  /// Start a layout job (unless b.job already names one) and wait for its plan. The job name is saved before the call,
+  /// so an app closed mid-way finds it again. Failed / timed out -> the name is dropped and the next try starts afresh.
+  Future<AiResult> _job(Book b, Future<AiResult> Function(String job) start) async {
+    AiResult r;
+    if (b.job == null) {
+      b.job = '${b.id}-${DateTime.now().microsecondsSinceEpoch}';
+      await store.save(b);
+      r = await start(b.job!);
+    } else {
+      r = await ai.result(b.job!);
+    }
+    final deadline = DateTime.now().add(const Duration(minutes: 15));
+    while (r is AiOk && r.body['status'] == 'pending' && DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(poll);
+      r = await ai.result(b.job!);
+    }
+    if (r is! AiOk || r.body['pages'] is! List) {
+      b.job = null; // nothing usable: the next [다시 시도] starts a new job
+      await store.save(b);
+      return r is AiOk ? const AiFailed('timeout') : r;
+    }
+    return r;
   }
 
   /// Pages + image/video files. Also used for a book without text ([글 없이 만들기] / AI off).

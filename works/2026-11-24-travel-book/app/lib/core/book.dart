@@ -22,6 +22,7 @@ class Book {
   List<PageSpec> pages;
   List<PageSpec> original;
   List<String> spare;
+  String? job; // the AI editor's server job while it runs (survives the app being closed); null when idle
 
   Book({
     required this.id,
@@ -43,6 +44,7 @@ class Book {
     this.pages = const [],
     this.original = const [],
     this.spare = const [],
+    this.job,
   })  : mustInclude = mustInclude ?? {},
         texts = texts ?? {};
 
@@ -54,7 +56,7 @@ class Book {
         'clips': [for (final c in clips) c.toJson()], 'pickLines': pickLines, 'must': mustInclude.toList(),
         'texts': {for (final e in texts.entries) e.key: e.value.toJson()}, 'rewrites': rewrites, 'cover': cover,
         'coverColor': coverColor, 'pages': [for (final p in pages) p.toJson()],
-        'original': [for (final p in original) p.toJson()], 'spare': spare,
+        'original': [for (final p in original) p.toJson()], 'spare': spare, 'job': job,
       };
 
   factory Book.fromJson(Map<String, dynamic> j) => Book(
@@ -79,5 +81,6 @@ class Book {
         pages: [for (final p in j['pages'] as List) PageSpec.fromJson(p as Map<String, dynamic>)],
         original: [for (final p in j['original'] as List) PageSpec.fromJson(p as Map<String, dynamic>)],
         spare: (j['spare'] as List).cast<String>(),
+        job: j['job'] as String?,
       );
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart' show rootBundle;
@@ -12,6 +13,7 @@ import 'core/book.dart';
 import 'core/library.dart';
 import 'core/prefs.dart';
 import 'device/gallery.dart' as g;
+import 'device/making_channel.dart';
 import 'flow/app.dart';
 import 'flow/book_screen.dart';
 import 'flow/making_flow.dart';
@@ -66,7 +68,33 @@ class _RootState extends State<_Root> {
   @override
   void initState() {
     super.initState();
-    _reload();
+    _reload().then((_) async {
+      _resumeJobs();
+      final id = await takeLaunchBook(); // opened from "책이 다 됐어요"
+      if (id != null) _openId(id);
+    });
+    onOpenBook(_openId);
+  }
+
+  void _openId(String id) {
+    final b = _books.where((x) => x.id == id).firstOrNull;
+    if (b != null && mounted) _go(BookScreen(app: app, book: b, failed: b.written ? null : AiState.failed));
+  }
+
+  /// Books whose AI layout job was running when the app closed: wait for the same job in the background (the server
+  /// kept working), then refresh the shelf; "다 됐어요" if the person is away by then.
+  void _resumeJobs() {
+    for (final b in _books.where((b) => b.job != null && !b.written && !app.making.contains(b.id))) {
+      app.making.add(b.id);
+      unawaited(() async {
+        await makingStart(b.title);
+        final r = await app.pipe.write(b);
+        app.making.remove(b.id);
+        final away = WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed;
+        await (r == AiState.ok && away ? makingDone(b.title, b.id) : makingStop());
+        await _reload();
+      }());
+    }
   }
 
   Future<void> _reload() async {

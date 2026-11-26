@@ -111,17 +111,38 @@ class FakeAi implements AiClient {
   }
 
   /// A plain editor: cover, then one page a photo (a captioned single-slot layout, the video layout for clips).
+  /// Server job results: job name -> what /result answers; a job answers "pending" [pendingFor] times first.
+  final jobs = <String, AiResult>{};
+  int pendingFor = 0;
+  final polled = <String>[];
+
+  @override
+  Future<AiResult> result(String job) async {
+    polled.add(job);
+    if (pendingFor > 0) {
+      pendingFor--;
+      return const AiOk({'status': 'pending'});
+    }
+    return jobs[job] ?? const AiFailed('none');
+  }
+
   @override
   Future<AiResult> layout(List<AiImage> images, List<AiShot> shots,
-      {required String theme,
+      {required String job,
+      required String theme,
       required List<Map<String, Object>> catalog,
       required Map<String, Object> rules,
       List<Map<String, String?>> notes = const [],
       Map<String, Object?> opts = const {},
       List<String>? fix,
       Map<String, dynamic>? prev}) async {
-    laidOut.add({'theme': theme, 'fix': fix, 'opts': opts, 'n': images.length});
+    laidOut.add({'theme': theme, 'fix': fix, 'opts': opts, 'n': images.length, 'job': job});
     if (onLayout != null) return onLayout!(images);
+    jobs[job] = _plan(images, catalog);
+    return const AiOk({'status': 'pending'});
+  }
+
+  AiResult _plan(List<AiImage> images, List<Map<String, Object>> catalog) {
     Map<String, Object> first(bool Function(Map<String, Object>) f) => catalog.firstWhere(f);
     final cover = first((l) => l['kind'] == 'cover' && (l['slots'] as List).length == 1);
     final one = first((l) => l['kind'] == 'photo' && (l['slots'] as List).length == 1 && l['slots'].toString().contains('L') &&
@@ -173,6 +194,7 @@ void main() {
         store: store,
         layoutsJson: (t) => File('assets/book/themes/$t/layouts.json').readAsString(),
         newId: () => 'b1',
+        poll: Duration.zero,
       );
 
   // 3 days x 6 sharp photos, + 1 screenshot, 2 blurred (one is must-include), a 2-frame burst, 1 video
@@ -294,6 +316,38 @@ void main() {
     await p.finish(r.book);
     expect(r.book.pages, isNotEmpty);
     expect(r.book.stage, 'picked'); // does not use a free book
+  });
+
+  test('layout job: named before the call, polled until the plan; a restart only waits for the saved job', () async {
+    final p = pipe(src());
+    final r = await p.pick(from: DateTime(2026, 6, 12), to: DateTime(2026, 6, 14), shots: trip(), inRange: 25, albums: 1, opts: BookOptions());
+    ai.pendingFor = 2;
+    expect(await p.write(r.book), AiState.ok);
+    final job = ai.laidOut.first['job'] as String;
+    expect(job, startsWith('b1-'));
+    expect(ai.polled.where((j) => j == job).length, 3); // pending, pending, plan
+    expect(r.book.job, isNull); // done: nothing left to resume
+
+    // the app was closed while the job ran: the book still names it
+    final b = (await store.load('b1'))!
+      ..stage = 'picked'
+      ..job = job;
+    await store.save(b);
+    final started = ai.laidOut.map((x) => x['job']).toList();
+    ai.polled.clear();
+    expect(await p.write(b), AiState.ok);
+    expect(ai.polled.first, job); // asked for the saved job first
+    expect(ai.laidOut.map((x) => x['job']).where((j) => j == job).length, 1); // never started twice
+    expect(ai.laidOut.length - started.length, lessThanOrEqualTo(1)); // at most the checkLayout retry
+  });
+
+  test('a job the server no longer has: the name is dropped and the next try starts a new one', () async {
+    final p = pipe(src());
+    final r = await p.pick(from: DateTime(2026, 6, 12), to: DateTime(2026, 6, 14), shots: trip(), inRange: 25, albums: 1, opts: BookOptions());
+    r.book.job = 'gone-1';
+    expect(await p.write(r.book), AiState.failed);
+    expect((await store.load('b1'))!.job, isNull);
+    expect(await p.write(r.book), AiState.ok);
   });
 
   test('rewrite a page: counts, stops at the cap', () async {

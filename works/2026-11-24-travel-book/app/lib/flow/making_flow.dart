@@ -7,6 +7,7 @@ import '../core/book.dart';
 import '../core/library.dart' show freeBooks;
 import '../core/models.dart';
 import '../core/timeline.dart';
+import '../device/making_channel.dart';
 import '../device/media_channel.dart' as mc;
 import '../pipeline.dart';
 import '../ui/making/pairs.dart';
@@ -65,7 +66,12 @@ class _MakingFlowState extends State<MakingFlow> {
   @override
   void initState() {
     super.initState();
-    if (widget.book == null) _pick();
+    if (widget.book == null) {
+      _pick();
+    } else if (widget.book!.job != null && !app.making.contains(widget.book!.id)) {
+      // the app was closed while the AI editor worked: wait for that same job (no new charge)
+      WidgetsBinding.instance.addPostFrameCallback((_) => _write());
+    }
   }
 
   @override
@@ -116,12 +122,17 @@ class _MakingFlowState extends State<MakingFlow> {
       _page = 0;
     });
     unawaited(mc.keepScreenOn(true).catchError((_) {}));
+    app.making.add(b.id);
+    unawaited(makingStart(b.title)); // leaving the app keeps it going; "다 됐어요" if they are away at the end
     // /layout is one call (two with the retry): the page count is a time estimate (about 2 min), never the last page early
     _tick = Timer.periodic(Duration(milliseconds: 120000 ~/ pages), (t) {
       if (_page >= pages - 1) return t.cancel(); // last page shown: stop rebuilding every 800 ms
       setState(() => _page++);
     });
     final r = await app.pipe.write(b, notes: _notes);
+    app.making.remove(b.id);
+    final away = WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed;
+    unawaited(r == AiState.ok && away ? makingDone(b.title, b.id) : makingStop());
     _tick?.cancel();
     if (!mounted) return;
     if (r != AiState.ok) await app.pipe.finish(b); // pages without text; [다시 시도] on the book

@@ -1,12 +1,31 @@
 package kr.dot.tripbook
 
+import android.content.Intent
+import android.os.Bundle
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private var making: MethodChannel? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        Making.launchBook = intent?.getStringExtra(Making.EXTRA_BOOK) // opened from "책이 다 됐어요"
+        super.onCreate(savedInstanceState)
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "kr.dot.tripbook/media").setMethodCallHandler(MediaChannel(this))
+        making = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "kr.dot.tripbook/making").also {
+            it.setMethodCallHandler(Making.handler(this))
+        }
+    }
+
+    // a "책이 다 됐어요" tap while the app is still open: tell Dart which book to show
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val book = intent.getStringExtra(Making.EXTRA_BOOK) ?: return
+        making?.invokeMethod("open", book)
     }
 }

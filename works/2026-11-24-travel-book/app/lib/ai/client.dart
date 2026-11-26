@@ -64,9 +64,11 @@ class AiClient {
       _post('/write', {'images': images, 'shots': shots, 'notes': notes, 'opts': opts, 'shape': shape});
 
   /// The whole book: order, a designer layout per page, photos into its slots, the texts (mockups/r11/engine).
-  /// [fix]/[prev] = one more try after checkLayout found problems.
+  /// Starts a server job named [job] and answers at once ({status: pending}); the plan comes from [result].
+  /// The same [job] twice never calls the model twice. [fix]/[prev] = one more try after checkLayout found problems.
   Future<AiResult> layout(List<AiImage> images, List<AiShot> shots,
-          {required String theme,
+          {required String job,
+          required String theme,
           required List<Map<String, Object>> catalog,
           required Map<String, Object> rules,
           List<Map<String, String?>> notes = const [],
@@ -74,9 +76,13 @@ class AiClient {
           List<String>? fix,
           Map<String, dynamic>? prev}) =>
       _post('/layout', {
+        'job': job,
         'images': images, 'shots': shots, 'notes': notes, 'opts': opts, 'theme': theme, 'catalog': catalog, 'rules': rules,
         if (fix != null) 'fix': fix, if (prev != null) 'prev': prev,
       });
+
+  /// The layout job's state: {status: pending} | the plan {title, plan, pages} | {error} (AiFailed).
+  Future<AiResult> result(String job) => _post('/result', {'job': job});
 
   Future<AiResult> rewrite(List<AiImage> images, Map<String, String> page, String shape, {List<Map<String, String?>> notes = const []}) =>
       _post('/rewrite', {'images': images, 'page': page, 'notes': notes, 'shape': shape});

@@ -12,6 +12,7 @@ class App {
   final Pipeline pipe;
   final PhoneSource src;
   bool limited = false; // photo access "일부만 허용"
+  final making = <String>{}; // books whose AI layout job this process is waiting for (never twice)
   App({required this.prefs, required this.store, required this.pipe, required this.src});
   String get booksDir => store.root.path;
 }
