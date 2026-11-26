@@ -1,0 +1,116 @@
+/* kfonts: Pretendard:400;500;700;800 */
+/* 여백의 책 r11b: quiet photo essay. Paper + ink, colour only from photos.
+   Page 100 x 133.33cqw. ONE frame for every template:
+   - hang line T 10cqw: every plate's top edge sits on it (or the page edge for bleeds)
+   - side margins M 8cqw -> live width 84; six columns 12cqw, gutter G 2.4cqw
+     column lefts 8 / 22.4 / 36.8 / 51.2 / 65.6 / 80, rights 20 / 34.4 / 48.8 / 63.2 / 77.6 / 92
+   - photos are big (84 wide by default); the only empty paper is the bottom band under the plates
+   - the caption hangs 2.4cqw under the photo it belongs to, flush with that photo's left edge
+   Type: caption 2.9 / body 3.6 (lh 1.6) / day heading 9 / cover title 26-40. */
+.t-a{--paper:#F4F3EF;--ink:#141414;--soft:#5a5c5f;--tone:#d6d6d2;
+  --M:8cqw;--T:10cqw;--G:2.4cqw;--f:"Pretendard",sans-serif}
+.t-a .pg{container-type:inline-size;position:relative;overflow:hidden;background:var(--paper);color:var(--ink);
+  font-family:var(--f);word-break:keep-all;overflow-wrap:break-word}
+.t-a .pg p,.t-a .pg h3{margin:0;position:absolute}
+.t-a .ph{position:absolute;overflow:hidden;background:var(--tone)}
+.t-a .ph img,.t-a .ph video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+
+.t-a .cp{font:500 2.9cqw/1.5 var(--f);letter-spacing:-.005em}
+.t-a .bd{font:400 3.6cqw/1.6 var(--f);letter-spacing:-.02em}
+.t-a .sf{color:var(--soft)}
+/* folio: the page number the app puts on data-page, outer bottom; nothing else repeats */
+.t-a .pg.fo::after{content:attr(data-page);position:absolute;right:var(--M);bottom:4.6cqw;font:500 2.8cqw/1 var(--f);color:var(--soft)}
+
+/* ---------- covers ---------- */
+.t-a .c-bleed .ph{inset:0}
+.t-a .c-bleed .sh{position:absolute;inset:auto 0 0 0;height:52%;background:linear-gradient(0deg,rgba(8,10,12,.62),rgba(8,10,12,.42) 40%,rgba(8,10,12,0))}
+.t-a .c-bleed .ttl{left:calc(var(--M) - .05em);bottom:15cqw;font:800 28cqw/.9 var(--f);letter-spacing:-.06em;color:#fff;white-space:nowrap}
+.t-a .c-bleed .sub{left:var(--M);bottom:9cqw;color:#fff;font-size:3.2cqw;letter-spacing:.02em}
+
+.t-a .c-paper .ttl{left:calc(var(--M) - .06em);top:13cqw;font:800 40cqw/.9 var(--f);letter-spacing:-.07em;white-space:nowrap}
+.t-a .c-paper .sub{left:var(--M);top:54.5cqw;font-size:3.2cqw}
+.t-a .c-paper .ph{left:0;right:0;top:66.67cqw;bottom:0}
+
+.t-a .c-plate .ph{left:var(--M);right:var(--M);top:var(--T);height:84cqw}
+.t-a .c-plate .ttl{left:calc(var(--M) - .04em);top:101cqw;font:800 12cqw/1 var(--f);letter-spacing:-.05em;white-space:nowrap}
+.t-a .c-plate .sub{left:var(--M);top:116cqw;font-size:3.2cqw}
+
+/* ---------- day openers ---------- */
+/* bleed on three sides, the day's words on a paper band under it (no text on the photo) */
+.t-a .op-bleed .ph{left:0;right:0;top:0;height:100cqw}
+.t-a .op-bleed .hd{left:var(--M);top:106cqw;font:800 9cqw/1 var(--f);letter-spacing:-.05em}
+.t-a .op-bleed .cp{left:var(--M);right:var(--M);top:117.6cqw}
+/* heading on the hang line, the day's first wide plate under it */
+.t-a .op-title .hd{left:calc(var(--M) - .03em);top:var(--T);font:800 9cqw/1 var(--f);letter-spacing:-.05em}
+.t-a .op-title .cp{left:var(--M);right:var(--M);top:21.6cqw}
+.t-a .op-title .ph{left:var(--M);right:var(--M);top:31cqw;height:84cqw}
+
+/* ---------- inside pages ---------- */
+.t-a .bleed .ph{inset:0}
+.t-a .frame .ph{inset:4cqw}
+
+.t-a .plate .ph{left:var(--M);right:var(--M);top:var(--T);height:105cqw}
+.t-a .plate .cp{left:var(--M);right:var(--M);top:117.4cqw}
+
+.t-a .square .ph{left:var(--M);right:var(--M);top:var(--T);height:84cqw}
+.t-a .square .cp{left:var(--M);right:var(--M);top:96.4cqw}
+
+.t-a .drop .ph{left:0;right:0;top:0;height:80cqw}
+.t-a .drop .cp{left:var(--M);right:var(--M);top:83cqw}
+
+.t-a .plate-text .ph{left:var(--M);right:var(--M);top:var(--T);height:56cqw}
+.t-a .plate-text .cp{left:var(--M);right:var(--M);top:68.4cqw}
+.t-a .plate-text .bd{left:var(--M);width:66cqw;top:80cqw}
+
+.t-a .stack .p0{left:var(--M);right:var(--M);top:var(--T);height:50cqw}
+.t-a .stack .p1{left:var(--M);right:var(--M);top:62.4cqw;height:50cqw}
+.t-a .stack .cp{left:var(--M);right:var(--M);top:114.8cqw}
+
+.t-a .row .ph{top:var(--T);height:78cqw;width:40.8cqw}
+.t-a .row .p0{left:var(--M)}.t-a .row .p1{right:var(--M)}
+.t-a .row .cp{left:var(--M);right:var(--M);top:90.4cqw}
+
+.t-a .detail .p0{left:var(--M);top:var(--T);width:26.4cqw;height:35.2cqw}
+.t-a .detail .c0{left:36.8cqw;right:var(--M);top:calc(var(--T) - .5cqw)}
+.t-a .detail .p1{left:var(--M);right:var(--M);top:47.6cqw;height:63cqw}
+.t-a .detail .c1{left:var(--M);right:var(--M);top:113cqw}
+
+.t-a .lead3 .p0{left:var(--M);right:var(--M);top:var(--T);height:56cqw}
+.t-a .lead3 .p1,.t-a .lead3 .p2{top:68.4cqw;width:40.8cqw;height:40.8cqw}
+.t-a .lead3 .p1{left:var(--M)}.t-a .lead3 .p2{right:var(--M)}
+.t-a .lead3 .cp{left:var(--M);right:var(--M);top:111.6cqw}
+
+.t-a .side3 .p0{left:var(--M);top:var(--T);width:55.2cqw;height:96cqw}
+.t-a .side3 .p1,.t-a .side3 .p2{left:65.6cqw;right:var(--M);height:46.8cqw}
+.t-a .side3 .p1{top:var(--T)}.t-a .side3 .p2{top:59.2cqw}
+.t-a .side3 .cp{left:var(--M);right:var(--M);top:108.4cqw}
+
+.t-a .strip3 .ph{left:var(--M);right:var(--M);height:33.6cqw}
+.t-a .strip3 .p0{top:var(--T)}.t-a .strip3 .p1{top:46cqw}.t-a .strip3 .p2{top:82cqw}
+.t-a .strip3 .cp{left:var(--M);right:var(--M);top:118cqw}
+
+.t-a .scene4 .p0{left:var(--M);right:var(--M);top:var(--T);height:56cqw}
+.t-a .scene4 .s{top:68.4cqw;width:26.4cqw;height:35.2cqw}
+.t-a .scene4 .p1{left:var(--M)}.t-a .scene4 .p2{left:36.8cqw}.t-a .scene4 .p3{right:var(--M)}
+.t-a .scene4 .cp{left:var(--M);right:var(--M);top:106cqw}
+
+.t-a .grid4 .ph{width:40.8cqw;height:51cqw}
+.t-a .grid4 .p0,.t-a .grid4 .p2{left:var(--M)}.t-a .grid4 .p1,.t-a .grid4 .p3{right:var(--M)}
+.t-a .grid4 .p0,.t-a .grid4 .p1{top:var(--T)}.t-a .grid4 .p2,.t-a .grid4 .p3{top:63.4cqw}
+.t-a .grid4 .cp{left:var(--M);right:var(--M);top:116.8cqw}
+
+.t-a .grid6 .ph{width:40.8cqw;height:32.6cqw}
+.t-a .grid6 .p0,.t-a .grid6 .p2,.t-a .grid6 .p4{left:var(--M)}.t-a .grid6 .p1,.t-a .grid6 .p3,.t-a .grid6 .p5{right:var(--M)}
+.t-a .grid6 .p0,.t-a .grid6 .p1{top:var(--T)}.t-a .grid6 .p2,.t-a .grid6 .p3{top:45cqw}.t-a .grid6 .p4,.t-a .grid6 .p5{top:80cqw}
+.t-a .grid6 .cp{left:var(--M);right:var(--M);top:115cqw}
+
+/* ---------- words and the end ---------- */
+.t-a .text .cp{left:var(--M);right:var(--M);top:var(--T)}
+.t-a .text .bd{left:var(--M);width:76cqw;top:20cqw;font-size:4.2cqw;line-height:1.75;white-space:pre-line}
+
+.t-a .end-photo .ph{left:var(--M);right:var(--M);top:var(--T);height:56cqw}
+.t-a .end-photo .last{left:var(--M);width:70cqw;top:72cqw}
+.t-a .end-photo .col{left:var(--M);width:60cqw;bottom:10cqw;white-space:pre-line}
+
+.t-a .end .last{left:var(--M);width:70cqw;top:var(--T)}
+.t-a .end .col{left:var(--M);width:60cqw;bottom:10cqw;white-space:pre-line}

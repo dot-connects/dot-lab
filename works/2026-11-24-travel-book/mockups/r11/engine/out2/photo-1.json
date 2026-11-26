@@ -1,0 +1,353 @@
+{
+ "title": "제주",
+ "plan": "표지 뒤 비행기 창가로 여행을 열고, 협재의 넓은 바다에서 해안도로의 저녁빛까지 첫날을 잇는다.\n둘째 날은 배의 차가운 아침색에서 우도와 해녀 노래를 지나 월정리의 쉼, 성산의 주황빛으로 흐른다.\n셋째 날은 어리목 안개를 크게 열고 숲길과 오름, 돌담에서 귤밭으로 점차 가까워진다.\n귤을 손에 든 장면 뒤에는 돌담 앞 빈 의자만 남겨 조용히 여행을 닫는다.",
+ "pages": [
+  {
+   "layout": "photo/c1",
+   "intent": "성산의 바다와 지형을 여행 전체를 대표하는 풍경으로 세운다.",
+   "photos": [
+    {
+     "id": "seongsan",
+     "fx": 58,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "title",
+     "text": "제주"
+    },
+    {
+     "key": "period",
+     "text": "2026. 6. 12 — 14"
+    }
+   ]
+  },
+  {
+   "layout": "photo/op",
+   "intent": "비행기 창밖의 흐린 빛으로 첫날의 이동을 연다.",
+   "photos": [
+    {
+     "id": "d8",
+     "fx": 58,
+     "fy": 58
+    }
+   ],
+   "texts": [
+    {
+     "key": "day",
+     "text": "제주행, 6월 12일"
+    }
+   ]
+  },
+  {
+   "layout": "photo/full",
+   "intent": "도착 뒤 처음 마주한 협재의 넓고 차가운 물빛을 가득 펼친다.",
+   "photos": [
+    {
+     "id": "hyeopjae_2",
+     "fx": 45,
+     "fy": 57
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/top2",
+   "intent": "같은 협재 장면을 바다 전경에서 젖은 발과 날아갈 뻔한 모자로 좁힌다.",
+   "photos": [
+    {
+     "id": "hyeopjae",
+     "fx": 50,
+     "fy": 48
+    },
+    {
+     "id": "d9",
+     "fx": 48,
+     "fy": 70
+    },
+    {
+     "id": "d10",
+     "fx": 50,
+     "fy": 60
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/two",
+   "intent": "버스 창가와 해안도로를 같은 이동의 두 장면으로 묶는다.",
+   "photos": [
+    {
+     "id": "d5",
+     "fx": 55,
+     "fy": 58
+    },
+    {
+     "id": "road_2",
+     "fx": 62,
+     "fy": 55
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/b3l",
+   "intent": "왼쪽으로 기우는 해와 풍차를 여백과 함께 두어 첫날을 닫는다.",
+   "photos": [
+    {
+     "id": "road",
+     "fx": 40,
+     "fy": 52
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/op",
+   "intent": "배 난간과 물결로 둘째 날의 아침 이동을 연다.",
+   "photos": [
+    {
+     "id": "d3",
+     "fx": 50,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "day",
+     "text": "우도 가는 배, 6월 13일"
+    }
+   ]
+  },
+  {
+   "layout": "photo/two",
+   "intent": "갈매기가 따르는 항해에서 우도에 닿은 장면까지 같은 이동으로 묶는다.",
+   "photos": [
+    {
+     "id": "udo",
+     "fx": 55,
+     "fy": 45
+    },
+    {
+     "id": "udo_2",
+     "fx": 60,
+     "fy": 54
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/low",
+   "intent": "바다 앞 빈 의자들을 넓은 수평선 아래 두어 우도의 고요를 남긴다.",
+   "photos": [
+    {
+     "id": "d7",
+     "fx": 45,
+     "fy": 60
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/full",
+   "intent": "해녀와 바다, 산이 함께 보이는 현장으로 이날의 중심 장면을 크게 세운다.",
+   "photos": [
+    {
+     "id": "haenyeo",
+     "fx": 55,
+     "fy": 62
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/low",
+   "intent": "노래하는 해녀들의 표정과 몸짓을 한 장으로 오래 머물러 본다.",
+   "photos": [
+    {
+     "id": "haenyeo_2",
+     "fx": 52,
+     "fy": 50
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/two",
+   "intent": "조개와 음료를 바다 앞에서 손에 든 작은 것이라는 이유로 묶는다.",
+   "photos": [
+    {
+     "id": "d4",
+     "fx": 52,
+     "fy": 62
+    },
+    {
+     "id": "d2",
+     "fx": 64,
+     "fy": 62
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/b3",
+   "intent": "월정리 카페의 야외 자리와 바다를 새 장면의 넓은 시작으로 둔다.",
+   "photos": [
+    {
+     "id": "woljeongri",
+     "fx": 45,
+     "fy": 57
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/low",
+   "intent": "카페에 오래 머문 뒤 다시 바다를 바라보는 사람을 작게 남긴다.",
+   "photos": [
+    {
+     "id": "woljeongri_2",
+     "fx": 52,
+     "fy": 64
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/b3l",
+   "intent": "유채꽃 너머 성산의 윤곽으로 저녁 장면을 시작한다.",
+   "photos": [
+    {
+     "id": "seongsan_2",
+     "fx": 50,
+     "fy": 52
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/low",
+   "intent": "주황빛이 성산 뒤로 가라앉는 넓은 풍경으로 둘째 날을 닫는다.",
+   "photos": [
+    {
+     "id": "seongsan",
+     "fx": 58,
+     "fy": 50
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/op",
+   "intent": "어리목의 짙은 안개를 크게 보여 주며 마지막 날을 연다.",
+   "photos": [
+    {
+     "id": "hallasan",
+     "fx": 50,
+     "fy": 45
+    }
+   ],
+   "texts": [
+    {
+     "key": "day",
+     "text": "어리목, 6월 14일 안개"
+    }
+   ]
+  },
+  {
+   "layout": "photo/two",
+   "intent": "숲속 계단에서 열린 오름 분화구까지 이어지는 걷기의 변화를 묶는다.",
+   "photos": [
+    {
+     "id": "hallasan_2",
+     "fx": 50,
+     "fy": 52
+    },
+    {
+     "id": "oreum_2",
+     "fx": 50,
+     "fy": 55
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/low",
+   "intent": "억새 사이에 멈춘 사람을 풍경 뒤에 작게 두어 걸음의 끝을 쉰다.",
+   "photos": [
+    {
+     "id": "oreum",
+     "fx": 68,
+     "fy": 52
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/b3",
+   "intent": "밭과 오름을 받치는 검은 돌담으로 남원의 질감을 시작한다.",
+   "photos": [
+    {
+     "id": "doldam",
+     "fx": 50,
+     "fy": 58
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/low",
+   "intent": "창틀 안 바깥 풍경과 테이블을 함께 두어 카페의 조용한 시간을 남긴다.",
+   "photos": [
+    {
+     "id": "d1",
+     "fx": 50,
+     "fy": 55
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/b3",
+   "intent": "가지 사이 귤을 가까이 보여 주며 돌의 회색에서 과수원의 색으로 전환한다.",
+   "photos": [
+    {
+     "id": "tangerine_2",
+     "fx": 58,
+     "fy": 55
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/two",
+   "intent": "귤밭의 넓은 장면에서 손에 깐 귤로 좁혀 마지막 맛을 기억하게 한다.",
+   "photos": [
+    {
+     "id": "tangerine",
+     "fx": 50,
+     "fy": 55
+    },
+    {
+     "id": "d6",
+     "fx": 52,
+     "fy": 58
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/last",
+   "intent": "공항으로 향하기 전 남겨진 빈 의자와 작은 꽃으로 여행을 조용히 닫는다.",
+   "photos": [
+    {
+     "id": "doldam_2",
+     "fx": 50,
+     "fy": 62
+    }
+   ],
+   "texts": []
+  }
+ ]
+}

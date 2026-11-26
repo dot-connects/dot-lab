@@ -1,0 +1,281 @@
+{
+ "title": "제주 여행 앨범",
+ "plan": "첫날 비행기 창에서 협재와 신창의 저녁까지 빛을 따라간다\n둘째 날 배로 우도에 들어가 해녀와 동쪽 해변을 거쳐 성산에서 닫는다\n셋째 날 안개 낀 어리목에서 오름과 돌담을 지나 귤밭으로 향한다\n빽빽한 연속 대지 뒤에는 큰 한 장을 두고 마지막 귤 뒤 공항으로 돌아간다",
+ "pages": [
+  {
+   "layout": "album/cover-board",
+   "intent": "성산의 바다와 저녁빛으로 제주 사흘의 표지를 연다",
+   "photos": [
+    {
+     "id": "seongsan",
+     "fx": 55,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "title",
+     "text": "제주"
+    },
+    {
+     "key": "period",
+     "text": "2026년 6월 12일부터 사흘"
+    }
+   ]
+  },
+  {
+   "layout": "album/day-tall",
+   "intent": "비행기 창밖의 날개를 크게 두어 첫날 도착을 시작한다",
+   "photos": [
+    {
+     "id": "d8",
+     "fx": 63,
+     "fy": 59
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "첫날 제주에 도착"
+    }
+   ]
+  },
+  {
+   "layout": "album/pano",
+   "intent": "협재의 넓은 물빛과 물에 들어간 사람들을 한 장면으로 묶는다",
+   "photos": [
+    {
+     "id": "hyeopjae",
+     "fx": 50,
+     "fy": 55
+    },
+    {
+     "id": "hyeopjae_2",
+     "fx": 48,
+     "fy": 65
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/big",
+   "intent": "차가운 물에 발만 담근 작은 일을 한 장으로 남긴다",
+   "photos": [
+    {
+     "id": "d9",
+     "fx": 48,
+     "fy": 70
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "협재 물이 차가워 발만 담갔다"
+    }
+   ]
+  },
+  {
+   "layout": "album/full",
+   "intent": "첫날의 마지막 빛과 풍차를 글 없이 크게 쉰다",
+   "photos": [
+    {
+     "id": "road",
+     "fx": 45,
+     "fy": 44
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/day-tall",
+   "intent": "배 난간과 바다로 둘째 날의 이동을 연다",
+   "photos": [
+    {
+     "id": "d3",
+     "fx": 50,
+     "fy": 60
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "둘째 날 우도로"
+    }
+   ]
+  },
+  {
+   "layout": "album/stack",
+   "intent": "우도의 바닷가 탈것과 빈 의자를 시간 순서로 포갠다",
+   "photos": [
+    {
+     "id": "udo_2",
+     "fx": 66,
+     "fy": 60
+    },
+    {
+     "id": "d7",
+     "fx": 46,
+     "fy": 68
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/full",
+   "intent": "노래하는 해녀 한 사람을 크게 두어 장면의 힘을 살린다",
+   "photos": [
+    {
+     "id": "haenyeo",
+     "fx": 55,
+     "fy": 68
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/big",
+   "intent": "월정리 카페의 빈 자리와 바다를 느슨하게 놓는다",
+   "photos": [
+    {
+     "id": "woljeongri",
+     "fx": 45,
+     "fy": 68
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "월정리 카페에 한참 앉아 있었다"
+    }
+   ]
+  },
+  {
+   "layout": "album/offset",
+   "intent": "월정리 해변에서 성산의 저녁까지 동쪽 길의 끝을 잇는다",
+   "photos": [
+    {
+     "id": "woljeongri_2",
+     "fx": 50,
+     "fy": 67
+    },
+    {
+     "id": "seongsan",
+     "fx": 55,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "월정리에서 성산으로 넘어갔다"
+    }
+   ]
+  },
+  {
+   "layout": "album/day-tall",
+   "intent": "안개 속 봉우리로 셋째 날의 차가운 아침을 연다",
+   "photos": [
+    {
+     "id": "hallasan",
+     "fx": 36,
+     "fy": 41
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "셋째 날 어리목으로"
+    }
+   ]
+  },
+  {
+   "layout": "album/column",
+   "intent": "계단에서 억새와 오름으로 이어지는 오전의 걸음을 세로로 배열한다",
+   "photos": [
+    {
+     "id": "hallasan_2",
+     "fx": 50,
+     "fy": 50
+    },
+    {
+     "id": "oreum",
+     "fx": 66,
+     "fy": 52
+    },
+    {
+     "id": "oreum_2",
+     "fx": 50,
+     "fy": 52
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/big",
+   "intent": "오름 뒤 만난 돌담과 밭을 한 장으로 천천히 넘긴다",
+   "photos": [
+    {
+     "id": "doldam",
+     "fx": 50,
+     "fy": 60
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/full",
+   "intent": "끝에서 셋째 쪽을 작은 의자와 돌담 한 장만으로 조용히 비운다",
+   "photos": [
+    {
+     "id": "doldam_2",
+     "fx": 50,
+     "fy": 65
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "album/pano",
+   "intent": "귤밭의 넓은 길에서 가지 사이 귤로 가까이 들어간다",
+   "photos": [
+    {
+     "id": "tangerine",
+     "fx": 55,
+     "fy": 53
+    },
+    {
+     "id": "tangerine_2",
+     "fx": 59,
+     "fy": 60
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "마지막은 남원 귤밭 카페"
+    }
+   ]
+  },
+  {
+   "layout": "album/last",
+   "intent": "마지막 귤 한 알과 공항으로 향하는 짧은 문장으로 앨범을 닫는다",
+   "photos": [
+    {
+     "id": "d6",
+     "fx": 55,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "memo",
+     "text": "귤 하나 까먹고 공항으로"
+    },
+    {
+     "key": "colophon",
+     "text": "2026년 6월 제주\n사진과 글"
+    }
+   ]
+  }
+ ]
+}
