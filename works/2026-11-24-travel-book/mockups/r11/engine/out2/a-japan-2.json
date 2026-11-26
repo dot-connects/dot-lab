@@ -1,0 +1,500 @@
+{
+ "title": "간사이",
+ "plan": "비행기 창의 새벽빛으로 열고 교토로 들어가는 창과 표지를 따라간다.\n교토에서는 강가의 오후가 골목의 저녁과 식탁의 밤으로 좁아진다.\n둘째 날은 이나리의 빈 길에서 시장의 한 입, 오사카의 젖은 밤까지 이어진다.\n마지막 날 벚꽃과 시장을 지나 공항에 닿고, 다시 비행기 창의 하늘로 닫는다.",
+ "pages": [
+  {
+   "layout": "a/c-bleed",
+   "intent": "비행기 창과 하늘을 첫 모티프로 삼아 여행의 출발을 연다.",
+   "photos": [
+    {
+     "id": "j_plane",
+     "fx": 60,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "title",
+     "text": "간사이"
+    },
+    {
+     "key": "period",
+     "text": "2026. 4. 3—4. 5"
+    }
+   ]
+  },
+  {
+   "layout": "a/op-bleed",
+   "intent": "헬로키티 하루카를 첫 이동 장면으로 크게 보여 준다.",
+   "photos": [
+    {
+     "id": "j_haruka",
+     "fx": 55,
+     "fy": 52
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "첫째 날"
+    },
+    {
+     "key": "day",
+     "text": "4월 3일 금요일, 교토로"
+    }
+   ]
+  },
+  {
+   "layout": "a/row",
+   "intent": "열차 창과 역 표지의 검은 테두리를 맞춰 도착의 두 순간을 잇는다.",
+   "photos": [
+    {
+     "id": "j_trainwin",
+     "fx": 50,
+     "fy": 44
+    },
+    {
+     "id": "j_kyoto_sign",
+     "fx": 50,
+     "fy": 45
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "창 아래 집들이 낮아진다. 곧 교토"
+    }
+   ]
+  },
+  {
+   "layout": "a/plate",
+   "intent": "이동 뒤 처음 마주한 한 그릇으로 시선을 가까이 당긴다.",
+   "photos": [
+    {
+     "id": "j_ramen",
+     "fx": 48,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "스무 분 줄 끝에 놓인 첫 그릇"
+    }
+   ]
+  },
+  {
+   "layout": "a/stack",
+   "intent": "호텔의 나무 벽과 강가의 잔잔한 수평선을 같은 오후의 쉼으로 짝짓는다.",
+   "photos": [
+    {
+     "id": "j_hotel",
+     "fx": 50,
+     "fy": 52
+    },
+    {
+     "id": "j_kamo",
+     "fx": 52,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "나무 벽에 짐을 두고, 강가 벚꽃 쪽으로"
+    }
+   ]
+  },
+  {
+   "layout": "a/drop",
+   "intent": "강가에서 골목으로 장면을 바꾸며 저녁 불빛을 넓게 펼친다.",
+   "photos": [
+    {
+     "id": "j_gion",
+     "fx": 62,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "오후 다섯 시 반, 기온의 등이 먼저 켜진다"
+    }
+   ]
+  },
+  {
+   "layout": "a/strip3",
+   "intent": "골목의 등, 꼬치, 맥주의 둥근 빛을 운으로 묶어 저녁 식탁을 빠르게 좁힌다.",
+   "photos": [
+    {
+     "id": "j_pontocho",
+     "fx": 55,
+     "fy": 50
+    },
+    {
+     "id": "j_yakitori",
+     "fx": 52,
+     "fy": 52
+    },
+    {
+     "id": "j_beer",
+     "fx": 54,
+     "fy": 46
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "폰토초, 남은 자리 하나와 꼬치 세 개"
+    }
+   ]
+  },
+  {
+   "layout": "a/plate-text",
+   "intent": "사람이 빠진 늦은 골목에서 첫날의 마지막 몇 분을 쉬어 간다.",
+   "photos": [
+    {
+     "id": "j_vending",
+     "fx": 58,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "밤 열 시 반, 나카교구"
+    },
+    {
+     "key": "body",
+     "text": "편의점에 들른 뒤, 자판기 불이 켜진 골목을 지난다. 세 잔씩 마신 밤. 숙소까지 남은 길은 사진 밖이다."
+    }
+   ]
+  },
+  {
+   "layout": "a/op-title",
+   "intent": "빈 승강장과 선로를 둘째 날의 첫 이동 장면으로 놓는다.",
+   "photos": [
+    {
+     "id": "j_platform",
+     "fx": 55,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "둘째 날"
+    },
+    {
+     "key": "day",
+     "text": "4월 4일 토요일, 이나리행 첫 전철"
+    }
+   ]
+  },
+  {
+   "layout": "a/detail",
+   "intent": "도리이의 안쪽과 바깥쪽을 두 거리에서 보여 주며 붉은 문이 겹치는 운을 만든다.",
+   "photos": [
+    {
+     "id": "j_inari",
+     "fx": 52,
+     "fy": 48
+    },
+    {
+     "id": "j_inari_2",
+     "fx": 50,
+     "fy": 48
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "붉은 문 안쪽, 오전 여덟 시"
+    },
+    {
+     "key": "cap2",
+     "text": "일찍 도착한 길에는 사람보다 문이 많다"
+    }
+   ]
+  },
+  {
+   "layout": "a/drop",
+   "intent": "좁은 도리이 길 뒤에 도시와 산이 함께 보이는 넓은 시야를 연다.",
+   "photos": [
+    {
+     "id": "j_kiyomizu",
+     "fx": 67,
+     "fy": 42
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "지붕 끝에 걸린 탑, 그 아래 교토"
+    }
+   ]
+  },
+  {
+   "layout": "a/square",
+   "intent": "넓어진 풍경을 손에 든 말차 한 개로 다시 좁힌다.",
+   "photos": [
+    {
+     "id": "j_matcha",
+     "fx": 50,
+     "fy": 48
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "한 입 뒤에도 말차 맛이 또렷하다"
+    }
+   ]
+  },
+  {
+   "layout": "a/plate-text",
+   "intent": "시장 진열대 앞에서 계속 이어지던 한 입에 둘째 날의 글을 붙인다.",
+   "photos": [
+    {
+     "id": "j_nishiki",
+     "fx": 54,
+     "fy": 52
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "오후 한 시, 니시키시장"
+    },
+    {
+     "key": "body",
+     "text": "한 손을 비우기도 전에 다음 가게 앞에 섰다. 또 한 입. 진열대 너머로 시장은 계속된다."
+    }
+   ]
+  },
+  {
+   "layout": "a/plate",
+   "intent": "시장 안의 밀도를 벗어나 벚꽃 사이로 흐르는 배에 시선을 둔다.",
+   "photos": [
+    {
+     "id": "j_kamo_2",
+     "fx": 54,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "꽃가지 사이로 배 한 척이 미끄러진다"
+    }
+   ]
+  },
+  {
+   "layout": "a/drop",
+   "intent": "교토의 오후를 닫고 오사카로 넘어가는 열차를 넓게 놓는다.",
+   "photos": [
+    {
+     "id": "j_train_osaka",
+     "fx": 54,
+     "fy": 52
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "오후 네 시 사십팔 분, 오사카행"
+    }
+   ]
+  },
+  {
+   "layout": "a/strip3",
+   "intent": "도톤보리의 간판에서 한 입, 철판까지 넓게 시작해 음식으로 좁힌다.",
+   "photos": [
+    {
+     "id": "j_dotonbori",
+     "fx": 54,
+     "fy": 48
+    },
+    {
+     "id": "j_takoyaki",
+     "fx": 55,
+     "fy": 55
+    },
+    {
+     "id": "j_okonomi",
+     "fx": 50,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "간판 아래 뜨거운 한 입, 이어지는 철판 소리"
+    }
+   ]
+  },
+  {
+   "layout": "a/plate",
+   "intent": "음식의 온기 뒤에 비에 젖은 난바의 밤을 세로로 길게 세운다.",
+   "photos": [
+    {
+     "id": "j_osaka_night",
+     "fx": 54,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "빗물 위로 간판 불이 길어진다"
+    }
+   ]
+  },
+  {
+   "layout": "a/frame",
+   "intent": "편의점 불빛을 둘째 날의 조용한 마지막 장면으로 남긴다.",
+   "photos": [
+    {
+     "id": "j_konbini",
+     "fx": 58,
+     "fy": 50
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "a/op-bleed",
+   "intent": "벚꽃 사이 오사카성을 셋째 날의 넓은 첫 장면으로 연다.",
+   "photos": [
+    {
+     "id": "j_castle",
+     "fx": 50,
+     "fy": 52
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "셋째 날"
+    },
+    {
+     "key": "day",
+     "text": "4월 5일 일요일, 오사카성으로"
+    }
+   ]
+  },
+  {
+   "layout": "a/plate-text",
+   "intent": "같은 성을 한 걸음 물러난 거리에서 다시 보고 만개 직전의 꽃에 머문다.",
+   "photos": [
+    {
+     "id": "j_castle_2",
+     "fx": 50,
+     "fy": 48
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "오전 아홉 시, 오사카성공원"
+    },
+    {
+     "key": "body",
+     "text": "벚꽃이 성벽보다 먼저 시야를 채운다. 거의 만개. 꽃 사이에는 성 꼭대기만 남아 있다."
+    }
+   ]
+  },
+  {
+   "layout": "a/plate",
+   "intent": "성의 정적에서 사람과 물건이 밀집한 시장 안으로 장면을 바꾼다.",
+   "photos": [
+    {
+     "id": "j_kuromon",
+     "fx": 52,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "성게 앞에서 가격을 보고 그냥 지나쳤다"
+    }
+   ]
+  },
+  {
+   "layout": "a/row",
+   "intent": "신세카이의 세로 간판과 쿠시카츠 가게 얼굴을 마주 보게 짝짓는다.",
+   "photos": [
+    {
+     "id": "j_shinsekai",
+     "fx": 50,
+     "fy": 48
+    },
+    {
+     "id": "j_kushikatsu",
+     "fx": 52,
+     "fy": 48
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "신세카이, 소스는 한 번만"
+    }
+   ]
+  },
+  {
+   "layout": "a/drop",
+   "intent": "공항 유리창 너머의 저녁빛으로 마지막 이동을 넓게 닫는다.",
+   "photos": [
+    {
+     "id": "j_gate",
+     "fx": 50,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "cap",
+     "text": "유리창 너머 비행기와 남은 저녁빛"
+    }
+   ]
+  },
+  {
+   "layout": "a/text",
+   "intent": "공항 가는 길에 통째로 잠든 짧은 구간만 붙잡아 마지막 글로 남긴다.",
+   "photos": [],
+   "texts": [
+    {
+     "key": "place",
+     "text": "공항 가는 길"
+    },
+    {
+     "key": "body",
+     "text": "메모에는 네 글자만 남았다. ‘둘 다 기절.’ 공항 가는 길의 장면은 그게 전부다.\n\n누가 먼저 잠들었는지는 적혀 있지 않다."
+    }
+   ]
+  },
+  {
+   "layout": "a/end-photo",
+   "intent": "첫 장의 비행기 창과 같은 하늘 모티프로 책을 닫는다.",
+   "photos": [
+    {
+     "id": "j_plane_2",
+     "fx": 62,
+     "fy": 45
+    }
+   ],
+   "texts": [
+    {
+     "key": "last",
+     "text": "창 아래로 구름이 오래 이어졌다"
+    },
+    {
+     "key": "colophon",
+     "text": "교토·오사카\n2026년 4월 3일—5일"
+    }
+   ]
+  }
+ ]
+}

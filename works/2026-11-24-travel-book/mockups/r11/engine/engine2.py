@@ -137,6 +137,14 @@ def validate(book: dict, trip: dict, lays: list[dict], rules: dict) -> list[str]
         if timed[i] and timed[i - 1] and timed[i - 2]:
             errs.append("'장소, 시각' 으로 시작하는 글이 3번 연속")
             break
+    bodies = [t["text"] for p in pages for t in p["texts"] if t["key"] == "body"]
+    days = len({d[:10] for _, d, _ in trip["shots"]})
+    ppd = rules.get("prose_per_day")
+    if ppd and len(bodies) < min(round(days * ppd), 8):
+        errs.append(f"짧은 글(body)이 {len(bodies)}번뿐이다. 날마다 한 번쯤(최소 {min(round(days * ppd), 8)}번) — 그날 한 장면을 붙잡은 2~3문장을 사진과 함께(plate-text) 흩어 넣어라. 끝에 몰지 마라")
+    for b in bodies:
+        if len(re.findall(r"(았|었|했|였)고[ ,]", b)) >= 2 or len(re.findall(r"에서는 ", b)) >= 2:
+            errs.append(f"글이 일정을 나열한다('~했고, ~했고' / '~에서는 ~에서는'): 「{b[:40]}…」 — 한 장면만 붙잡아 다시 써라")
     mr = rules.get("memo_ratio")
     if mr:
         body = pages[1:-1]
@@ -246,8 +254,9 @@ def render(book: dict, trip: dict, key: str, label: str = "") -> str:
             text_all += v
             esc = v.replace("&", "&amp;").replace("<", "&lt;").replace("\n", "<br>")
             html = re.sub(rf'(<(\w+)[^>]*data-text="{k}"[^>]*>)(</\2>)', lambda m: m.group(1) + esc + m.group(3), html, count=1)
-        html = re.sub(r'<(\w+)([^>]*)data-text="[^"]+"([^>]*)></\1>', "", html)  # empty text slots disappear
-        pages.append(f'<div class="cell" title="{pi}. {p["layout"]} — {p["intent"]}">{html}</div>')
+        # an empty text slot keeps its box: removing it would shift grid auto-placement under the photos
+        html = re.sub(r'<(\w+)([^>]*)data-text="([^"]+)"([^>]*)></\1>', r'<\1\2data-text="\3"\4 style="visibility:hidden"></\1>', html)
+        pages.append(f'<div class="bk-cell" title="{pi}. {p["layout"]} — {p["intent"]}">{html}</div>')
     ix = sorted((l for l in lays if "/ix" in l["id"]), key=lambda l: len(l["slots"]))
     if ix:
         order = list(dict.fromkeys(x["id"] for p in book["pages"][1:] for x in p["photos"] if x["id"] in trip["aspect"]))
@@ -259,20 +268,20 @@ def render(book: dict, trip: dict, key: str, label: str = "") -> str:
             imgs.setdefault(k, _b64(k))
             html = re.sub(rf'<img([^>]*)data-slot="{i}"([^>]*)>', lambda m, k=k: f'<img{m.group(1)}data-k="{k}"{m.group(2)}>', html, count=1)
         html = re.sub(r'<img[^>]*data-slot="\d+"[^>]*>', "", html)
-        pages.append(f'<div class="cell" title="색인 (코드가 붙임)">{html}</div>')
+        pages.append(f'<div class="bk-cell" title="색인 (코드가 붙임)">{html}</div>')
     import fonts
     m = re.search(r"kfonts:(.*?)\*/", css)
     faces = fonts.faces_css(fonts.parse(f"<!-- kfonts:{m.group(1)}-->"), text_all + "0123456789 .,·—JUNFEBMAR") if m else ""
-    name = {"photo": "사진만", "a": "여백의 책", "album": "앨범"}.get(key, key)
+    name = {"photo": "사진만", "a": "여백의 책", "album": "앨범", "b": "기록 카드", "c": "여행 수첩", "diary": "일기", "mag": "잡지"}.get(key, key)
     return f"""<section class="book t-{key}"><h2>{name} {label}</h2><p class="plan">{book.get('plan', '')}</p>
-<div class="strip">{''.join(pages)}</div></section>
+<div class="bk-strip">{''.join(pages)}</div></section>
 <style>{faces}{BASE}{css}</style><script>(()=>{{const I={json.dumps(imgs)};document.querySelectorAll('.t-{key} img[data-k]').forEach(i=>i.src='data:image/jpeg;base64,'+I[i.dataset.k])}})()</script>"""
 
 
 BASE = """.book{margin:0 0 40px}.book h2{font:600 18px sans-serif;margin:16px 12px 4px}.plan{font:13px/1.5 sans-serif;color:#555;margin:0 12px 10px;max-width:760px}
-.strip{display:flex;gap:14px;overflow-x:auto;padding:4px 12px 16px;scroll-snap-type:x mandatory}
-.cell{flex:0 0 min(86vw,380px);scroll-snap-align:center}.cell>.pg{width:100%;aspect-ratio:3/4;position:relative;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.15)}
-.cell .pg img{width:100%;height:100%;object-fit:cover;display:block}"""
+.bk-strip{display:flex;gap:14px;overflow-x:auto;padding:4px 12px 16px;scroll-snap-type:x mandatory}
+.bk-cell{flex:0 0 min(86vw,380px);scroll-snap-align:center}.bk-cell>.pg{width:100%;aspect-ratio:3/4;position:relative;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.bk-cell .pg img{width:100%;height:100%;object-fit:cover;display:block}"""
 
 PAGE = """<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
 <body style="margin:0;background:#e9e7e3">{body}</body>"""

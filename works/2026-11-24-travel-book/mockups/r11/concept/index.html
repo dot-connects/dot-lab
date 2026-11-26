@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>여행 한 권 — 여행 성격 입력 화면 시안</title>
+<style>
+:root{--paper:#F4EFE7;--ink:#2B2621;--ink2:#7D7366;--card:#EFE8DD;--on:#E4D7C3;--line:#CCC7BC;--body:#4D463E;--oak:#9A6F45}
+*{box-sizing:border-box}
+body{margin:0;background:#dcd5ca;font-family:Pretendard,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;color:var(--ink)}
+header{max-width:1180px;margin:0 auto;padding:22px 16px 6px}
+header h1{font-size:20px;margin:0 0 6px}
+header p{margin:0 0 6px;font-size:14px;line-height:1.6;color:#4d463e;max-width:720px}
+.row{display:flex;flex-wrap:wrap;gap:26px;justify-content:center;padding:14px 12px 40px}
+.opt{width:360px}
+.opt h2{font-size:16px;margin:0 0 4px}
+.opt .why{font-size:13px;line-height:1.55;color:#4d463e;margin:0 0 12px;min-height:60px}
+.phone{width:360px;height:740px;background:var(--paper);border-radius:34px;box-shadow:0 10px 30px rgba(60,45,30,.22);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.bar{height:46px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:13px;color:var(--ink2)}
+.ttl{padding:6px 20px 4px;font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.3}
+.ttl small{font-size:13px;font-weight:400;color:var(--ink2);margin-left:6px}
+.sub{padding:0 20px 14px;font-size:12.5px;color:var(--ink2);line-height:1.5}
+.body{flex:1;overflow:auto;padding:0 16px}
+.r{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:14px;padding:11px 12px;margin-bottom:8px}
+.r.on{background:var(--on)}
+.ic{width:36px;height:36px;border-radius:10px;background:var(--paper);display:grid;place-items:center;font-size:17px}
+.r b{display:block;font-size:13.5px}
+.r span{font-size:11px;color:var(--ink2);line-height:1.4}
+.r i{margin-left:auto;font-style:normal;color:var(--ink2)}
+.lab{font-size:12px;font-weight:700;color:var(--ink2);margin:14px 4px 8px;letter-spacing:.02em}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:#FBF8F3;border-radius:999px;padding:9px 14px;font-size:13.5px}
+.chip.sel{background:var(--ink);color:#F4EFE7;border-color:var(--ink)}
+.field{background:#FBF8F3;border:1px solid var(--line);border-radius:12px;padding:12px;font-size:13.5px;color:var(--ink);min-height:46px;line-height:1.5}
+.field.ph{color:#ADA395}
+.hint{font-size:11.5px;color:var(--ink2);line-height:1.5;margin:6px 4px 0}
+.ex{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ex span{font-size:11.5px;color:var(--oak);background:#EFE4D3;border-radius:8px;padding:5px 8px}
+.foot{padding:12px 16px 22px;display:flex;flex-direction:column;gap:8px}
+.btn{background:var(--ink);color:#F4EFE7;border-radius:14px;padding:15px;text-align:center;font-weight:700;font-size:15px}
+.btn.g{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:500;font-size:13.5px;padding:12px}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#FBF8F3;border-radius:22px 22px 0 0;padding:10px 18px 22px;box-shadow:0 -8px 24px rgba(0,0,0,.12)}
+.sheet .grab{width:38px;height:4px;border-radius:4px;background:#d6cdbf;margin:0 auto 14px}
+.dim{position:absolute;inset:0;background:rgba(43,38,33,.32)}
+.big{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.big div{background:var(--card);border-radius:16px;padding:16px 14px;font-size:15px;font-weight:700;min-height:74px}
+.big div small{display:block;font-size:11.5px;font-weight:400;color:var(--ink2);margin-top:4px}
+.big div.sel{background:var(--ink);color:#F4EFE7}.big div.sel small{color:#CFC6B9}
+.note{max-width:760px;margin:0 auto;padding:0 16px 40px;font-size:14px;line-height:1.65;color:#4d463e}
+.note b{color:var(--ink)}
+</style>
+<body>
+<header>
+<h1>여행 성격 입력 — 화면 시안 3개</h1>
+<p>책을 만들 때 AI 에게 "누구랑, 어떤 여행이었는지"를 알려 주는 입력. 안 넣어도 책은 만들어진다. 넣으면 사진 고르기·크기·순서와 글의 시점(나/우리)이 달라진다.
+(11차 c 의 남미 책 = "2주 신혼여행", 일본 책 = "대학 친구랑 먹으러 간 여행"을 넣고 만든 것.)</p>
+</header>
+
+<div class="row">
+
+<!-- A: row on the extras screen, opens a sheet -->
+<section class="opt">
+<h2>A. "더 넣을 것" 줄 하나 + 아래 시트</h2>
+<p class="why">지금 3/3 화면에 줄 하나만 더한다. 화면이 조용하고, 넣고 싶은 사람만 연다. 대신 안 여는 사람이 많을 것.</p>
+<div class="phone">
+ <div class="bar"><span>‹</span><span>3 / 3</span></div>
+ <div class="ttl">더 넣을 게 있어요?<small>(없어도 돼요)</small></div>
+ <div class="sub">&nbsp;</div>
+ <div class="body">
+  <div class="r on"><div class="ic">♡</div><div><b>어떤 여행이었어요?</b><span>둘이서 · 신혼여행 2주</span></div><i>›</i></div>
+  <div class="r"><div class="ic">☑</div><div><b>꼭 넣을 사진</b><span>빠지면 안 되는 사진이 있으면 골라 두세요</span></div><i>›</i></div>
+  <div class="r"><div class="ic">✎</div><div><b>일기·메모</b><span>글·파일·손글씨 사진. 넣으면 그 말투로 글을 써요</span></div><i>›</i></div>
+  <div class="r"><div class="ic">⌁</div><div><b>구글 타임라인</b><span>다닌 길을 지도 쪽에</span></div><i>›</i></div>
+ </div>
+ <div class="dim"></div>
+ <div class="sheet">
+  <div class="grab"></div>
+  <div style="font-size:17px;font-weight:700;margin-bottom:2px">어떤 여행이었어요?</div>
+  <div style="font-size:12px;color:var(--ink2);margin-bottom:6px">사진 고르기와 글에만 써요. 책에 이 말이 그대로 나오진 않아요</div>
+  <div class="lab">누구랑</div>
+  <div class="chips"><span class="chip">혼자</span><span class="chip sel">연인·부부</span><span class="chip">친구</span><span class="chip">가족</span><span class="chip">부모님</span></div>
+  <div class="lab">한 줄로 (선택)</div>
+  <div class="field">신혼여행 2주, 남미 한 바퀴</div>
+  <div class="ex"><span>먹으러 간 여행</span><span>엄마 환갑 기념</span><span>아무것도 안 하고 쉼</span></div>
+  <div class="foot" style="padding:14px 0 0"><div class="btn">넣기</div></div>
+ </div>
+</div>
+</section>
+
+<!-- B: its own step -->
+<section class="opt">
+<h2>B. 따로 한 단계 — "누구랑 다녀왔어요?"</h2>
+<p class="why">날짜 다음에 큰 칸 다섯 개로 묻는다. 한 번 누르면 끝이라 대부분 넣게 된다. 단계가 하나 늘어난다(지금 3단계 → 4단계).</p>
+<div class="phone">
+ <div class="bar"><span>‹</span><span>2 / 4</span></div>
+ <div class="ttl">누구랑 다녀왔어요?</div>
+ <div class="sub">고르면 같이 간 사람이 나온 사진을 더 아껴요</div>
+ <div class="body">
+  <div class="big">
+   <div>혼자<small>내 시선의 풍경 위주</small></div>
+   <div class="sel">연인·부부<small>둘이 나온 사진을 크게</small></div>
+   <div>친구<small>같이 먹고 걷던 장면</small></div>
+   <div>가족<small>아이·가족 사진을 아껴요</small></div>
+   <div>부모님<small>부모님 사진을 아껴요</small></div>
+   <div style="background:transparent;border:1px dashed var(--line);color:var(--ink2);font-weight:500">건너뛰기</div>
+  </div>
+  <div class="lab">어떤 여행이었는지 한 줄 (선택)</div>
+  <div class="field">신혼여행 2주, 남미 한 바퀴</div>
+  <div class="hint">책에 이 말이 그대로 나오진 않아요. 사진 고르기와 글의 시점에만 써요</div>
+ </div>
+ <div class="foot"><div class="btn">다음</div></div>
+</div>
+</section>
+
+<!-- C: inline on the extras screen -->
+<section class="opt">
+<h2>C. 3/3 화면 맨 위에 바로 (추천)</h2>
+<p class="why">단계는 그대로, 시트 없이 바로 보인다. 칩 한 번 + 한 줄이면 끝. "더 넣을 것"의 첫 질문이라 자연스럽고, 안 눌러도 그냥 지나간다.</p>
+<div class="phone">
+ <div class="bar"><span>‹</span><span>3 / 3</span></div>
+ <div class="ttl">더 넣을 게 있어요?<small>(없어도 돼요)</small></div>
+ <div class="body" style="padding-top:2px">
+  <div class="lab" style="margin-top:4px">누구랑 다녀왔어요?</div>
+  <div class="chips"><span class="chip">혼자</span><span class="chip sel">연인·부부</span><span class="chip">친구</span><span class="chip">가족</span><span class="chip">부모님</span></div>
+  <div class="lab">어떤 여행이었어요? <span style="font-weight:400">(선택)</span></div>
+  <div class="field ph">예: 먹으러 간 여행 · 엄마 환갑 · 2주 신혼여행</div>
+  <div class="hint">책에 이 말이 그대로 나오진 않아요</div>
+  <div style="height:14px"></div>
+  <div class="r"><div class="ic">☑</div><div><b>꼭 넣을 사진</b><span>빠지면 안 되는 사진이 있으면 골라 두세요</span></div><i>›</i></div>
+  <div class="r"><div class="ic">✎</div><div><b>일기·메모</b><span>넣으면 그 말투로 글을 써요</span></div><i>›</i></div>
+  <div class="r"><div class="ic">⌁</div><div><b>구글 타임라인</b><span>다닌 길을 지도 쪽에</span></div><i>›</i></div>
+ </div>
+ <div class="foot"><div class="btn">책 만들기</div><div class="btn g">여백의 책 · 보통 24쪽 · 바꾸기</div></div>
+</div>
+</section>
+
+</div>
+<div class="note">
+<p><b>책에 어떻게 반영되나 (세 안 공통)</b> — 누구랑: 혼자면 "나", 둘 이상이면 "우리"로 쓰고, 연인·부부는 둘이 나온 컷(뒷모습·손)을 장면 끝에 크게,
+친구는 같이 먹고 걷는 컷, 가족·부모님은 그분들이 나온 컷을 아낀다. 한 줄: 그 성격의 장면(먹은 것, 쉰 곳)을 크게. 한 줄의 낱말은 책 제목·글에 그대로 쓰지 않는다.</p>
+<p><b>앱에 넣을 때</b> — 값은 책 옵션(opts)에 저장, AI 편집 요청에 "여행 성격"으로 같이 보낸다. 다듬기에서는 바꾸지 않는다(테마와 같음).</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,962 @@
+{
+ "title": "남미",
+ "plan": "Lima의 해안과 밤에서 시작해 Cusco와 고지대로 올라간다.\nMachu Picchu의 안개가 걷힌 뒤 우유니와 Sud Lípez의 넓은 지형으로 넘어간다.\nSan Pedro de Atacama에서는 두 사람이 함께 걷는 장면과 밤하늘을 크게 둔다.\nBuenos Aires의 시장과 음식, 두 손을 마지막 장면으로 닫는다.",
+ "pages": [
+  {
+   "layout": "b/c-window",
+   "intent": "안개 사이로 드러난 Machu Picchu를 대표 장면으로 삼아 남미 일정 전체를 연다.",
+   "photos": [
+    {
+     "id": "s_machu_fog",
+     "fx": 51,
+     "fy": 53
+    }
+   ],
+   "texts": [
+    {
+     "key": "title",
+     "text": "남미"
+    },
+    {
+     "key": "period",
+     "text": "2026년 10월 7–20일"
+    },
+    {
+     "key": "count",
+     "text": "장소 열한 곳, 사진 쉰아홉 장"
+    }
+   ]
+  },
+  {
+   "layout": "b/op-times",
+   "intent": "긴 비행 끝에 Lima로 들어가는 이동과 첫 두 장소를 연다.",
+   "photos": [
+    {
+     "id": "s_plane",
+     "fx": 48,
+     "fy": 47
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "Lima"
+    },
+    {
+     "key": "day",
+     "text": "10월 7–9일 · Lima"
+    },
+    {
+     "key": "times",
+     "text": "23:12 Miraflores\n15:55 Barranco"
+    }
+   ]
+  },
+  {
+   "layout": "b/e-wide",
+   "intent": "밤늦게 도착해 처음 마주한 Lima의 해안 불빛을 넓게 보여 준다.",
+   "photos": [
+    {
+     "id": "s_lima_night",
+     "fx": 52,
+     "fy": 57
+    }
+   ],
+   "texts": [
+    {
+     "key": "no",
+     "text": "01"
+    },
+    {
+     "key": "place",
+     "text": "Miraflores"
+    },
+    {
+     "key": "meta",
+     "text": "Lima · 10월 7일 23:12"
+    },
+    {
+     "key": "memo",
+     "text": "밤 11시에 닿았다. 해안 도로의 불빛이 물가를 따라 이어졌다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-stagger",
+   "intent": "다음 날 절벽 산책과 첫 식사를 먼 풍경에서 식탁으로 좁혀 간다.",
+   "photos": [
+    {
+     "id": "s_miraflores",
+     "fx": 47,
+     "fy": 52
+    },
+    {
+     "id": "s_ceviche",
+     "fx": 51,
+     "fy": 49
+    }
+   ],
+   "texts": [
+    {
+     "key": "capu",
+     "text": "절벽 아래로 해안선이 길게 열린다."
+    },
+    {
+     "key": "capd",
+     "text": "세비체는 생각보다 시큼했다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-tall",
+   "intent": "Barranco의 꽃 핀 주택가를 세로 흐름으로 세운다.",
+   "photos": [
+    {
+     "id": "s_barranco",
+     "fx": 46,
+     "fy": 58
+    }
+   ],
+   "texts": [
+    {
+     "key": "no",
+     "text": "02"
+    },
+    {
+     "key": "place",
+     "text": "Barranco"
+    },
+    {
+     "key": "meta",
+     "text": "Lima · 10월 8일 15:55"
+    },
+    {
+     "key": "memo",
+     "text": "꽃이 이어진 골목을 걷다가 해 질 무렵 자리를 잡았다."
+    },
+    {
+     "key": "cap",
+     "text": "골목 끝으로 차가 천천히 지난다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-plate",
+   "intent": "둘이 한 잔씩 마신 피스코사워를 독립된 도판으로 남긴다.",
+   "photos": [
+    {
+     "id": "s_pisco",
+     "fx": 40,
+     "fy": 48
+    }
+   ],
+   "texts": [
+    {
+     "key": "place",
+     "text": "Barranco"
+    },
+    {
+     "key": "cap",
+     "text": "피스코사워 한 잔씩 놓고 잔을 맞췄다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-drop",
+   "intent": "Barranco에서 기다려 본 해넘이를 넓은 여백과 함께 닫는다.",
+   "photos": [
+    {
+     "id": "s_lima_sunset",
+     "fx": 56,
+     "fy": 43
+    }
+   ],
+   "texts": [
+    {
+     "key": "place",
+     "text": "Barranco"
+    },
+    {
+     "key": "cap",
+     "text": "해가 수평선 아래로 내려갈 때까지 앉아 있었다."
+    }
+   ]
+  },
+  {
+   "layout": "b/op-split",
+   "intent": "Cusco의 광장과 이어질 고지대 장소들을 한 장에서 연다.",
+   "photos": [
+    {
+     "id": "s_cusco_plaza",
+     "fx": 52,
+     "fy": 48
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "Cusco 권역"
+    },
+    {
+     "key": "day",
+     "text": "10월 9–12일 · Cusco 권역"
+    },
+    {
+     "key": "times",
+     "text": "15:08 Cusco\n10:28 Pisac\n09:33 Ollantaytambo\n06:42 Machu Picchu"
+    }
+   ]
+  },
+  {
+   "layout": "b/e-pair",
+   "intent": "Cusco의 가파른 골목과 거리에서 만난 색을 나란히 둔다.",
+   "photos": [
+    {
+     "id": "s_cusco_walk",
+     "fx": 56,
+     "fy": 52
+    },
+    {
+     "id": "s_alpaca",
+     "fx": 55,
+     "fy": 57
+    }
+   ],
+   "texts": [
+    {
+     "key": "no",
+     "text": "03"
+    },
+    {
+     "key": "place",
+     "text": "Cusco"
+    },
+    {
+     "key": "meta",
+     "text": "Cusco · 10월 9일 15:08"
+    },
+    {
+     "key": "memo",
+     "text": "내리자마자 숨이 찼다. 코카차 두 잔을 마셨고, 계단에서는 오빠가 자꾸 멈춰 섰다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-grid4",
+   "intent": "광장의 밤부터 지붕과 시장까지 Cusco의 서로 다른 밀도를 한데 모은다.",
+   "photos": [
+    {
+     "id": "s_cusco_night",
+     "fx": 49,
+     "fy": 60
+    },
+    {
+     "id": "s_cusco_late",
+     "fx": 49,
+     "fy": 55
+    },
+    {
+     "id": "s_cusco_roofs",
+     "fx": 51,
+     "fy": 48
+    },
+    {
+     "id": "s_market",
+     "fx": 44,
+     "fy": 51
+    }
+   ],
+   "texts": [
+    {
+     "key": "place",
+     "text": "Cusco"
+    },
+    {
+     "key": "cap",
+     "text": "밤 광장과 다음 날 지붕, 시장의 통로."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-two",
+   "intent": "Pisac의 시장 전체와 과일 좌판을 넓은 장면에서 가까운 장면으로 잇는다.",
+   "photos": [
+    {
+     "id": "s_pisac",
+     "fx": 52,
+     "fy": 51
+    },
+    {
+     "id": "s_pisac_fruit",
+     "fx": 49,
+     "fy": 56
+    }
+   ],
+   "texts": [
+    {
+     "key": "no",
+     "text": "04"
+    },
+    {
+     "key": "place",
+     "text": "Pisac"
+    },
+    {
+     "key": "meta",
+     "text": "Pisac · 10월 10일 10:28"
+    },
+    {
+     "key": "memo",
+     "text": "시장을 한 바퀴 돌고 담요 하나를 샀다. 골목 위로 색색의 장식이 이어졌다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-wide",
+   "intent": "오얀타이탐보의 유적과 산비탈을 먼저 넓게 잡는다.",
+   "photos": [
+    {
+     "id": "s_ollanta",
+     "fx": 52,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "no",
+     "text": "05"
+    },
+    {
+     "key": "place",
+     "text": "오얀타이탐보"
+    },
+    {
+     "key": "meta",
+     "text": "Cusco · 10월 11일 10:41"
+    },
+    {
+     "key": "memo",
+     "text": "돌벽과 계단이 산비탈을 타고 올라간다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-plate",
+   "intent": "돌길 위를 가로지르는 색색의 장식을 가까이 보여 준다.",
+   "photos": [
+    {
+     "id": "s_ollanta_st",
+     "fx": 50,
+     "fy": 53
+    }
+   ],
+   "texts": [
+    {
+     "key": "place",
+     "text": "오얀타이탐보"
+    },
+    {
+     "key": "cap",
+     "text": "돌길 위로 천 장식과 방울이 겹쳐 걸렸다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-plate",
+   "intent": "유적에서 역으로 이어진 이동을 열차 한 장으로 마무리한다.",
+   "photos": [
+    {
+     "id": "s_train",
+     "fx": 51,
+     "fy": 59
+    }
+   ],
+   "texts": [
+    {
+     "key": "place",
+     "text": "오얀타이탐보"
+    },
+    {
+     "key": "cap",
+     "text": "파란 열차 뒤로 갈색 산등성이가 솟았다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-pair",
+   "intent": "안개가 걷힌 뒤의 유적과 돌창 너머의 봉우리를 짝으로 세운다.",
+   "photos": [
+    {
+     "id": "s_machu",
+     "fx": 51,
+     "fy": 56
+    },
+    {
+     "id": "s_machu_window",
+     "fx": 53,
+     "fy": 48
+    }
+   ],
+   "texts": [
+    {
+     "key": "no",
+     "text": "06"
+    },
+    {
+     "key": "place",
+     "text": "마추픽추"
+    },
+    {
+     "key": "meta",
+     "text": "Cusco · 10월 12일 06:42"
+    },
+    {
+     "key": "memo",
+     "text": "새벽 버스로 올랐다. 안개가 가리던 봉우리가 8시쯤 한꺼번에 열렸다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-stagger",
+   "intent": "처음의 안개와 사람 곁을 태연히 지나는 라마를 차례로 놓는다.",
+   "photos": [
+    {
+     "id": "s_machu_fog",
+     "fx": 51,
+     "fy": 52
+    },
+    {
+     "id": "s_llama",
+     "fx": 62,
+     "fy": 52
+    }
+   ],
+   "texts": [
+    {
+     "key": "capu",
+     "text": "안개 사이로 돌담과 풀밭이 드러났다."
+    },
+    {
+     "key": "capd",
+     "text": "라마는 곁을 지나도 사람을 보지 않았다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-bleed",
+   "intent": "두 사람이 함께 유적을 내려다보는 장면을 가장 크게 남긴다.",
+   "photos": [
+    {
+     "id": "s_machu_her",
+     "fx": 51,
+     "fy": 58
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "b/op-times",
+   "intent": "지프가 소금사막으로 들어가는 장면으로 볼리비아 남서부를 연다.",
+   "photos": [
+    {
+     "id": "s_uyuni_jeeps",
+     "fx": 55,
+     "fy": 54
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "볼리비아"
+    },
+    {
+     "key": "day",
+     "text": "10월 14–16일 · 볼리비아 남서부"
+    },
+    {
+     "key": "times",
+     "text": "10:33 우유니 소금사막\n09:31 Sud Lípez"
+    }
+   ]
+  },
+  {
+   "layout": "b/e-wide",
+   "intent": "우유니의 갈라진 소금 바닥과 먼 수평선을 정면으로 펼친다.",
+   "photos": [
+    {
+     "id": "s_uyuni_hex",
+     "fx": 51,
+     "fy": 57
+    }
+   ],
+   "texts": [
+    {
+     "key": "no",
+     "text": "07"
+    },
+    {
+     "key": "place",
+     "text": "우유니 소금사막"
+    },
+    {
+     "key": "meta",
+     "text": "Uyuni · 10월 14일 11:20"
+    },
+    {
+     "key": "memo",
+     "text": "여섯 명이 한 지프에 탔다. 흰 바닥이 수평선까지 이어졌다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-grid4",
+   "intent": "선인장 섬과 두 사람, 물 고인 해넘이와 밤하늘을 시간순으로 모은다.",
+   "photos": [
+    {
+     "id": "s_incahuasi",
+     "fx": 57,
+     "fy": 55
+    },
+    {
+     "id": "s_uyuni_two",
+     "fx": 69,
+     "fy": 56
+    },
+    {
+     "id": "s_uyuni_sunset",
+     "fx": 53,
+     "fy": 68
+    },
+    {
+     "id": "s_uyuni_stars",
+     "fx": 61,
+     "fy": 57
+    }
+   ],
+   "texts": [
+    {
+     "key": "place",
+     "text": "우유니 소금사막"
+    },
+    {
+     "key": "cap",
+     "text": "선인장 섬을 지나 물 고인 소금밭에 섰다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-wide",
+   "intent": "Sud Lípez의 화산과 지프를 넓은 첫 장면으로 잡는다.",
+   "photos": [
+    {
+     "id": "s_altiplano",
+     "fx": 51,
+     "fy": 54
+    }
+   ],
+   "texts": [
+    {
+     "key": "no",
+     "text": "08"
+    },
+    {
+     "key": "place",
+     "text": "Sud Lípez"
+    },
+    {
+     "key": "meta",
+     "text": "Sud Lípez · 10월 15일 09:31"
+    },
+    {
+     "key": "memo",
+     "text": "황량한 길을 달리자 물가의 플라밍고가 한 무리씩 나타났다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-grid4",
+   "intent": "플라밍고와 붉은 호수, 풀을 뜯는 동물과 국경 길을 한 판에 모은다.",
+   "photos": [
+    {
+     "id": "s_flamingo",
+     "fx": 51,
+     "fy": 58
+    },
+    {
+     "id": "s_colorada",
+     "fx": 50,
+     "fy": 56
+    },
+    {
+     "id": "s_colorada_2",
+     "fx": 48,
+     "fy": 64
+    },
+    {
+     "id": "s_border",
+     "fx": 52,
+     "fy": 54
+    }
+   ],
+   "texts": [
+    {
+     "key": "place",
+     "text": "Sud Lípez"
+    },
+    {
+     "key": "cap",
+     "text": "호수와 국경 사이, 지프가 마른 평원을 건넜다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-bleed",
+   "intent": "새벽 간헐천의 증기와 그 안의 사람들을 화면 가득 채운다.",
+   "photos": [
+    {
+     "id": "s_geyser",
+     "fx": 53,
+     "fy": 53
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "b/op-split",
+   "intent": "흙담 골목으로 들어가며 Atacama의 이틀을 연다.",
+   "photos": [
+    {
+     "id": "s_sanpedro",
+     "fx": 50,
+     "fy": 53
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "Atacama"
+    },
+    {
+     "key": "day",
+     "text": "10월 16–17일 · Atacama"
+    },
+    {
+     "key": "times",
+     "text": "14:02 San Pedro de Atacama"
+    }
+   ]
+  },
+  {
+   "layout": "b/e-tall",
+   "intent": "늦은 빛이 담장과 화산을 물들이는 San Pedro의 저녁을 세운다.",
+   "photos": [
+    {
+     "id": "s_sanpedro_dusk",
+     "fx": 51,
+     "fy": 54
+    }
+   ],
+   "texts": [
+    {
+     "key": "no",
+     "text": "09"
+    },
+    {
+     "key": "place",
+     "text": "산페드로데아타카마"
+    },
+    {
+     "key": "meta",
+     "text": "Atacama · 10월 16일 19:12"
+    },
+    {
+     "key": "memo",
+     "text": "국경에서 짐검사로 한 시간을 보낸 뒤 도착했다. 씻고 곧바로 잠들었다."
+    },
+    {
+     "key": "cap",
+     "text": "담장 위로 화산과 전깃줄이 나란히 섰다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-grid4",
+   "intent": "두 손과 달의 계곡으로 향한 길, 바위와 노을을 이어 붙인다.",
+   "photos": [
+    {
+     "id": "s_hands",
+     "fx": 50,
+     "fy": 45
+    },
+    {
+     "id": "s_valle_road",
+     "fx": 52,
+     "fy": 55
+    },
+    {
+     "id": "s_valle",
+     "fx": 52,
+     "fy": 51
+    },
+    {
+     "id": "s_valle_sunset",
+     "fx": 51,
+     "fy": 57
+    }
+   ],
+   "texts": [
+    {
+     "key": "place",
+     "text": "산페드로데아타카마"
+    },
+    {
+     "key": "cap",
+     "text": "두 손을 잡고 달의 계곡 노을까지 걸었다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-bleed",
+   "intent": "별 투어에서 본 밀도 높은 밤하늘을 Atacama의 마지막 장면으로 크게 둔다.",
+   "photos": [
+    {
+     "id": "s_atacama_stars",
+     "fx": 56,
+     "fy": 45
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "b/op-split",
+   "intent": "비행기 창 아래의 도시 불빛으로 Buenos Aires 장을 연다.",
+   "photos": [
+    {
+     "id": "s_ba_arrive",
+     "fx": 48,
+     "fy": 56
+    }
+   ],
+   "texts": [
+    {
+     "key": "dayline",
+     "text": "부에노스"
+    },
+    {
+     "key": "day",
+     "text": "10월 18–20일 · 부에노스아이레스"
+    },
+    {
+     "key": "times",
+     "text": "22:34 Palermo\n12:33 Buenos Aires"
+    }
+   ]
+  },
+  {
+   "layout": "b/e-pair",
+   "intent": "Palermo에서 시작한 두 끼 사이를 고기와 아침 커피로 나란히 둔다.",
+   "photos": [
+    {
+     "id": "s_parrilla",
+     "fx": 51,
+     "fy": 57
+    },
+    {
+     "id": "s_coffee",
+     "fx": 50,
+     "fy": 55
+    }
+   ],
+   "texts": [
+    {
+     "key": "no",
+     "text": "10"
+    },
+    {
+     "key": "place",
+     "text": "Palermo"
+    },
+    {
+     "key": "meta",
+     "text": "Palermo · 10월 18일 22:34"
+    },
+    {
+     "key": "memo",
+     "text": "저녁에는 900g 스테이크를 둘이 나눠 먹고 말벡 한 병을 비웠다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-grid4",
+   "intent": "활짝 핀 자카란다 두 장과 마지막 저녁 식탁을 한데 묶는다.",
+   "photos": [
+    {
+     "id": "s_jacaranda",
+     "fx": 48,
+     "fy": 48
+    },
+    {
+     "id": "s_jacaranda_2",
+     "fx": 50,
+     "fy": 48
+    },
+    {
+     "id": "s_steak",
+     "fx": 52,
+     "fy": 52
+    },
+    {
+     "id": "s_malbec",
+     "fx": 52,
+     "fy": 53
+    }
+   ],
+   "texts": [
+    {
+     "key": "place",
+     "text": "Palermo"
+    },
+    {
+     "key": "cap",
+     "text": "자카란다 아래를 걷고 스테이크와 말벡을 나눴다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-detail",
+   "intent": "San Telmo의 간판과 Recoleta의 긴 통로를 작은 표식과 넓은 공간으로 대비한다.",
+   "photos": [
+    {
+     "id": "s_santelmo",
+     "fx": 61,
+     "fy": 48
+    },
+    {
+     "id": "s_recoleta",
+     "fx": 51,
+     "fy": 48
+    }
+   ],
+   "texts": [
+    {
+     "key": "no",
+     "text": "11"
+    },
+    {
+     "key": "place",
+     "text": "부에노스아이레스"
+    },
+    {
+     "key": "meta",
+     "text": "San Telmo · 10월 20일 11:42"
+    },
+    {
+     "key": "memo",
+     "text": "시장 밖에서는 길거리 탱고가 이어졌다."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-grid4",
+   "intent": "La Boca와 San Telmo의 시장, 길 위의 춤을 도시의 네 장면으로 묶는다.",
+   "photos": [
+    {
+     "id": "s_boca",
+     "fx": 55,
+     "fy": 53
+    },
+    {
+     "id": "s_boca_2",
+     "fx": 49,
+     "fy": 52
+    },
+    {
+     "id": "s_santelmo_mkt",
+     "fx": 51,
+     "fy": 50
+    },
+    {
+     "id": "s_tango",
+     "fx": 51,
+     "fy": 49
+    }
+   ],
+   "texts": [
+    {
+     "key": "place",
+     "text": "부에노스아이레스"
+    },
+    {
+     "key": "cap",
+     "text": "보카의 색과 산텔모 시장, 길 위의 탱고."
+    }
+   ]
+  },
+  {
+   "layout": "b/e-stagger",
+   "intent": "고기 엠파나다에서 도심의 긴 거리로 시선을 넓히며 마지막 오후를 정리한다.",
+   "photos": [
+    {
+     "id": "s_empanada",
+     "fx": 51,
+     "fy": 52
+    },
+    {
+     "id": "s_9dejulio",
+     "fx": 51,
+     "fy": 51
+    }
+   ],
+   "texts": [
+    {
+     "key": "capu",
+     "text": "엠파나다는 고기가 제일 맛있었다."
+    },
+    {
+     "key": "capd",
+     "text": "곧게 열린 거리 끝에 오벨리스크가 섰다."
+    }
+   ]
+  },
+  {
+   "layout": "b/end-photo",
+   "intent": "지도 위에 겹친 두 손으로 함께 돈 남미 일정을 닫는다.",
+   "photos": [
+    {
+     "id": "s_rings",
+     "fx": 53,
+     "fy": 46
+    }
+   ],
+   "texts": [
+    {
+     "key": "last",
+     "text": "두 손을 겹친 뒤, 밤 비행기를 타러 갔다."
+    },
+    {
+     "key": "colophon",
+     "text": "2026년 10월 7–20일\n장소 11곳 · 사진 59장\n남미"
+    }
+   ]
+  },
+  {
+   "layout": "b/index",
+   "intent": "본문과 같은 번호와 장소명으로 전체 이동을 한눈에 되짚게 한다.",
+   "photos": [],
+   "texts": [
+    {
+     "key": "hd",
+     "text": "장소 색인"
+    },
+    {
+     "key": "index",
+     "text": "01  Miraflores  10.7  3장\n02  Barranco  10.8  3장\n03  Cusco  10.9  7장\n04  Pisac  10.10  2장\n05  오얀타이탐보  10.11  3장\n06  마추픽추  10.12  5장\n07  우유니 소금사막  10.14  6장\n08  Sud Lípez  10.15  6장\n09  산페드로데아타카마  10.16  7장\n10  Palermo  10.18  6장\n11  부에노스아이레스  10.19  10장"
+    },
+    {
+     "key": "colophon",
+     "text": "2026년 10월 7–20일\n장소 11곳 · 사진 59장\n남미"
+    }
+   ]
+  }
+ ]
+}

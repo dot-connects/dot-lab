@@ -1,0 +1,149 @@
+/* kfonts: Pretendard:400;500;700;800 */
+/* 기록 카드 r11d: one entry per place, set like a guide-book place page / catalogue entry.
+   No rules, no boxes, no repeated labels: the record is made by type, alignment and white space only.
+   Page 100 x 133.33cqw. Grid: margins M 8, six columns 12 / gutter 2.4
+     column lefts 8 / 22.4 / 36.8 / 51.2 / 65.6 / 80, rights 20 / 34.4 / 48.8 / 63.2 / 77.6 / 92
+   Entry head (flow, top-left of the column it lives in): number (accent, figures) / place name (bold) / meta (soft).
+   Type: caption 2.9 / memo 3.4 (lh 1.62) / place 5.4-7.2 / day heading 7.2 / cover 22-30. One accent: the entry number. */
+.t-b{--paper:#F3F1EB;--ink:#1B1A17;--soft:#635F57;--acc:#A3391F;--tone:#d9d6cf;
+  --M:8cqw;--G:2.4cqw;--f:"Pretendard",sans-serif}
+.t-b .pg{container-type:inline-size;position:relative;overflow:hidden;background:var(--paper);color:var(--ink);
+  font-family:var(--f);word-break:keep-all;overflow-wrap:break-word;font-variant-numeric:tabular-nums}
+.t-b .pg :where(p,h3){margin:0}
+.t-b .pg>p,.t-b .pg>h3,.t-b .pg>div{position:absolute}
+.t-b .ph{overflow:hidden;background:var(--tone)}
+.t-b .ph img,.t-b .ph video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+
+/* entry head + text styles */
+.t-b .no{font:700 3cqw/1 var(--f);color:var(--acc);letter-spacing:.06em;margin-bottom:2cqw}
+.t-b .nm{font:700 7.2cqw/1.12 var(--f);letter-spacing:-.045em}
+.t-b .nm.s{font-size:5.4cqw;line-height:1.16;letter-spacing:-.035em}
+.t-b .mt{font:500 2.9cqw/1.45 var(--f);color:var(--soft);margin-top:1.8cqw}
+.t-b .mm{font:400 3.4cqw/1.62 var(--f);letter-spacing:-.02em}
+.t-b .col .mm{margin-top:4.4cqw}
+.t-b .cp{font:400 2.9cqw/1.5 var(--f);color:var(--soft);letter-spacing:-.005em}
+.t-b .cp b{font-weight:700;color:var(--ink);margin-right:.8em}
+.t-b .cp.l::before{content:"왼쪽";color:var(--ink);font-weight:500;margin-right:.9em}
+.t-b .cp.r::before{content:"오른쪽";color:var(--ink);font-weight:500;margin-right:.9em}
+.t-b .cp.u::before{content:"위";color:var(--ink);font-weight:500;margin-right:.9em}
+.t-b .cp.d::before{content:"아래";color:var(--ink);font-weight:500;margin-right:.9em}
+.t-b .pre{white-space:pre-wrap}
+/* folio: page number the app puts on data-page, outer bottom */
+.t-b .pg.fo::after{content:attr(data-page);position:absolute;right:var(--M);bottom:4.4cqw;font:500 2.8cqw/1 var(--f);color:var(--soft)}
+
+/* ---------- covers ---------- */
+.t-b .c-window .ttl{left:calc(var(--M) - .05em);top:8cqw;font:800 24cqw/.95 var(--f);letter-spacing:-.06em;white-space:nowrap}
+.t-b .c-window .sub{left:var(--M);top:35.5cqw;font:500 3.2cqw/1.4 var(--f)}
+.t-b .c-window .ph{left:var(--M);right:var(--M);top:46cqw;height:63cqw}
+.t-b .c-window .cnt{left:var(--M);right:var(--M);top:112.4cqw;font:400 3.2cqw/1.5 var(--f);color:var(--soft)}
+
+.t-b .c-bleed .ph{inset:0}
+.t-b .c-bleed .sh{inset:auto 0 0 0;height:50%;background:linear-gradient(0deg,rgba(10,9,8,.66),rgba(10,9,8,.44) 45%,rgba(10,9,8,0))}
+.t-b .c-bleed .ttl{left:calc(var(--M) - .05em);bottom:17cqw;font:800 22cqw/.92 var(--f);letter-spacing:-.06em;color:#fff;white-space:nowrap}
+.t-b .c-bleed .sub{left:var(--M);bottom:9cqw;font:500 3.2cqw/1.4 var(--f);color:#fff}
+
+.t-b .c-index .ttl{left:calc(var(--M) - .06em);top:7cqw;font:800 30cqw/.92 var(--f);letter-spacing:-.065em;white-space:nowrap}
+.t-b .c-index .sub{left:var(--M);top:40.4cqw;font:500 3.2cqw/1.4 var(--f)}
+.t-b .c-index .ph{left:0;right:0;top:48cqw;height:47cqw}
+.t-b .c-index .toc{left:var(--M);right:var(--M);top:99cqw;height:28cqw;column-count:2;column-gap:var(--G);column-fill:auto;
+  font:500 3cqw/1.55 var(--f)}
+
+/* ---------- day openers ---------- */
+.t-b .dh{font:700 7.2cqw/1.1 var(--f);letter-spacing:-.045em}
+.t-b .tm{font:500 3cqw/1.62 var(--f);white-space:pre-wrap}
+.t-b .op-times .ph{left:0;right:0;top:0;height:70cqw}
+.t-b .op-times .col{left:var(--M);width:40.8cqw;top:76cqw}
+.t-b .op-times .tm{left:51.2cqw;right:var(--M);top:77.4cqw;height:45cqw}
+
+.t-b .op-split .ph{left:46cqw;right:0;top:0;bottom:0}
+.t-b .op-split .col{left:var(--M);width:32cqw;top:10cqw}
+.t-b .op-split .tm{left:var(--M);width:32cqw;bottom:10cqw}
+
+/* ---------- entries ---------- */
+.t-b .e-wide .col{left:var(--M);right:var(--M);top:9cqw}
+.t-b .e-wide .ph{left:0;right:0;top:36cqw;height:72cqw}
+.t-b .e-wide .mm{left:var(--M);width:69.6cqw;top:111.6cqw}
+
+.t-b .e-tall .ph{left:0;top:0;width:60cqw;height:112cqw}
+.t-b .e-tall .col{left:65.6cqw;right:var(--M);top:10cqw}
+.t-b .e-tall .mm{left:65.6cqw;right:var(--M);bottom:21.33cqw}
+.t-b .e-tall .cp{left:var(--M);width:52cqw;top:115.6cqw}
+
+.t-b .e-two .p0{left:0;right:0;top:0;height:62cqw}
+.t-b .e-two .p1{left:var(--M);top:66.4cqw;width:40.8cqw;height:54.4cqw}
+.t-b .e-two .col{left:51.2cqw;right:var(--M);top:66.4cqw}
+
+.t-b .e-three .col{left:var(--M);width:40.8cqw;top:10cqw}
+.t-b .e-three .p0{left:51.2cqw;right:var(--M);top:10cqw;height:54.4cqw}
+.t-b .e-three .p1,.t-b .e-three .p2{top:68.8cqw;width:40.8cqw;height:40.8cqw}
+.t-b .e-three .p1{left:var(--M)}.t-b .e-three .p2{right:var(--M)}
+.t-b .e-three .c1{left:var(--M);right:var(--M);top:112.6cqw}
+.t-b .e-three .c2{left:var(--M);right:var(--M);top:117cqw}
+
+.t-b .e-specimen .col{left:var(--M);right:var(--M);top:9cqw}
+.t-b .e-specimen .ph{width:26.4cqw;height:34cqw}
+.t-b .e-specimen .lb{width:26.4cqw;font-size:2.8cqw;line-height:1.45}
+.t-b .e-specimen .x0{left:var(--M)}.t-b .e-specimen .x1{left:36.8cqw}.t-b .e-specimen .x2{left:65.6cqw}
+.t-b .e-specimen .ph.y0{top:31cqw}.t-b .e-specimen .lb.y0{top:66.6cqw}
+.t-b .e-specimen .ph.y1{top:77cqw}.t-b .e-specimen .lb.y1{top:112.6cqw}
+
+.t-b .e-pair .ph{top:9cqw;width:40.8cqw;height:66cqw}
+.t-b .e-pair .p0{left:var(--M)}.t-b .e-pair .p1{right:var(--M)}
+.t-b .e-pair .col{left:var(--M);width:40.8cqw;top:81cqw}
+.t-b .e-pair .mm{left:51.2cqw;right:var(--M);top:81cqw}
+
+.t-b .e-plate .ph{left:var(--M);right:var(--M);top:8cqw;height:110cqw}
+.t-b .e-plate .cp{left:var(--M);width:72cqw;top:121.4cqw}
+
+.t-b .e-bleed .ph{inset:0}
+
+.t-b .e-drop .ph{left:0;right:0;top:0;height:114cqw}
+.t-b .e-drop .cp{left:var(--M);width:72cqw;top:118.4cqw}
+
+.t-b .e-essay .col{left:var(--M);right:var(--M);top:9cqw}
+.t-b .e-essay .ph{left:var(--M);right:var(--M);top:35cqw;height:52cqw}
+.t-b .e-essay .mm{left:var(--M);right:var(--M);top:91cqw;height:33cqw;column-count:2;column-gap:4.8cqw;column-fill:auto}
+
+.t-b .e-stagger .p0{left:0;top:0;width:84cqw;height:54cqw}
+.t-b .e-stagger .p1{right:0;top:58cqw;width:84cqw;height:54cqw}
+.t-b .e-stagger .c1{left:var(--M);right:var(--M);top:116.4cqw}
+.t-b .e-stagger .c2{left:var(--M);right:var(--M);top:121cqw}
+
+.t-b .e-grid4 .ph{width:49.4cqw;height:56cqw}
+.t-b .e-grid4 .p0,.t-b .e-grid4 .p2{left:0}.t-b .e-grid4 .p1,.t-b .e-grid4 .p3{right:0}
+.t-b .e-grid4 .p0,.t-b .e-grid4 .p1{top:0}.t-b .e-grid4 .p2,.t-b .e-grid4 .p3{top:57.2cqw}
+.t-b .e-grid4 .cp{left:var(--M);width:72cqw;top:117.4cqw}
+
+.t-b .e-strip .ph{left:0;right:0;height:36cqw}
+.t-b .e-strip .p0{top:0}.t-b .e-strip .p1{top:37.2cqw}.t-b .e-strip .p2{top:74.4cqw}
+.t-b .e-strip .cp{left:var(--M);width:72cqw;top:114.6cqw}
+
+.t-b .e-detail .p0{left:var(--M);top:10cqw;width:40.8cqw;height:40.8cqw}
+.t-b .e-detail .col{left:51.2cqw;right:var(--M);top:10cqw}
+.t-b .e-detail .p1{left:0;right:0;top:56cqw;bottom:0}
+
+.t-b .e-quote .ph{left:0;top:0;bottom:0;width:58cqw}
+.t-b .e-quote .col{left:63.2cqw;right:var(--M);top:10cqw}
+.t-b .e-quote .qt{left:63.2cqw;right:var(--M);bottom:14cqw}
+.t-b .e-quote .qt .q{font:500 4.2cqw/1.55 var(--f);letter-spacing:-.03em}
+.t-b .e-quote .qt .mt{margin-top:3cqw}
+
+.t-b .e-list .col{left:var(--M);right:var(--M);top:9cqw}
+.t-b .e-list .ph{left:var(--M);width:30cqw;height:30cqw}
+.t-b .e-list .it{left:41.6cqw;right:var(--M)}
+.t-b .e-list .it .n{font:700 3.6cqw/1.3 var(--f);letter-spacing:-.03em;margin-bottom:1.2cqw}
+.t-b .e-list .it .mm{font-size:3.2cqw;line-height:1.55}
+.t-b .e-list .y0{top:30cqw}.t-b .e-list .y1{top:62.4cqw}.t-b .e-list .y2{top:94.8cqw}
+
+/* ---------- words and the end ---------- */
+.t-b .text .col{left:var(--M);right:var(--M);top:10cqw}
+.t-b .text .bd{left:var(--M);width:76cqw;top:34cqw;font:400 4cqw/1.78 var(--f);letter-spacing:-.025em;white-space:pre-line}
+
+.t-b .index .dh{left:var(--M);top:10cqw}
+.t-b .index .ix{left:var(--M);right:var(--M);top:24cqw;font:400 3.2cqw/1.7 var(--f);white-space:pre-wrap}
+.t-b .index .colo{left:var(--M);width:70cqw;bottom:9cqw}
+
+.t-b .end-photo .ph{left:var(--M);right:var(--M);top:10cqw;height:63cqw}
+.t-b .end-photo .last{left:var(--M);width:76cqw;top:79cqw;font:500 4.2cqw/1.55 var(--f);letter-spacing:-.03em}
+.t-b .end-photo .colo{left:var(--M);width:70cqw;bottom:9cqw}
+.t-b .colo{white-space:pre-line}

@@ -1,0 +1,11 @@
+https://arun.is/blog/city-travel-guides/
+https://fontsinuse.com/uses/16558/guidebooks-by-michael-mueller-verlag
+https://fontsinuse.com/uses/52899/florida
+https://typography.network/?p=18410
+https://underconsideration.com/fpo/archives/2013/03/wilsdam-publishing-book.php
+https://www.studiofaculty.com/work/cereal-city-guides
+https://www.travelers-company.com/customize/professional-user/kensaku_hosoi
+https://www.travelers-company.com/customize/professional-user/maki-ohkojima
+https://www.travelers-company.com/customize/professional-user/makoto-kawai
+https://www.travelers-company.com/customize/professional-user/shono
+https://www.travelers-company.com/customize/professional-user/yukari-yamaguchi

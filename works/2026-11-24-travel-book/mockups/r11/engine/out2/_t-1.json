@@ -1,0 +1,324 @@
+{
+ "title": "제주",
+ "plan": "비행기와 버스로 제주에 닿은 뒤, 협재의 넓은 바다에서 발끝과 모자까지 가까워진다.\n해안도로의 낮과 노을을 지나 아침 배로 우도에 들어가고, 하도 해녀의 노래를 크게 만난다.\n월정리의 쉼과 성산의 저녁 뒤, 마지막 날은 한라산 안개에서 오름과 돌담으로 선명해진다.\n귤밭의 손맛을 거쳐 조용한 카페 창가에서 여행을 닫는다.",
+ "pages": [
+  {
+   "layout": "photo/c3",
+   "intent": "성산의 저녁 실루엣으로 여행 전체의 섬과 빛을 압축한 표지.",
+   "photos": [
+    {
+     "id": "seongsan",
+     "fx": 58,
+     "fy": 50
+    }
+   ],
+   "texts": [
+    {
+     "key": "title",
+     "text": "제주"
+    },
+    {
+     "key": "period",
+     "text": "2026. 6. 12 — 14"
+    }
+   ]
+  },
+  {
+   "layout": "photo/op",
+   "intent": "첫날의 이동을 비행기 창밖 구름과 날개로 연다.",
+   "photos": [
+    {
+     "id": "d8",
+     "fx": 62,
+     "fy": 61
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/band",
+   "intent": "잠에서 깬 뒤 버스 창밖을 바라보는 사람으로 제주에 가까워지는 시간을 잇는다.",
+   "photos": [
+    {
+     "id": "d5",
+     "fx": 55,
+     "fy": 52
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/band",
+   "intent": "협재에 도착해 처음 마주한 바다를 넓은 풍경으로 펼친다.",
+   "photos": [
+    {
+     "id": "hyeopjae",
+     "fx": 52,
+     "fy": 47
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/side",
+   "intent": "같은 협재 장면을 물빛에서 발끝과 날아갈 뻔한 모자까지 좁혀 묶는다.",
+   "photos": [
+    {
+     "id": "hyeopjae_2",
+     "fx": 42,
+     "fy": 66
+    },
+    {
+     "id": "d9",
+     "fx": 49,
+     "fy": 76
+    },
+    {
+     "id": "d10",
+     "fx": 49,
+     "fy": 57
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/band",
+   "intent": "바다를 따라 달린 해안도로로 오후의 이동감을 다시 넓힌다.",
+   "photos": [
+    {
+     "id": "road_2",
+     "fx": 65,
+     "fy": 56
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/one",
+   "intent": "풍차가 선 해안의 주황빛으로 첫날을 천천히 닫는다.",
+   "photos": [
+    {
+     "id": "road",
+     "fx": 54,
+     "fy": 52
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/op",
+   "intent": "둘째 날의 첫 이동을 우도행 배의 난간과 물 위 그림자로 연다.",
+   "photos": [
+    {
+     "id": "d3",
+     "fx": 50,
+     "fy": 63
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/band",
+   "intent": "배를 따라온 갈매기와 멀어지는 섬을 한 장에 크게 보여 준다.",
+   "photos": [
+    {
+     "id": "udo",
+     "fx": 50,
+     "fy": 45
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/two",
+   "intent": "우도 도착 뒤의 분홍 전기차와 바닷가 의자를 같은 수평선과 색으로 묶는다.",
+   "photos": [
+    {
+     "id": "udo_2",
+     "fx": 61,
+     "fy": 61
+    },
+    {
+     "id": "d7",
+     "fx": 45,
+     "fy": 70
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/one",
+   "intent": "하도의 해녀 작업 풍경으로 노래가 시작될 장소를 가까이 소개한다.",
+   "photos": [
+    {
+     "id": "haenyeo",
+     "fx": 50,
+     "fy": 67
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/band",
+   "intent": "메모가 강조한 해녀들의 노래와 표정을 가장 큰 장면으로 들려준다.",
+   "photos": [
+    {
+     "id": "haenyeo_2",
+     "fx": 53,
+     "fy": 51
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/side",
+   "intent": "손에 올린 조개에서 월정리 테라스와 음료로 이어지는 바다의 작은 휴식을 묶는다.",
+   "photos": [
+    {
+     "id": "woljeongri",
+     "fx": 38,
+     "fy": 62
+    },
+    {
+     "id": "d4",
+     "fx": 55,
+     "fy": 59
+    },
+    {
+     "id": "d2",
+     "fx": 58,
+     "fy": 67
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/band",
+   "intent": "풍경 뒤에 사람을 놓아 월정리에서 오래 머문 시간을 조용히 남긴다.",
+   "photos": [
+    {
+     "id": "woljeongri_2",
+     "fx": 51,
+     "fy": 70
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/one",
+   "intent": "성산의 유채와 봉우리를 세로로 겹쳐 저녁으로 향하는 길을 밝힌다.",
+   "photos": [
+    {
+     "id": "seongsan_2",
+     "fx": 50,
+     "fy": 53
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/band",
+   "intent": "성산의 넓은 일몰로 둘째 날의 빛을 주황에서 어둠 직전까지 보낸다.",
+   "photos": [
+    {
+     "id": "seongsan",
+     "fx": 58,
+     "fy": 50
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/op",
+   "intent": "셋째 날의 첫 걸음을 아무것도 보이지 않는 한라산 안개 속에서 크게 연다.",
+   "photos": [
+    {
+     "id": "hallasan",
+     "fx": 49,
+     "fy": 37
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/band",
+   "intent": "안개 뒤 나타난 계단과 돌하르방으로 산길의 방향을 되찾는다.",
+   "photos": [
+    {
+     "id": "hallasan_2",
+     "fx": 51,
+     "fy": 56
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/two",
+   "intent": "오름의 억새 사이 사람과 열린 분화구를 가까이에서 넓게 풀어낸다.",
+   "photos": [
+    {
+     "id": "oreum",
+     "fx": 64,
+     "fy": 49
+    },
+    {
+     "id": "oreum_2",
+     "fx": 50,
+     "fy": 59
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/duo",
+   "intent": "제주의 돌담을 들판의 질감과 작은 의자가 놓인 생활 풍경으로 짝짓는다.",
+   "photos": [
+    {
+     "id": "doldam",
+     "fx": 50,
+     "fy": 69
+    },
+    {
+     "id": "doldam_2",
+     "fx": 49,
+     "fy": 67
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/side",
+   "intent": "마지막 귤밭을 나무 사이 길에서 열매와 손에 깐 귤까지 좁혀 묶는다.",
+   "photos": [
+    {
+     "id": "tangerine_2",
+     "fx": 56,
+     "fy": 56
+    },
+    {
+     "id": "tangerine",
+     "fx": 50,
+     "fy": 59
+    },
+    {
+     "id": "d6",
+     "fx": 54,
+     "fy": 53
+    }
+   ],
+   "texts": []
+  },
+  {
+   "layout": "photo/op",
+   "intent": "공항으로 가기 전 카페 창가의 두 잔과 꽃을 조용한 마지막 컷으로 남긴다.",
+   "photos": [
+    {
+     "id": "d1",
+     "fx": 50,
+     "fy": 61
+    }
+   ],
+   "texts": []
+  }
+ ]
+}
