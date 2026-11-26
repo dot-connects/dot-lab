@@ -50,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kr.dot.catchpet.ai.AiWork
+import kotlinx.coroutines.launch
 import kr.dot.catchpet.billing.Purchase
 import kr.dot.catchpet.dex.Dex
 import java.text.SimpleDateFormat
@@ -181,6 +182,8 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
             if (ok) { prefs.edit().putBoolean("ai_ok_${e.id}", true).apply(); go() }
         }
     }
+    var reporting by remember { mutableStateOf<String?>(null) }   // the look being reported
+    reporting?.let { style -> ReportDialog(ctx, e, style) { reporting = null } }
     // operator 11-18: free previews (10) and free pet sheets (5) per device, the counts written on the buttons
     LaunchedEffect(e.id) { AiWork.refresh(ctx) }
     val left = remember(AiWork.rev) { AiWork.left(ctx) }
@@ -216,6 +219,9 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
                             }
                         }
                     }
+                    // Play AI-content rule: every AI picture can be reported without leaving the app (spec-release 4)
+                    if (drawn != null || bought) Text("신고", fontFamily = Book.Body, fontSize = 13.sp, color = Book.Muted,
+                        modifier = Modifier.clip(RoundedCornerShape(50)).clickable { reporting = style }.padding(horizontal = 10.dp, vertical = 4.dp))
                     when {
                         drawn == null && !bought -> {}
                         "sheet-$style" in busy -> Note("펫 그림을 그리는 중 (1~3분)")
@@ -243,6 +249,32 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
         AiWork.message[e.id]?.let { Note(it, color = Book.Warn) }
         if (!free && left.sheet == 0) Note("무료 펫 그림을 다 썼어요. 구매는 다음 버전에서 열려요")
     }
+}
+
+private val REASONS = listOf("odd" to "이상하거나 불쾌해요", "person" to "사람이 잘못 그려졌어요", "other" to "기타")
+
+/** Three reasons -> Worker /report (no picture is sent), then a thank-you line. */
+@Composable
+private fun ReportDialog(ctx: Context, e: Dex.Entry, style: String, onDone: () -> Unit) {
+    var state by remember { mutableStateOf<Boolean?>(null) }   // null = choosing, true = sent, false = failed
+    var sending by remember { mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDone,
+        containerColor = Book.Paper,
+        title = { Text("이 그림 신고하기", fontFamily = Book.Display, color = Book.Ink) },
+        text = {
+            if (state == true) Text("알려 줘서 고마워요. 확인해 볼게요.", fontFamily = Book.Body, color = Book.Ink)
+            else Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (state == false) Text("보내지 못했어요. 인터넷을 확인하고 다시 눌러 주세요.", fontFamily = Book.Body, color = Book.Warn)
+                    for ((key, label) in REASONS) InkPill(label, onClick = if (sending) null else ({
+                        sending = true
+                        scope.launch { state = AiWork.report(ctx, e, style, key); sending = false }
+                    }))
+            }
+        },
+        confirmButton = { InkPill(if (state == true) "닫기" else "취소", onClick = onDone) },
+    )
 }
 
 @Composable

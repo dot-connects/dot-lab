@@ -48,6 +48,21 @@ class AiClient(private val base: String, private val deviceId: String, private v
         }
     }
 
+    /** Flags one AI picture (Play AI-content rule, spec-release 4): no image leaves the phone, only which picture and why. */
+    suspend fun report(entry: String, kind: String, style: String, reason: String): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val c = (URL(base.trimEnd('/') + "/report").openConnection() as HttpURLConnection)
+            try {
+                c.requestMethod = "POST"; c.connectTimeout = 15_000; c.readTimeout = 15_000; c.doOutput = true
+                c.setRequestProperty("content-type", "application/json")
+                c.setRequestProperty("x-app", "catchpet")
+                val o = JSONObject().put("device", deviceId).put("entry", entry).put("kind", kind).put("style", style).put("reason", reason)
+                c.outputStream.use { it.write(o.toString().toByteArray()) }
+                c.responseCode == 200
+            } finally { c.disconnect() }
+        }.getOrDefault(false)
+    }
+
     private suspend fun post(path: String, json: String, token: String?): Result<Reply> = withContext(Dispatchers.IO) {
         runCatching {
             // the Integrity token is bound to this exact body (the Worker hashes the text it received)

@@ -207,9 +207,15 @@ fun PetScreen(onBack: () -> Unit) {
         }
 
         if (dev) Developer(ctx)
+        // Play policy: the privacy policy reachable inside the app (T-0203)
+        Text("개인정보 처리방침", fontFamily = Book.Body, fontSize = 14.sp, color = Book.Muted,
+            modifier = Modifier.align(Alignment.CenterHorizontally).clip(RoundedCornerShape(50))
+                .clickable { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_URL))) }.padding(12.dp))
         Spacer(Modifier.height(24.dp))
     }
 }
+
+private const val PRIVACY_URL = "https://dot-connects.github.io/dot-lab/works/2026-11-09-catch/page/privacy.html"
 
 private val SIZES = listOf("작게" to 40f, "보통" to 56f, "크게" to 80f)
 

@@ -63,6 +63,9 @@ object AiWork {
         p.edit().putInt(key, if (old < 0) n else minOf(n, old)).apply()
     }
 
+    /** Reports one AI picture of [e] (spec-release 4); true = the Worker took it. */
+    suspend fun report(ctx: Context, e: Dex.Entry, style: String, reason: String): Boolean = client(ctx).report(e.id, e.kind, style, reason)
+
     private fun client(ctx: Context): AiClient {
         val proof: suspend (String) -> String? = { hash -> Integrity.token(ctx, hash) }
         return AiClient(BuildConfig.WORKER, AiClient.deviceId(ctx), if (dev) null else proof)
