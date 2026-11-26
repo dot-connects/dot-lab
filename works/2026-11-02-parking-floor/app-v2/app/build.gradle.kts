@@ -31,13 +31,13 @@ val upload = Properties().apply {
 
 android {
     namespace = "kr.dot.wherepark"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "kr.dot.wherepark"
         minSdk = 34
-        targetSdk = 35
-        versionCode = 3
-        versionName = "1.1.1"
+        targetSdk = 36
+        versionCode = 4
+        versionName = "1.1.2"
         buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
         buildConfigField("String", "SYNC_URL", "\"https://dot-lab-parking.dotconnects.workers.dev\"")
         buildConfigField("String", "FB_API_KEY", fb("apiKey"))
