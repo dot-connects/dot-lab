@@ -78,7 +78,7 @@ class _ShelfState extends State<Shelf> {
             ),
             Expanded(
               child: books.isEmpty
-                  ? _empty()
+                  ? (widget.view == ShelfView.display ? _empty() : _emptyTimeline())
                   : widget.view == ShelfView.display
                       ? _display()
                       : _timeline(),
@@ -215,6 +215,50 @@ class _ShelfState extends State<Shelf> {
       ]);
 
   // ----- 연표 -----
+  /// The empty timeline: this year's heading and a dashed place on the line where the first trip will sit.
+  Widget _emptyTimeline() => ListView(padding: const EdgeInsets.only(bottom: 110), children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+            Text('${(widget.now ?? DateTime.now()).year}', style: nm(40, w: FontWeight.w300, h: 1, ls: -2, color: C.ink2)),
+            const SizedBox(width: 10),
+            Text('0권', style: nm(11, color: C.ink2)),
+          ]),
+        ),
+        Stack(children: [
+          Positioned(left: 26, top: 0, bottom: 0, width: 1, child: Container(color: C.line)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(40, 10, 20, 0),
+            child: Stack(clipBehavior: Clip.none, children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                SizedBox(width: 76, height: 101, child: CustomPaint(painter: _Dashed())),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('여행 날짜 · 몇 박', style: nm(10.5, color: C.ink2)),
+                      const SizedBox(height: 2),
+                      Text('첫 여행이 여기 놓여요', style: ui(15, w: FontWeight.w700, color: C.ink2)),
+                    ]),
+                  ),
+                ),
+              ]),
+              Positioned(
+                left: -17,
+                top: 10,
+                child: Container(
+                    width: 7, height: 7, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: C.ink2, width: 1.2))),
+              ),
+            ]),
+          ),
+        ]),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(22, 26, 22, 0),
+          child: Text('다녀온 순서대로 해마다 쌓여요.\n처음 2권은 무료예요.', style: ui(13, color: C.body, h: 1.6)),
+        ),
+      ]);
+
   Widget _timeline() => ListView(padding: const EdgeInsets.only(top: 0, bottom: 110), children: [
         for (final (year, books) in groupByYear(widget.books)) ...[
           Padding(

@@ -76,6 +76,12 @@ void main() {
     expect(find.text('첫 책 만들기'), findsOneWidget);
   });
 
+  testWidgets('shelf empty, timeline view', (t) async {
+    await pump(t, shelf(const [], ShelfView.timeline), 'd2-3-empty-timeline');
+    expect(find.text('첫 여행이 여기 놓여요'), findsOneWidget);
+    expect(find.text('첫 책이\n여기 놓여요'), findsNothing);
+  });
+
   testWidgets('shelf long-press menu with inline delete confirm', (t) async {
     ShelfBook? deleted;
     await pump(t, shelf(sampleBooks, ShelfView.display, onDelete: (b) => deleted = b));
