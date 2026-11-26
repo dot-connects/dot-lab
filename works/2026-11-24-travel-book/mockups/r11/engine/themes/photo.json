@@ -1,0 +1,66 @@
+{
+ "key": "photo",
+ "name": "사진만",
+ "pages": [
+  16,
+  28
+ ],
+ "crop_min": 0.72,
+ "min_photo_side": 8,
+ "anchors": {
+  "tops": [
+   0,
+   2,
+   3,
+   6
+  ],
+  "bottoms": [
+   64,
+   60
+  ],
+  "lefts": [
+   0,
+   2,
+   3,
+   4
+  ],
+  "rights": [
+   48,
+   46,
+   45,
+   44
+  ],
+  "min_w": 36,
+  "index_min": 5,
+  "pair_ratio": 0.3
+ },
+ "roles": {
+  "title": {
+   "desc": "표지 제목 (장소 이름 하나)",
+   "max_chars": 8,
+   "on_photo": true
+  },
+  "period": {
+   "desc": "표지 날짜 (예 2026. 6. 12—14)",
+   "max_chars": 20,
+   "on_photo": true
+  },
+  "day": {
+   "desc": "날 여는 쪽의 날 줄 '장소, 날짜' (y=3, x=4, h=2)",
+   "max_chars": 20,
+   "on_photo": false
+  }
+ },
+ "css": ".t-photo .pg.bg-paper{background:#F4F2ED}.t-photo .pg.bg-dark{background:#121211}.t-photo .tx{font-family:Pretendard,'Noto Sans KR',sans-serif;color:#1a1a18;line-height:1.25;white-space:nowrap}.t-photo .bg-dark .tx{color:#d8d6d0}.t-photo .r-title{font-size:9cqw;font-weight:600;letter-spacing:-.01em;color:#fff;text-shadow:0 0 18px rgba(0,0,0,.25)}.t-photo .r-title:not(.onp){color:#1a1a18;text-shadow:none}.t-photo .r-period{font-size:3.2cqw;color:#fff;letter-spacing:.04em}.t-photo .r-period:not(.onp){color:#55534e}.t-photo .onp{color:#fff;text-shadow:0 0 1.5cqw rgba(0,0,0,.35)}.t-photo .r-day{font-size:2.8cqw;color:#6b6963;letter-spacing:.02em}.t-photo .ix{position:absolute;left:8.33%;right:8.33%;top:12.5%;display:grid;grid-template-columns:repeat(6,1fr);gap:2cqw 1.6cqw}.t-photo .ix figure{position:static;margin:0}.t-photo .ix img{width:100%;aspect-ratio:1;object-fit:contain;object-position:left bottom;display:block}.t-photo .ix figcaption{font:2.4cqw Pretendard,sans-serif;color:#7a7872;margin-top:.8cqw}",
+ "auto_index": true,
+ "cover_roles": [
+  "title",
+  "period"
+ ],
+ "fonts": {
+  "Pretendard": [
+   400,
+   600
+  ]
+ }
+}

@@ -1,0 +1,81 @@
+{
+ "key": "a",
+ "name": "여백의 책",
+ "pages": [
+  16,
+  26
+ ],
+ "crop_min": 0.75,
+ "min_photo_side": 8,
+ "anchors": {
+  "tops": [
+   2,
+   10
+  ],
+  "bottoms": [
+   56,
+   64
+  ],
+  "lefts": [
+   0,
+   2,
+   5
+  ],
+  "rights": [
+   48,
+   46,
+   43
+  ],
+  "min_w": 16,
+  "index_min": 5,
+  "gap_max": 2,
+  "no_repeat3": false,
+  "pair_ratio": 0
+ },
+ "cover_roles": [
+  "title",
+  "period"
+ ],
+ "fonts": {
+  "Spoqa Han Sans Neo": [
+   300,
+   500
+  ]
+ },
+ "roles": {
+  "title": {
+   "desc": "표지 제목 (장소 이름, 9cqw)",
+   "max_chars": 10
+  },
+  "period": {
+   "desc": "표지 날짜·한 줄 (캡션 크기)",
+   "max_chars": 28
+  },
+  "caption": {
+   "desc": "사진 캡션: 장소(+시각) + 본 것 하나. 사진 바로 아래 1칸(y=사진 아래끝+1), 짝수쪽은 사진 왼끝·홀수쪽은 오른끝에 맞춤, h=2",
+   "max_chars": 34,
+   "under_photo": true
+  },
+  "name": {
+   "desc": "사진 없는 쪽의 장소 한 줄 (y=28 근처, 캡션 크기)",
+   "max_chars": 24
+  },
+  "body": {
+   "desc": "글 한 쪽: 한 단락 3~6문장, 폭 28~31칸, 윗변 y=10",
+   "max_chars": 280
+  },
+  "colophon": {
+   "desc": "판권 몇 줄 (책 맨 끝)",
+   "max_chars": 120
+  }
+ },
+ "css": ".t-a .pg{background:#F6F5F1}.t-a .pg.bg-dark{background:#1b1b19}.t-a .tx{font-family:'Spoqa Han Sans Neo',sans-serif;font-weight:300;color:#1d1d1b;line-height:1.45;word-break:keep-all}.t-a .bg-dark .tx{color:#d9d7d1}.t-a .r-title{font-size:9cqw;font-weight:500;letter-spacing:-.02em;line-height:1.1}.t-a .r-period,.t-a .r-caption,.t-a .r-name{font-size:2.9cqw;color:#5f5e5a}.t-a .r-body{font-size:3.6cqw;line-height:1.65;white-space:normal}.t-a .r-colophon{font-size:2.7cqw;color:#6a6965;line-height:1.6}.t-a .onp{color:#fff!important}",
+ "limits": {
+  "small_w": 26,
+  "small_max": 3,
+  "role_max": {
+   "name": 2,
+   "body": 2
+  }
+ }
+}

@@ -1,0 +1,42 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "plan", "pages"],
+  "properties": {
+    "title": {"type": "string"},
+    "plan": {"type": "string"},
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["bg", "intent", "items"],
+        "properties": {
+          "bg": {"type": "string", "enum": ["paper", "dark"]},
+          "intent": {"type": "string"},
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["kind", "photo", "text", "role", "x", "y", "w", "h", "fx", "fy", "align"],
+              "properties": {
+                "kind": {"type": "string", "enum": ["photo", "text"]},
+                "photo": {"type": "string"},
+                "text": {"type": "string"},
+                "role": {"type": "string"},
+                "x": {"type": "integer"},
+                "y": {"type": "integer"},
+                "w": {"type": "integer"},
+                "h": {"type": "integer"},
+                "fx": {"type": "integer"},
+                "fy": {"type": "integer"},
+                "align": {"type": "string", "enum": ["left", "center", "right"]}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

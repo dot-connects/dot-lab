@@ -1,0 +1,695 @@
+{
+ "title": "제주",
+ "plan": "귤밭의 초록과 주황으로 문을 열고, 비행기 창에서 협재와 신창의 저녁까지 첫날을 좁혀 간다.\n배와 길 같은 이동 장면으로 날을 나누고, 둘째 날은 우도에서 하도·월정리·성산으로 빛을 늦춘다.\n마지막 날은 어리목의 안개를 크게 연 뒤 오름과 귤밭으로 내려온다.\n첫 장의 귤을 마지막 손안의 귤로 되받고, 여행 전체를 돌아보는 글과 판권으로 닫는다.",
+ "pages": [
+  {
+   "bg": "paper",
+   "intent": "귤밭의 색으로 여행을 열고 마지막 귤과 맞물릴 모티프를 둔다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "tangerine",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 10,
+     "w": 38,
+     "h": 25,
+     "fx": 50,
+     "fy": 52,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "제주",
+     "role": "title",
+     "x": 5,
+     "y": 40,
+     "w": 38,
+     "h": 4,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "2026년 6월 12일—14일",
+     "role": "period",
+     "x": 5,
+     "y": 45,
+     "w": 38,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "장소 이름만 남겨 사진보다 한 박자 먼저 제주에 도착한다.",
+   "items": [
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "제주",
+     "role": "name",
+     "x": 5,
+     "y": 28,
+     "w": 38,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "첫날의 넓은 하늘을 창과 날개로 조용히 연다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "d8",
+     "text": "",
+     "role": "",
+     "x": 9,
+     "y": 10,
+     "w": 30,
+     "h": 45,
+     "fx": 46,
+     "fy": 50,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "제주행, 오전 열한 시 사십팔 분. 구름 위 날개",
+     "role": "caption",
+     "x": 11,
+     "y": 56,
+     "w": 28,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "right"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "도착 뒤 버스 안의 사람으로 시선을 중간 거리까지 당긴다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "d5",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 10,
+     "w": 38,
+     "h": 25,
+     "fx": 50,
+     "fy": 48,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "한림, 오후 한 시. 창에 기대 앉은 사람",
+     "role": "caption",
+     "x": 5,
+     "y": 36,
+     "w": 28,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "협재에 닿으며 다시 수평선과 해변을 넓게 펼친다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "hyeopjae",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 10,
+     "w": 38,
+     "h": 21,
+     "fx": 50,
+     "fy": 50,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "같은 바다를 사람의 거리로 좁혀 차가운 물에 머문 시간을 잇는다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "hyeopjae_2",
+     "text": "",
+     "role": "",
+     "x": 13,
+     "y": 10,
+     "w": 30,
+     "h": 40,
+     "fx": 50,
+     "fy": 64,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "협재, 오후 한 시 사십일 분. 물 안쪽의 사람들",
+     "role": "caption",
+     "x": 13,
+     "y": 51,
+     "w": 30,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "발끝과 물선만 작게 남겨 협재 장면을 디테일로 좁힌다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "d9",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 10,
+     "w": 20,
+     "h": 30,
+     "fx": 46,
+     "fy": 62,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "협재, 오후 두 시. 발끝까지 왔다 간 물",
+     "role": "caption",
+     "x": 5,
+     "y": 41,
+     "w": 20,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "right"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "바람에 놓일 뻔한 모자를 작은 정물로 이어 첫 장면을 닫는다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "d10",
+     "text": "",
+     "role": "",
+     "x": 23,
+     "y": 10,
+     "w": 20,
+     "h": 28,
+     "fx": 50,
+     "fy": 55,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "협재, 오후 두 시. 자갈 위 모자와 바람",
+     "role": "caption",
+     "x": 23,
+     "y": 39,
+     "w": 20,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "해안도로로 장면을 바꾸고 길과 바다를 다시 넓게 연다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "road_2",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 10,
+     "w": 38,
+     "h": 25,
+     "fx": 50,
+     "fy": 50,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "같은 길의 마지막 빛을 세로로 세워 첫날을 닫는다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "road",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 10,
+     "w": 30,
+     "h": 40,
+     "fx": 50,
+     "fy": 54,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "신창, 오후 일곱 시 삼십팔 분. 풍차 쪽으로 지는 해",
+     "role": "caption",
+     "x": 5,
+     "y": 51,
+     "w": 30,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "둘째 날의 이동 방향을 이름 한 줄로 예고한다.",
+   "items": [
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "우도와 동쪽 바다",
+     "role": "name",
+     "x": 5,
+     "y": 28,
+     "w": 38,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "갈매기와 배의 항적을 넓게 보여 둘째 날 아침을 연다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "udo",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 10,
+     "w": 38,
+     "h": 25,
+     "fx": 52,
+     "fy": 48,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "우도 가는 배, 오전 아홉 시 사십이 분. 따라온 갈매기",
+     "role": "caption",
+     "x": 5,
+     "y": 36,
+     "w": 30,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "배 난간과 물의 그림자로 이동의 감각을 가까이 당긴다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "d3",
+     "text": "",
+     "role": "",
+     "x": 13,
+     "y": 10,
+     "w": 30,
+     "h": 45,
+     "fx": 50,
+     "fy": 58,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "우도에 내린 뒤 바다 앞 탈것으로 중간 거리의 장면을 만든다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "udo_2",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 10,
+     "w": 38,
+     "h": 25,
+     "fx": 55,
+     "fy": 54,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "빈 의자와 돌담으로 사람 없는 정적을 한 장 둔다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "d7",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 10,
+     "w": 38,
+     "h": 25,
+     "fx": 50,
+     "fy": 54,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "우도, 오전 열한 시 반. 돌담 앞의 빈 자리 셋",
+     "role": "caption",
+     "x": 15,
+     "y": 36,
+     "w": 28,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "right"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "메모가 강조한 해녀들의 노래를 가장 큰 인물 장면으로 세운다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "haenyeo_2",
+     "text": "",
+     "role": "",
+     "x": 0,
+     "y": 2,
+     "w": 48,
+     "h": 36,
+     "fx": 52,
+     "fy": 48,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "하도, 오후 두 시 반. 노래가 물질 도구 사이로 번졌다",
+     "role": "caption",
+     "x": 0,
+     "y": 39,
+     "w": 30,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "큰 화면을 유지한 채 카페의 두 잔으로 사람들의 노래에서 쉼으로 옮긴다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "d2",
+     "text": "",
+     "role": "",
+     "x": 0,
+     "y": 2,
+     "w": 48,
+     "h": 36,
+     "fx": 54,
+     "fy": 53,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "월정리, 오후 네 시 십이 분. 바다 앞의 두 잔",
+     "role": "caption",
+     "x": 18,
+     "y": 39,
+     "w": 30,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "right"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "카페를 나온 뒤 해변의 한 사람과 먼 섬으로 다시 시야를 넓힌다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "woljeongri_2",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 10,
+     "w": 38,
+     "h": 25,
+     "fx": 50,
+     "fy": 56,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "성산의 해가 능선 뒤로 내려가는 장면으로 둘째 날의 빛을 닫는다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "seongsan",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 10,
+     "w": 38,
+     "h": 21,
+     "fx": 53,
+     "fy": 49,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "성산, 오후 일곱 시 오 분. 해가 능선 뒤로 내려갔다",
+     "role": "caption",
+     "x": 15,
+     "y": 32,
+     "w": 28,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "right"
+    }
+   ]
+  },
+  {
+   "bg": "dark",
+   "intent": "셋째 날을 안개가 화면을 가득 막는 한 장으로 연다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "hallasan",
+     "text": "",
+     "role": "",
+     "x": 0,
+     "y": 0,
+     "w": 48,
+     "h": 64,
+     "fx": 50,
+     "fy": 43,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "안개 뒤에 남은 계단과 돌하르방으로 산의 입구를 확인한다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "hallasan_2",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 10,
+     "w": 38,
+     "h": 29,
+     "fx": 50,
+     "fy": 50,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "어리목, 오전 여덟 시 오십이 분. 계단만 길게 남았다",
+     "role": "caption",
+     "x": 15,
+     "y": 40,
+     "w": 28,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "right"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "오름의 분화구와 작은 사람들로 시야를 다시 멀리 보낸다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "oreum_2",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 10,
+     "w": 38,
+     "h": 25,
+     "fx": 50,
+     "fy": 52,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "귤밭의 가지 사이로 들어가 마지막 장소를 가까운 색으로 좁힌다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "tangerine_2",
+     "text": "",
+     "role": "",
+     "x": 13,
+     "y": 10,
+     "w": 30,
+     "h": 45,
+     "fx": 55,
+     "fy": 55,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "표지의 귤 모티프를 손안의 한 알로 되받아 사진의 마지막을 맺는다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "d6",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 10,
+     "w": 38,
+     "h": 25,
+     "fx": 50,
+     "fy": 52,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "남원, 오후 두 시 사십 분. 손안에서 벗겨진 귤 하나",
+     "role": "caption",
+     "x": 5,
+     "y": 36,
+     "w": 30,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "세 날의 사실을 한 단락으로 되짚고 공항으로 향하며 글을 닫는다.",
+   "items": [
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "첫날에는 협재 물에 발만 담그고 신창의 풍차 앞에서 해를 보았다. 다음 날 아침 배를 타고 우도로 갔고, 하도에서는 해녀 할머니들의 노래를 들었다. 월정리 카페에 오래 앉았다가 성산의 저녁을 보았다. 마지막 날 어리목은 안개로 가려져 있었고 오름의 억새 사이를 걸었다. 남원 귤밭 카페에서 귤 하나를 까먹고 공항으로 갔다.",
+     "role": "body",
+     "x": 5,
+     "y": 10,
+     "w": 30,
+     "h": 28,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "날짜와 사용한 사진 수만 남겨 책을 사실로 마감한다.",
+   "items": [
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "제주, 2026년 6월 12일—14일\n사진 30장 중 22장",
+     "role": "colophon",
+     "x": 5,
+     "y": 48,
+     "w": 38,
+     "h": 6,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    }
+   ]
+  }
+ ]
+}

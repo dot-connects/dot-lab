@@ -1,0 +1,77 @@
+{
+ "key": "album",
+ "name": "앨범",
+ "pages": [
+  14,
+  24
+ ],
+ "crop_min": 0.72,
+ "min_photo_side": 8,
+ "widths": [
+  18,
+  20,
+  25,
+  30,
+  36,
+  42,
+  45
+ ],
+ "overlap_max": 0.25,
+ "stamp": true,
+ "anchors": {
+  "tops": [
+   3
+  ],
+  "bottoms": [
+   60
+  ],
+  "lefts": [
+   3,
+   25
+  ],
+  "rights": [
+   45,
+   23
+  ],
+  "min_w": 18,
+  "index_min": 5,
+  "gap_max": 2,
+  "no_repeat3": true,
+  "pair_ratio": 0
+ },
+ "cover_roles": [
+  "title",
+  "period"
+ ],
+ "fonts": {
+  "LINE Seed KR": [
+   400,
+   700
+  ]
+ },
+ "roles": {
+  "title": {
+   "desc": "표지 제목 (11cqw)",
+   "max_chars": 10
+  },
+  "period": {
+   "desc": "표지 날짜 줄",
+   "max_chars": 28
+  },
+  "dayline": {
+   "desc": "날 머리줄 '둘째 날, 성산 쪽으로' (4.2cqw), 대지 위",
+   "max_chars": 22
+  },
+  "memo": {
+   "desc": "메모 한두 줄 (3.4cqw): 장소·시각·누구·작은 사실. 그 쪽의 빈 자리에, 쪽마다 다른 자리",
+   "max_chars": 34
+  },
+  "colophon": {
+   "desc": "맨 뒤 판권 두 줄",
+   "max_chars": 80
+  }
+ },
+ "css": ".t-album .pg{background:#EEE7DA}.t-album .ph,.t-album .pr{border:1.1cqw solid #FBFAF5;box-sizing:border-box;box-shadow:0 .15cqw .3cqw rgba(60,45,20,.18)}.t-album .pr>.ph{border:0;box-shadow:none}.t-album .st{position:absolute;right:1.5cqw;bottom:-1.05cqw;font:700 2.2cqw 'LINE Seed KR',sans-serif;color:#E0783A;letter-spacing:.06em;line-height:1}.t-album .tx{font-family:'LINE Seed KR',sans-serif;color:#2E3A57;line-height:1.4;word-break:keep-all}.t-album .r-title{font-size:11cqw;font-weight:700;color:#2a2a28;line-height:1.05}.t-album .r-period{font-size:3.4cqw;color:#2E3A57}.t-album .r-dayline{font-size:4.2cqw;font-weight:700}.t-album .r-memo{font-size:3.4cqw}.t-album .r-colophon{font-size:2.9cqw;color:#5d5a52}.t-album .onp{color:#fff}",
+ "min_cover": 0.38,
+ "memo_max": 2
+}

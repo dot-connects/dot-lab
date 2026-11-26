@@ -1,0 +1,561 @@
+{
+ "title": "제주",
+ "plan": "비행기와 버스로 들어가 협재의 첫 바다를 크게 연다.\n해안의 움직임과 소지품을 짝으로 묶고 풍차의 저녁빛으로 첫날을 닫는다.\n배의 차가운 아침에서 우도, 해녀의 노래, 월정리의 쉼, 성산의 저녁으로 빛을 옮긴다.\n안개 낀 어리목에서 오름과 돌담을 지나 귤밭으로 좁힌 뒤 손 위의 귤로 조용히 비운다.",
+ "pages": [
+  {
+   "bg": "paper",
+   "intent": "비행기 창밖의 구름과 날개를 표지 전체에 두어 여행이 이미 시작된 순간을 연다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "d8",
+     "text": "",
+     "role": "",
+     "x": 0,
+     "y": 0,
+     "w": 48,
+     "h": 64,
+     "fx": 56,
+     "fy": 50,
+     "align": "center"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "제주",
+     "role": "title",
+     "x": 4,
+     "y": 50,
+     "w": 40,
+     "h": 4,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    },
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "2026. 6. 12—14",
+     "role": "period",
+     "x": 4,
+     "y": 55,
+     "w": 40,
+     "h": 3,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "잠이 덜 깬 버스 안의 인물로 제주에 닿은 첫날의 이동을 잇는다.",
+   "items": [
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "김포에서 제주, 6월 12일",
+     "role": "day",
+     "x": 4,
+     "y": 3,
+     "w": 40,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    },
+    {
+     "kind": "photo",
+     "photo": "d5",
+     "text": "",
+     "role": "",
+     "x": 4,
+     "y": 6,
+     "w": 40,
+     "h": 27,
+     "fx": 50,
+     "fy": 50,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "협재의 맑은 물을 첫 넓은 풍경으로 페이지 전체에 터뜨린다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "hyeopjae_2",
+     "text": "",
+     "role": "",
+     "x": 0,
+     "y": 0,
+     "w": 48,
+     "h": 64,
+     "fx": 50,
+     "fy": 48,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "수평선이 이어지는 협재와 서쪽 해안도로를 쌓아 멈춘 바다에서 달리는 바다로 이동시킨다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "hyeopjae",
+     "text": "",
+     "role": "",
+     "x": 4,
+     "y": 6,
+     "w": 40,
+     "h": 23,
+     "fx": 50,
+     "fy": 50,
+     "align": "center"
+    },
+    {
+     "kind": "photo",
+     "photo": "road_2",
+     "text": "",
+     "role": "",
+     "x": 4,
+     "y": 30,
+     "w": 40,
+     "h": 27,
+     "fx": 55,
+     "fy": 50,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "같은 해변에 남은 신발과 날아갈 뻔한 모자를 나란히 놓아 짧게 머문 사람의 흔적을 보여 준다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "d9",
+     "text": "",
+     "role": "",
+     "x": 3,
+     "y": 6,
+     "w": 21,
+     "h": 31,
+     "fx": 50,
+     "fy": 55,
+     "align": "center"
+    },
+    {
+     "kind": "photo",
+     "photo": "d10",
+     "text": "",
+     "role": "",
+     "x": 25,
+     "y": 6,
+     "w": 21,
+     "h": 31,
+     "fx": 50,
+     "fy": 52,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "풍차와 주황빛 저녁을 세 변에 붙이고 종이 띠를 남겨 첫날을 천천히 닫는다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "road",
+     "text": "",
+     "role": "",
+     "x": 0,
+     "y": 0,
+     "w": 48,
+     "h": 52,
+     "fx": 50,
+     "fy": 48,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "갈매기가 따라오는 배의 넓은 움직임으로 둘째 날을 연다.",
+   "items": [
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "우도 가는 배, 6월 13일",
+     "role": "day",
+     "x": 4,
+     "y": 3,
+     "w": 40,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    },
+    {
+     "kind": "photo",
+     "photo": "udo",
+     "text": "",
+     "role": "",
+     "x": 4,
+     "y": 6,
+     "w": 40,
+     "h": 27,
+     "fx": 48,
+     "fy": 42,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "배 난간과 긴 그림자를 크게 세워 바다를 건너는 시간을 몸으로 느끼게 한다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "d3",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 3,
+     "w": 38,
+     "h": 57,
+     "fx": 50,
+     "fy": 50,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "같은 우도 바다 앞의 분홍 이동수단과 빈 의자를 쌓아 도착 뒤의 가벼운 색과 정적을 맞춘다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "udo_2",
+     "text": "",
+     "role": "",
+     "x": 3,
+     "y": 6,
+     "w": 42,
+     "h": 28,
+     "fx": 52,
+     "fy": 52,
+     "align": "center"
+    },
+    {
+     "kind": "photo",
+     "photo": "d7",
+     "text": "",
+     "role": "",
+     "x": 3,
+     "y": 35,
+     "w": 42,
+     "h": 28,
+     "fx": 50,
+     "fy": 52,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "해녀의 작업 준비를 크게 열어 메모에서 강조된 노래 장면으로 들어간다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "haenyeo",
+     "text": "",
+     "role": "",
+     "x": 0,
+     "y": 0,
+     "w": 48,
+     "h": 64,
+     "fx": 50,
+     "fy": 54,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "노래하는 해녀들의 넓은 몸짓에서 손에 올린 조개로 좁혀 같은 하도 바다의 사람과 결과를 잇는다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "haenyeo_2",
+     "text": "",
+     "role": "",
+     "x": 4,
+     "y": 6,
+     "w": 40,
+     "h": 27,
+     "fx": 52,
+     "fy": 48,
+     "align": "center"
+    },
+    {
+     "kind": "photo",
+     "photo": "d4",
+     "text": "",
+     "role": "",
+     "x": 4,
+     "y": 34,
+     "w": 40,
+     "h": 30,
+     "fx": 52,
+     "fy": 48,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "월정리에서 오래 머문 시간을 바다 앞 두 잔에서 작은 사람과 넓은 물로 풀어낸다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "d2",
+     "text": "",
+     "role": "",
+     "x": 4,
+     "y": 6,
+     "w": 40,
+     "h": 30,
+     "fx": 52,
+     "fy": 48,
+     "align": "center"
+    },
+    {
+     "kind": "photo",
+     "photo": "woljeongri_2",
+     "text": "",
+     "role": "",
+     "x": 4,
+     "y": 37,
+     "w": 40,
+     "h": 27,
+     "fx": 52,
+     "fy": 52,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "끝물 유채와 성산의 가느다란 세로 풍경을 충분한 폭으로 세워 저녁 전의 마지막 낮빛을 남긴다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "seongsan_2",
+     "text": "",
+     "role": "",
+     "x": 6,
+     "y": 3,
+     "w": 36,
+     "h": 60,
+     "fx": 50,
+     "fy": 50,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "성산일출봉 뒤로 지는 해를 넓게 놓아 둘째 날의 빛을 조용히 닫는다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "seongsan",
+     "text": "",
+     "role": "",
+     "x": 4,
+     "y": 6,
+     "w": 40,
+     "h": 23,
+     "fx": 52,
+     "fy": 45,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "아무것도 보이지 않는 안개 속 봉우리를 크게 세워 셋째 날의 감각을 연다.",
+   "items": [
+    {
+     "kind": "text",
+     "photo": "",
+     "text": "어리목, 6월 14일 안개",
+     "role": "day",
+     "x": 4,
+     "y": 3,
+     "w": 40,
+     "h": 2,
+     "fx": 0,
+     "fy": 0,
+     "align": "left"
+    },
+    {
+     "kind": "photo",
+     "photo": "hallasan",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 6,
+     "w": 38,
+     "h": 57,
+     "fx": 50,
+     "fy": 45,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "돌계단의 오름과 열린 분화구 길을 쌓아 안개 속 시작에서 맑은 걷기로 시야를 넓힌다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "hallasan_2",
+     "text": "",
+     "role": "",
+     "x": 4,
+     "y": 6,
+     "w": 40,
+     "h": 30,
+     "fx": 50,
+     "fy": 50,
+     "align": "center"
+    },
+    {
+     "kind": "photo",
+     "photo": "oreum_2",
+     "text": "",
+     "role": "",
+     "x": 4,
+     "y": 37,
+     "w": 40,
+     "h": 27,
+     "fx": 50,
+     "fy": 50,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "억새 사이에 선 동행을 풍경 뒤에 등장시켜 걷기의 끝에 사람의 온도를 더한다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "oreum",
+     "text": "",
+     "role": "",
+     "x": 4,
+     "y": 6,
+     "w": 40,
+     "h": 23,
+     "fx": 58,
+     "fy": 50,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "검은 현무암 벽의 반복과 그 앞의 낡은 의자를 나란히 놓아 같은 돌의 질감과 생활 흔적을 맞춘다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "doldam",
+     "text": "",
+     "role": "",
+     "x": 3,
+     "y": 6,
+     "w": 21,
+     "h": 30,
+     "fx": 50,
+     "fy": 50,
+     "align": "center"
+    },
+    {
+     "kind": "photo",
+     "photo": "doldam_2",
+     "text": "",
+     "role": "",
+     "x": 25,
+     "y": 6,
+     "w": 21,
+     "h": 30,
+     "fx": 50,
+     "fy": 52,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "공항으로 향하기 전 카페 창과 두 잔을 가까이 두어 여행의 마지막 실내 정지를 만든다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "d1",
+     "text": "",
+     "role": "",
+     "x": 3,
+     "y": 3,
+     "w": 42,
+     "h": 42,
+     "fx": 50,
+     "fy": 50,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "귤나무 사이의 가까운 열매로 마지막 들른 장소를 선명하게 남기되 결말의 크기는 낮춘다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "tangerine_2",
+     "text": "",
+     "role": "",
+     "x": 5,
+     "y": 3,
+     "w": 38,
+     "h": 57,
+     "fx": 52,
+     "fy": 50,
+     "align": "center"
+    }
+   ]
+  },
+  {
+   "bg": "paper",
+   "intent": "손 위에 반쯤 벗겨진 귤 하나만 작게 남겨 공항으로 돌아가는 길 앞에서 책을 비운다.",
+   "items": [
+    {
+     "kind": "photo",
+     "photo": "d6",
+     "text": "",
+     "role": "",
+     "x": 20,
+     "y": 42,
+     "w": 24,
+     "h": 18,
+     "fx": 50,
+     "fy": 50,
+     "align": "center"
+    }
+   ]
+  }
+ ]
+}
