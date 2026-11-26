@@ -82,6 +82,23 @@ void main() {
     expect(errs.join(' | '), contains('짧은 글(body)이 1번뿐')); // two days -> two
   });
 
+  test('check (태안 book 11-27): clock-time captions, text-only pages, one layout everywhere', () {
+    final many = {for (var i = 0; i < 12; i++) 'x$i': _c('x$i', 12, 8 + i)};
+    final body = {
+      'pages': [
+        _pg('a/c-paper', ['x0'], {'title': '태안'}),
+        for (var i = 1; i < 10; i++) _pg('a/drop', ['x$i'], {'cap': '서산 14:${10 + i}, 물 뒤로 산이 겹쳤다'}),
+        _pg('a/text', [], {'body': '난로 불이 둥글게 흔들렸다.'}),
+        _pg('a/text', [], {'body': '무릎 끝에 담요가 걸쳐져 있었다.'}),
+      ],
+    };
+    final errs = checkLayout(body, defs, many, layoutRules['a']!).join(' | ');
+    expect(errs, contains("'장소, 시각' 으로 시작"));
+    expect(errs, contains('숫자(14:16)'));
+    expect(errs, contains('글만 있는 쪽이 2쪽'));
+    expect(errs, contains('같은 틀 a/drop'));
+  });
+
   test('repair: drops broken pages, cuts text, puts the cover first, fills crops', () {
     final body = {
       'title': '제주',

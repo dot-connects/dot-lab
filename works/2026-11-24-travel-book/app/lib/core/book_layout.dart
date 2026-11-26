@@ -8,7 +8,8 @@ import 'models.dart';
 class LayoutRules {
   final int lo, hi, minDistinct;
   final double proseePerDay, memoRatio;
-  const LayoutRules(this.lo, this.hi, this.minDistinct, {this.proseePerDay = 0, this.memoRatio = 0});
+  final int textPages; // pages of a 'text' layout (words only) at most: a book of them reads half empty
+  const LayoutRules(this.lo, this.hi, this.minDistinct, {this.proseePerDay = 0, this.memoRatio = 0, this.textPages = 2});
   Map<String, Object> toJson(int shots) => {'pages': pageRange(shots), 'min_distinct': minDistinct};
 
   /// Long trips get more pages: 40+ photos -> 0.4..0.75 pages a photo.
@@ -17,13 +18,13 @@ class LayoutRules {
 
 // mockups/r11/engine/themes2/<theme>.json
 const layoutRules = {
-  'a': LayoutRules(16, 26, 5, proseePerDay: 1),
+  'a': LayoutRules(16, 26, 5, proseePerDay: 1, textPages: 1),
   'photo': LayoutRules(16, 26, 6),
   'album': LayoutRules(14, 22, 6, memoRatio: 0.45),
   'b': LayoutRules(16, 26, 7, memoRatio: 0.6),
   'c': LayoutRules(16, 26, 7, memoRatio: 0.7),
-  'diary': LayoutRules(16, 26, 7),
-  'mag': LayoutRules(16, 26, 7),
+  'diary': LayoutRules(16, 26, 7, textPages: 6),
+  'mag': LayoutRules(16, 26, 7, textPages: 4),
 };
 
 bool isIndexLayout(LayoutDef d) => d.id.contains('/ix');
@@ -53,7 +54,9 @@ List<Map<String, dynamic>> _pages(Map<String, dynamic> body) =>
 List<Map<String, dynamic>> _list(Object? x) => [for (final e in (x as List? ?? const [])) if (e is Map<String, dynamic>) e];
 String _s(Object? x) => x is String ? x : '';
 
-final _timed = RegExp(r'^[^,.]{1,14}[,.]\s*(오전|오후|아침|저녁|낮|밤|새벽|해 질|해질)');
+// "협재, 오후 한 시. …" and "서산 14:16, …": place + time first (operator's 태안 book 11-27: every caption read like that)
+final _timed = RegExp(r'^[^,.\d]{1,14}[,.]?\s*(오전|오후|아침|저녁|낮|밤|새벽|해 질|해질|\d{1,2}\s*[:시])');
+final _clock = RegExp(r'\d{1,2}:\d{2}');
 /// "탔고, 갔고, 봤고" — a past-tense syllable (final consonant ㅆ) + 고: the "did X, did Y" itinerary chain.
 int _pastAnd(String s) {
   var n = 0;
@@ -118,6 +121,12 @@ List<String> checkLayout(Map<String, dynamic> body, List<LayoutDef> defs, Map<St
   if (short.isNotEmpty && nTimed > math.max(2, short.length * 0.3)) {
     errs.add("짧은 글 ${short.length}개 중 $nTimed개가 '장소, 시각' 으로 시작한다 — 3할 이하로, 나머지는 본 것·한 일·들은 말로 시작해라");
   }
+  final clocked = short.where(_clock.hasMatch).length;
+  if (clocked > 0) errs.add('짧은 글 $clocked개에 시각을 숫자(14:16)로 썼다 — 시각은 필요할 때만, "오후 두 시" "해 질 무렵"처럼 말로');
+  final textOnly = [for (final p in pages) if (by[_s(p['layout'])]?.kind == 'text') p].length;
+  if (textOnly > rules.textPages) {
+    errs.add('글만 있는 쪽이 $textOnly쪽이다. 최대 ${rules.textPages}쪽 — 나머지 글은 사진과 함께 있는 틀(글 칸 있는 photo 틀)에 넣어라');
+  }
   final bodies = [for (final p in pages) for (final t in _list(p['texts'])) if (_s(t['key']) == 'body') _s(t['text'])];
   final days = {for (final c in pool.values) ymd(c.local)}.length;
   if (rules.proseePerDay > 0) {
@@ -141,7 +150,16 @@ List<String> checkLayout(Map<String, dynamic> body, List<LayoutDef> defs, Map<St
       break;
     }
   }
-  final bodyLayouts = {for (final s in seq) if (by[s]?.kind == 'photo') s};
+  final bodySeq = [for (final s in seq) if (by[s]?.kind == 'photo') s];
+  final counts = <String, int>{};
+  for (final s in bodySeq) {
+    counts[s] = (counts[s] ?? 0) + 1;
+  }
+  final top = counts.entries.fold<MapEntry<String, int>?>(null, (a, e) => a == null || e.value > a.value ? e : a);
+  if (top != null && bodySeq.length >= 8 && top.value > bodySeq.length * 0.3) {
+    errs.add('본문 ${bodySeq.length}쪽 중 ${top.value}쪽이 같은 틀 ${top.key} 이다(3할 넘음) — 장면에 맞는 다른 틀을 섞어라');
+  }
+  final bodyLayouts = bodySeq.toSet();
   final photoDefs = defs.where((d) => d.kind == 'photo').length;
   if (bodyLayouts.isNotEmpty && bodyLayouts.length < math.min(rules.minDistinct, photoDefs)) {
     errs.add('본문 틀을 ${bodyLayouts.length}가지만 썼다. 최소 ${rules.minDistinct}가지 — 장면에 맞는 다른 틀을 골라라');
