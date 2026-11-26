@@ -74,7 +74,7 @@ footer a{color:var(--muted)}
 </main>
 <script>
 // Apps whose closed test is live in Play Console (the opt-in link 404s before that): add the package when it opens.
-const OPEN = [];
+const OPEN = ["kr.dot.wherepark"];
 for (const el of document.querySelectorAll(".app[data-pkg]")) {
   const pkg = el.dataset.pkg, go = document.createElement("div");
   go.className = "go";
