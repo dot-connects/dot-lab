@@ -23,6 +23,9 @@
     for (const img of pg.querySelectorAll("img[data-slot]")) {
       const i = +img.dataset.slot, id = spec.ids[i], m = book.media[id] || {};
       const frame = img.dataset.frame;
+      // only pages near the screen decode their photos: a 50-page book no longer decodes every 1600 px JPEG at open
+      img.loading = "lazy";
+      img.decoding = "async";
       img.src = frame != null && m.frames ? m.frames[+frame] || m.src : m.src;
       img.style.objectPosition = (spec.crop && spec.crop[i]) || img.dataset.crop || "50% 50%";
       if (m.video && frame === "0") {
@@ -104,10 +107,14 @@
   };
 
   /** Export: show one page alone (Flutter screenshots it), video slots as posters. */
-  window.showPage = function (n) {
+  window.showPage = async function (n) {
     const sheets = document.querySelectorAll(".sheet");
     sheets.forEach((s, i) => (s.style.display = i === n ? "" : "none"));
     for (const v of document.querySelectorAll("video[data-clip]")) v.pause();
+    // lazy photos of the shown page must be decoded before Flutter takes the screenshot
+    const imgs = sheets[n] ? [...sheets[n].querySelectorAll("img")] : [];
+    for (const i of imgs) i.loading = "eager";
+    await Promise.all(imgs.map(i => (i.complete ? i.decode() : new Promise(r => { i.onload = i.onerror = r; })).catch(() => {})));
     return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))));
   };
 

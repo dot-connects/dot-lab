@@ -116,8 +116,8 @@ class _MakingFlowState extends State<MakingFlow> {
       _page = 0;
     });
     unawaited(mc.keepScreenOn(true).catchError((_) {}));
-    // /write is one call: the page count is a time estimate (about 20 s), it never claims the last page early
-    _tick = Timer.periodic(const Duration(milliseconds: 800), (t) {
+    // /layout is one call (two with the retry): the page count is a time estimate (about 2 min), never the last page early
+    _tick = Timer.periodic(Duration(milliseconds: 120000 ~/ pages), (t) {
       if (_page >= pages - 1) return t.cancel(); // last page shown: stop rebuilding every 800 ms
       setState(() => _page++);
     });

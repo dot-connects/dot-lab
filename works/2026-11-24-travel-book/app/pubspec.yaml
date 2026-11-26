@@ -85,16 +85,7 @@ flutter:
   fonts:
     - family: Pretendard
       fonts:
-        - asset: assets/book/fonts/Pretendard-Regular.otf
-          weight: 400
-        - asset: assets/book/fonts/Pretendard-Medium.otf
-          weight: 500
-        - asset: assets/book/fonts/Pretendard-SemiBold.otf
-          weight: 600
-        - asset: assets/book/fonts/Pretendard-Bold.otf
-          weight: 700
-        - asset: assets/book/fonts/Pretendard-ExtraBold.otf
-          weight: 800
+        - asset: assets/book/fonts/PretendardVariable.ttf # one variable font (wght 45-920) instead of 5 statics: -2.3 MB
     - family: InterTight
       fonts:
         - asset: assets/book/fonts/InterTightwght.ttf

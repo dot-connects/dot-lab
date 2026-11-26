@@ -13,7 +13,7 @@ final shotKey = GlobalKey();
 
 Future<void> loadFonts() async {
   final f = {
-    fUi: ['Regular', 'Medium', 'SemiBold', 'Bold', 'ExtraBold'].map((w) => 'assets/book/fonts/Pretendard-$w.otf'),
+    fUi: ['assets/book/fonts/PretendardVariable.ttf'],
     fNum: ['assets/book/fonts/InterTightwght.ttf'],
     'MaterialIcons': ['${Platform.environment['FLUTTER_ROOT'] ?? 'C:/DC/tools/flutter'}/bin/cache/artifacts/material_fonts/materialicons-regular.otf'],
   };

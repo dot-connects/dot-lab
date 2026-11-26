@@ -42,7 +42,7 @@ class ExtrasScreen extends StatelessWidget {
       titleSmall: '(없어도 돼요)',
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         ConceptBox(opts: o),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _row(Icons.check_box_outlined, '꼭 넣을 사진', must > 0 ? '$must장 골랐어요' : '빠지면 안 되는 사진이 있으면 골라 두세요', must > 0, onMust,
             trail: mustThumbs.isEmpty ? null : _stack()),
         const SizedBox(height: 8),
@@ -59,7 +59,7 @@ class ExtrasScreen extends StatelessWidget {
             TextSpan(children: [
               TextSpan(text: kw('사진 ${fmtInt(photos)}장에서 잘 나온 것을 골라 ')),
               TextSpan(text: '약 $pages쪽', style: nm(12, w: FontWeight.w700)),
-              TextSpan(text: kw('으로 만들어요. 1분쯤 걸려요.\n이번 책: ')),
+              TextSpan(text: kw('으로 만들어요. 2~3분쯤 걸려요.\n이번 책: ')),
               if (freeLeft > 0) ...[
                 TextSpan(text: '무료', style: ui(12, w: FontWeight.w700)),
                 const TextSpan(text: ' (처음 2권) · '),
@@ -163,13 +163,13 @@ class _ConceptBoxState extends State<ConceptBox> {
   Widget _chip(String t, bool on, VoidCallback tap) => GestureDetector(
         onTap: tap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             color: on ? C.ink : const Color(0xFFFBF8F3),
             borderRadius: BorderRadius.circular(999),
             border: Border.all(color: on ? C.ink : C.line),
           ),
-          child: Text(t, style: ui(13.5, color: on ? C.paper : C.ink)),
+          child: Text(t, style: ui(13, color: on ? C.paper : C.ink)),
         ),
       );
 
@@ -179,7 +179,7 @@ class _ConceptBoxState extends State<ConceptBox> {
         isDense: true,
         filled: true,
         fillColor: const Color(0xFFFBF8F3),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.line)),
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.line)),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.ink2)),
@@ -201,48 +201,42 @@ class _ConceptBoxState extends State<ConceptBox> {
         ),
       );
     }
+    // compact (operator 11-26: the first version pushed the rows under the buttons): label row, one chip row, one line
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [
-        Expanded(child: Text('누구랑 다녀왔어요?', style: ui(12, w: FontWeight.w700, color: C.ink2))),
+        Expanded(child: Text('누구랑, 어떤 여행이었어요?', style: ui(12, w: FontWeight.w700, color: C.ink2))),
         GestureDetector(onTap: _skip, child: Padding(padding: const EdgeInsets.all(4), child: Text('건너뛰기', style: ui(12.5, color: C.ink2)))),
       ]),
-      const SizedBox(height: 8),
-      Wrap(spacing: 8, runSpacing: 8, children: [
+      const SizedBox(height: 6),
+      Wrap(spacing: 6, runSpacing: 6, children: [
         for (final w in whoChoices)
           _chip(w, !_own && o.who == w, () => setState(() {
                 _own = false;
                 o.who = o.who == w ? null : w;
               })),
-        _chip('직접 쓰기', _own, () => setState(() {
+        _chip('직접', _own, () => setState(() {
               _own = !_own;
               o.who = _own && _who.text.trim().isNotEmpty ? _who.text.trim() : null;
             })),
       ]),
       if (_own) ...[
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         TextField(
           controller: _who,
           maxLength: 20,
           style: ui(13.5),
-          decoration: _box('예: 회사 동기 셋, 강아지랑').copyWith(counterText: ''),
+          decoration: _box('누구랑? 예: 회사 동기 셋, 강아지랑').copyWith(counterText: ''),
           onChanged: (v) => o.who = v.trim().isEmpty ? null : v.trim(),
         ),
       ],
-      const SizedBox(height: 14),
-      Text.rich(TextSpan(children: [
-        TextSpan(text: '어떤 여행이었어요? ', style: ui(12, w: FontWeight.w700, color: C.ink2)),
-        TextSpan(text: '(선택)', style: ui(12, color: C.ink2)),
-      ])),
-      const SizedBox(height: 8),
+      const SizedBox(height: 6),
       TextField(
         controller: _about,
         maxLength: 40,
         style: ui(13.5),
-        decoration: _box('예: 먹으러 간 여행 · 엄마 환갑 · 2주 신혼여행').copyWith(counterText: ''),
+        decoration: _box('어떤 여행? (선택) 예: 먹으러 간 여행 · 엄마 환갑').copyWith(counterText: ''),
         onChanged: (v) => o.about = v.trim(),
       ),
-      const SizedBox(height: 6),
-      Text('책에 이 말이 그대로 나오진 않아요. 사진 고르기와 글의 시점에만 써요', style: ui(11.5, color: C.ink2, h: 1.45)),
     ]);
   }
 }

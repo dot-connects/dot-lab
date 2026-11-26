@@ -34,7 +34,8 @@ const fNum = 'InterTight';
 
 /// UI text style (Pretendard).
 TextStyle ui(double size, {FontWeight w = FontWeight.w400, Color color = C.ink, double? h}) =>
-    TextStyle(fontFamily: fUi, fontSize: size, fontWeight: w, color: color, height: h);
+    TextStyle(fontFamily: fUi, fontSize: size, fontWeight: w, fontVariations: [FontVariation('wght', w.value.toDouble())], color: color, height: h);
+// Pretendard is one variable font: the weight goes through the wght axis (as nm() does for Inter Tight).
 
 /// Number text style (Inter Tight, a variable font: weight goes through the wght axis).
 TextStyle nm(double size, {FontWeight w = FontWeight.w500, Color color = C.ink, double? h, double? ls}) => TextStyle(

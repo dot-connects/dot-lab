@@ -145,7 +145,7 @@ void main() {
     await t.tap(find.text('연인·부부'));
     await t.pump();
     expect(d.opts.who, '연인·부부');
-    await t.tap(find.text('직접 쓰기'));
+    await t.tap(find.text('직접'));
     await t.pump();
     await t.enterText(find.byType(TextField).first, '회사 동기 셋');
     expect(d.opts.who, '회사 동기 셋');

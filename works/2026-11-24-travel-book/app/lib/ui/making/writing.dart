@@ -75,7 +75,7 @@ class WritingScreen extends StatelessWidget {
           StepRow('마지막 글', v(WriteStage.essay, '다 썼어요'), state: st(WriteStage.essay)),
           StepRow('책으로 엮기', v(WriteStage.binding, ''), small: '$theme · 폰에서', state: st(WriteStage.binding)),
         ]),
-        Priv('고른 $picked장의 작은 미리보기와 시각·장소 이름만 AI로 보내요. 20초쯤 걸려요.'),
+        Priv('고른 $picked장의 작은 미리보기와 시각·장소 이름만 AI로 보내요. 2분쯤 걸려요.'),
       ]),
     );
   }
