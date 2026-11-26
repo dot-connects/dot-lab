@@ -1,0 +1,214 @@
+<!-- fonts: Inter+Tight:wght@300;500;800 -->
+<!-- kfonts: Pretendard:500;800 -->
+<style>
+/* 여백의 책 r10: a photobook, not a report. Paper + ink, colour only from photos.
+   Page 100 x 133.33cqw. Margin M 8cqw (sides/top), bottom B 11cqw (photobook: bottom > top, refs10 GRAMMAR #2).
+   Six columns inside the margins: column step 14.4cqw, gutter G 2.4cqw.
+   Column left edges x1..x6 = 8 / 22.4 / 36.8 / 51.2 / 65.6 / 80; right edges = 20 / 34.4 / 48.8 / 63.2 / 77.6 / 92.
+   Pages alternate: bleed (3 openers + one road) / plate on a mostly empty page / pair with big size contrast / text-only end. */
+.t-a{--paper:#F4F3EF;--ink:#111111;--soft:#55575a;
+  --M:8cqw;--B:11cqw;--G:2.4cqw;
+  --x2:22.4cqw;--x3:36.8cqw;--x4:51.2cqw;--x5:65.6cqw;--x6:80cqw;
+  --f-l:"Inter Tight","Pretendard",sans-serif;--f-k:"Pretendard","Inter Tight",sans-serif}
+.t-a .pg{container-type:inline-size;background:var(--paper);color:var(--ink);font-family:var(--f-k);word-break:keep-all}
+.t-a .pg p,.t-a .pg h3{margin:0}
+.t-a .ph{position:absolute;overflow:hidden;background:#cfd2d3}
+.t-a .full{inset:0}
+.t-a .sh-b::before,.t-a .sh-t::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none}
+.t-a .sh-b::before{background:linear-gradient(0deg,rgba(10,14,18,.56),rgba(10,14,18,.5) 32%,rgba(10,14,18,0) 60%)}
+.t-a .sh-t::before{background:linear-gradient(180deg,rgba(10,14,18,.78),rgba(10,14,18,.4) 14%,rgba(10,14,18,0) 30%)}
+.t-a .tx{position:absolute;z-index:2}
+.t-a .w{color:#fff}
+.t-a .sf{color:var(--soft)}
+.t-a .w .sf{color:rgba(255,255,255,.86)}
+
+/* type: caption 2.9cqw (one line, a sentence: "place, time"), body 3.4cqw, display = big thin Inter Tight. Three sizes per page at most. */
+.t-a .cp{font:500 2.9cqw/1.5 var(--f-k);letter-spacing:.005em}
+.t-a .cp .t{font-family:var(--f-l);font-variant-numeric:tabular-nums}
+.t-a .bd{font:500 3.4cqw/1.55 var(--f-k);letter-spacing:-.015em}
+.t-a .big{font-family:var(--f-l);font-weight:300;letter-spacing:-.05em;line-height:.78;font-variant-numeric:tabular-nums;white-space:nowrap}
+.t-a .ko{font-family:var(--f-k);font-weight:800;letter-spacing:-.05em;line-height:.9;white-space:nowrap}
+/* folio: just the page number, bottom outer corner - nothing else repeats on every page */
+.t-a .fo{right:var(--M);bottom:calc(var(--B) - 6.2cqw)}
+
+/* ---------- covers ---------- */
+/* 1 (default): ferry photo, JEJU on the bottom edge */
+.t-a .c1 .t{left:-1.5cqw;bottom:-1.5cqw;font-size:46cqw;font-weight:800}
+.t-a .c1 .a{left:var(--M);top:var(--M)}
+.t-a .c1 .b{right:var(--M);top:var(--M)}
+/* 2: cloth-cover photobook - one small photo tipped in right of centre, the title at text size (refs10 06, 28) */
+.t-a .c2 .ph{left:var(--x3);right:var(--M);top:56cqw;aspect-ratio:3/2}
+.t-a .c2 .a{left:var(--M);top:var(--M)}
+.t-a .c2 .c{left:var(--x3);top:calc(56cqw + 36.8cqw + 2cqw)}
+/* 3: 제주 set huge on paper, a 3:2 sunset under it */
+.t-a .c3 .ph{left:0;right:0;top:66.667cqw;bottom:0}
+.t-a .c3 .t{left:calc(var(--M) - .03em);top:16cqw;font-size:43cqw}
+.t-a .c3 .a{left:var(--M);top:var(--M)}
+.t-a .c3 .b{right:var(--M);top:var(--M)}
+
+/* ---------- day openers: bleed, thin day number on the bottom edge, two quiet lines above it ---------- */
+.t-a .op .n{right:calc(var(--M) - .035em);bottom:-.6cqw;font-size:44cqw}
+.t-a .op .d{right:var(--M);bottom:37cqw;text-align:right}
+.t-a .op .fo{left:var(--M);right:auto}
+
+/* 2 pair: small 4:5 high on the left, big 4:5 low on the right - 1:1.8 size contrast, caption under the big one */
+.t-a .sz .p1{left:var(--M);top:var(--M);width:27cqw;aspect-ratio:4/5}
+.t-a .sz .p2{left:var(--x3);right:var(--M);top:40cqw;aspect-ratio:4/5}
+.t-a .sz .c{left:var(--x3);right:var(--M);top:calc(40cqw + 69cqw + 2cqw)}
+
+/* 3 road: the one bleed photo page that is not an opener; caption on the photo bottom */
+.t-a .rd .c{left:var(--M);right:var(--M);bottom:var(--M)}
+
+/* 5 video: frame at the margins, three stills of the same clip in a row below (a contact strip), length in the caption */
+.t-a .vd .v1{left:var(--M);right:var(--M);top:var(--M);aspect-ratio:3/2}
+.t-a .vd .s{top:calc(var(--M) + 56cqw + var(--G));width:calc((84cqw - 2*var(--G))/3);aspect-ratio:3/2}
+.t-a .vd .s1{left:var(--M)}.t-a .vd .s2{left:calc(var(--M) + (84cqw + var(--G))/3)}.t-a .vd .s3{right:var(--M)}
+.t-a .vd .s1 img{transform:scale(1.5);transform-origin:50% 62%}
+.t-a .vd .s2 img{transform:scale(2.1);transform-origin:50% 62%}
+.t-a .vd .s3 img{transform:scale(3.2);transform-origin:56% 66%}
+.t-a .vd .play span{transform:scale(.7)}
+.t-a .vd .c{left:var(--M);right:var(--M);top:calc(var(--M) + 56cqw + var(--G) + 18.4cqw + 2cqw)}
+
+/* 6 plate on an empty page: one 4:5 in columns 4-6, low; caption alone at the bottom-left corner (refs10 07, 15) */
+.t-a .dl .p1{left:var(--x4);right:var(--M);top:46cqw;aspect-ratio:4/5}
+.t-a .dl .c{left:var(--M);width:36cqw;bottom:var(--B)}
+
+/* 7 one wide plate + two small ones lower right; the caption block fills the empty lower left */
+.t-a .st .p1{left:var(--M);right:var(--M);top:var(--M);aspect-ratio:3/2}
+.t-a .st .p2,.t-a .st .p3{width:26.4cqw;aspect-ratio:3/2;top:78cqw}
+.t-a .st .p2{left:var(--x3)}.t-a .st .p3{right:var(--M)}
+.t-a .st .k1{left:var(--M);right:var(--M);top:calc(var(--M) + 56cqw + 2cqw)}
+.t-a .st .k2{left:var(--M);width:26cqw;top:78cqw}
+
+/* 9 one landscape at the margins + three 4:5 stills of the same afternoon */
+.t-a .pn .p0{left:var(--M);right:var(--M);top:var(--M);aspect-ratio:3/2}
+.t-a .pn .k1{left:var(--M);right:var(--M);top:calc(var(--M) + 56cqw + 2cqw)}
+.t-a .pn .s{top:75cqw;width:calc((84cqw - 2*var(--G))/3);aspect-ratio:4/5}
+.t-a .pn .sa{left:var(--M)}.t-a .pn .sb{left:calc(var(--M) + (84cqw + var(--G))/3)}.t-a .pn .sc{right:var(--M)}
+.t-a .pn .k2{left:var(--M);right:var(--M);top:calc(75cqw + 33.6cqw + 2cqw)}
+
+/* 10 end: plate list (thumbnail per page, page number, place) then a two-sentence colophon - photobook index, refs10 23 */
+.t-a .en .h{left:var(--M);top:var(--M)}
+.t-a .en .ix{left:var(--M);right:var(--M);top:19cqw;display:grid;grid-template-columns:repeat(5,1fr);column-gap:var(--G);row-gap:4cqw}
+.t-a .en .ix figure{margin:0;min-width:0}
+.t-a .en .ix .ph{position:relative;aspect-ratio:4/5}
+.t-a .en .ix figcaption{margin-top:1.2cqw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-a .en .cl{left:var(--M);width:60cqw;bottom:var(--B)}
+.t-a .en .cl .bd+.bd{margin-top:2.6cqw}
+</style>
+<section class="t-a" data-palettes='[{"--paper":"#F4F3EF","--ink":"#111111","--soft":"#55575a"},{"--paper":"#FFFFFF","--ink":"#111111","--soft":"#5a5c5f"},{"--paper":"#E6E7E6","--ink":"#16181A","--soft":"#4c4f52"}]'>
+<div class="head"><h2>여백의 책</h2><p class="idea">사진집처럼 — 빈 면이 사진만큼 일하고, 글자는 아주 크거나 아주 작다. 기록은 마지막 도판 목록에만.</p><button class="shuffle" type="button">색 조합 바꾸기</button></div>
+
+<h3 class="sub">표지 후보</h3>
+<div class="strip">
+  <div class="pg c1">
+    <div class="ph full sh-t"><img src="{{udo}}" alt="" style="object-position:66% 50%"></div>
+    <p class="tx cp w a">2026.06.12 — 06.14</p>
+    <p class="tx cp w b">2박 3일</p>
+    <h3 class="tx big w t">JEJU</h3>
+  </div>
+  <div class="pg c2">
+    <p class="tx bd a">제주<br><span class="sf">2026년 6월, 2박 3일</span></p>
+    <div class="ph"><img src="{{seongsan}}" alt="" style="object-position:50% 50%"></div>
+    <p class="tx cp sf c">성산, 해 질 무렵</p>
+  </div>
+  <div class="pg c3">
+    <p class="tx cp a">2026.06.12 — 06.14</p>
+    <p class="tx cp b">2박 3일</p>
+    <h3 class="tx ko t">제주</h3>
+    <div class="ph"><img src="{{road}}" alt="" style="object-position:50% 36%"></div>
+  </div>
+</div>
+<div class="under"><span>① 배 위 사진에 큰 JEJU(기본) ② 천 표지 사진집 — 작은 사진 한 장을 붙이고 제목은 본문 크기 ③ 종이 위 큰 「제주」 + 노을</span><span>3개</span></div>
+
+<h3 class="sub">책 본문</h3>
+<div class="strip">
+  <div class="pg op">
+    <div class="ph full sh-b"><img src="{{hyeopjae}}" alt="" style="object-position:42% 40%"></div>
+    <p class="tx d w"><span class="bd">첫째 날</span><br><span class="cp">6월 12일 금요일, 협재에서</span></p>
+    <p class="tx big w n">01</p>
+    <p class="tx cp w fo">1</p>
+  </div>
+  <div class="pg sz">
+    <div class="ph p1"><img src="{{d9}}" alt="" style="object-position:46% 50%"></div>
+    <div class="ph p2"><img src="{{hyeopjae_2}}" alt="" style="object-position:50% 80%"></div>
+    <p class="tx cp c">협재 해변, 오후 <span class="t">1:20</span> <span class="sf">— 물이 생각보다 차갑다</span></p>
+    <p class="tx cp fo">2</p>
+  </div>
+  <div class="pg rd">
+    <div class="ph full sh-b"><img src="{{road}}" alt="" style="object-position:50% 50%"></div>
+    <p class="tx cp w c">신창 풍차해안도로, 오후 <span class="t">5:40</span> <span class="sf">— 해 질 무렵, 바람 셈</span></p>
+    <p class="tx cp w fo">3</p>
+  </div>
+  <div class="pg op">
+    <div class="ph full sh-b"><img src="{{udo}}" alt="" style="object-position:0% 50%"></div>
+    <p class="tx d w"><span class="bd">둘째 날</span><br><span class="cp">6월 13일 토요일, 우도 가는 배</span></p>
+    <p class="tx big w n">02</p>
+    <p class="tx cp w fo">4</p>
+  </div>
+  <div class="pg vd">
+    <div class="ph v1"><img src="{{haenyeo}}" alt="" style="object-position:50% 30%"><div class="play"><span></span></div></div>
+    <div class="ph s s1"><img src="{{haenyeo}}" alt=""></div>
+    <div class="ph s s2"><img src="{{haenyeo}}" alt=""></div>
+    <div class="ph s s3"><img src="{{haenyeo}}" alt=""></div>
+    <p class="tx cp c">하도 해녀 탈의장 앞, 오후 <span class="t">2:10</span> <span class="sf">— 영상 3초</span></p>
+    <p class="tx cp fo">5</p>
+  </div>
+  <div class="pg dl">
+    <div class="ph p1"><img src="{{doldam}}" alt="" style="object-position:50% 50%"></div>
+    <p class="tx cp c">월정리 돌담길<br><span class="sf">오후 <span class="t">4:05</span>, 돌담과 밭과 낮은 집</span></p>
+    <p class="tx cp fo">6</p>
+  </div>
+  <div class="pg st">
+    <div class="ph p1"><img src="{{woljeongri_2}}" alt="" style="object-position:58% 60%"></div>
+    <p class="tx cp k1">월정리 해변, 오후 <span class="t">5:20</span> <span class="sf">— 바다 찍는 사람</span></p>
+    <div class="ph p2"><img src="{{d2}}" alt="" style="object-position:62% 55%"></div>
+    <div class="ph p3"><img src="{{seongsan}}" alt="" style="object-position:50% 50%"></div>
+    <p class="tx cp k2">해변 카페에서 한 잔,<br>저녁 <span class="t">7:05</span>에 성산일출봉 앞.</p>
+    <p class="tx cp fo">7</p>
+  </div>
+  <div class="pg op">
+    <div class="ph full sh-b"><img src="{{hallasan}}" alt="" style="object-position:50% 40%"></div>
+    <p class="tx d w"><span class="bd">셋째 날</span><br><span class="cp">6월 14일 일요일, 한라산 어리목</span></p>
+    <p class="tx big w n">03</p>
+    <p class="tx cp w fo">8</p>
+  </div>
+  <div class="pg pn">
+    <div class="ph p0"><img src="{{oreum}}" alt="" style="object-position:68% 50%"></div>
+    <p class="tx cp k1">원물오름, 오전 <span class="t">11:10</span> <span class="sf">— 억새가 키만 하다</span></p>
+    <div class="ph s sa"><img src="{{tangerine_2}}" alt="" style="object-position:50% 50%"></div>
+    <div class="ph s sb"><img src="{{d6}}" alt="" style="object-position:55% 50%"></div>
+    <div class="ph s sc"><img src="{{d1}}" alt="" style="object-position:52% 50%"></div>
+    <p class="tx cp k2">귤나무 카페 마당, 오후 <span class="t">1:30</span> <span class="sf">— 하나 까먹음</span></p>
+    <p class="tx cp fo">9</p>
+  </div>
+  <div class="pg en">
+    <p class="tx cp h">도판</p>
+    <div class="tx ix cp">
+      <figure><div class="ph"><img src="{{hyeopjae}}" alt=""></div><figcaption>1 협재</figcaption></figure>
+      <figure><div class="ph"><img src="{{hyeopjae_2}}" alt=""></div><figcaption>2 협재 해변</figcaption></figure>
+      <figure><div class="ph"><img src="{{road}}" alt=""></div><figcaption>3 신창</figcaption></figure>
+      <figure><div class="ph"><img src="{{udo}}" alt=""></div><figcaption>4 우도</figcaption></figure>
+      <figure><div class="ph"><img src="{{haenyeo}}" alt=""></div><figcaption>5 하도</figcaption></figure>
+      <figure><div class="ph"><img src="{{doldam}}" alt=""></div><figcaption>6 월정리</figcaption></figure>
+      <figure><div class="ph"><img src="{{woljeongri_2}}" alt=""></div><figcaption>7 월정리</figcaption></figure>
+      <figure><div class="ph"><img src="{{hallasan}}" alt=""></div><figcaption>8 어리목</figcaption></figure>
+      <figure><div class="ph"><img src="{{oreum}}" alt=""></div><figcaption>9 원물오름</figcaption></figure>
+      <figure><div class="ph"><img src="{{d8}}" alt=""></div><figcaption><span class="sf">마지막 장</span></figcaption></figure>
+    </div>
+    <div class="tx cl"><p class="bd">귤 까먹다 비행기 시간 됐다.</p><p class="cp sf">제주, 2026년 6월 12일부터 14일까지. 아홉 곳에서 찍은 사진 46장과 영상 3편 가운데 골랐다.</p></div>
+    <p class="tx cp fo">10</p>
+  </div>
+</div>
+<div class="under"><span>1일 여는 쪽 · 작은 4:5 + 큰 4:5 · 노을 블리드 · 2일 여는 쪽 · 영상(한 컷 + 같은 영상 세 컷) · 빈 면 위 돌담 한 장 · 넓은 1 + 작은 2 · 3일 여는 쪽 · 오름 + 세 컷 · 도판 목록과 판권 두 문장</span><span>10쪽</span></div>
+<div class="under"><span>기록은 마지막 쪽에만: 쪽마다 대표 사진 썸네일 + 쪽 번호 + 장소 이름(역지오코딩), 판권 문장은 날짜 범위·장소 수·사진 수·영상 수로 만든다. 지도·숫자 칸·눈금 없음.</span><span></span></div>
+
+<details class="notes"><summary>디자인 규칙</summary><ul>
+<li>색은 종이와 잉크 둘뿐. 색은 사진에서만 나온다. 사진은 원본 색 그대로.</li>
+<li>여백: 좌우·위 8%, 아래 11%(사진집은 아래가 위보다 넓다). 6단, 단 간격 2.4%. 블리드는 날 여는 쪽 3장 + 노을 1장뿐 — 나머지는 여백 안의 플레이트.</li>
+<li>쪽 종류는 번갈아: 블리드 / 빈 면 위 한 장 / 크기 대비 큰 둘(1:1.8 이상) / 작은 연속 컷. 한 쪽 사진 면적이 30~45%인 쪽이 한 권에 2장 이상.</li>
+<li>글자 세 단계: 큰 가는 숫자(날 여는 쪽 44%) / 본문 3.4% / 캡션 2.9%. 캡션은 사진 아래 한 줄 문장 "장소, 오후 1:20 — 메모", 메모만 회색.</li>
+<li>쪽마다 반복되는 건 쪽 번호 하나(바깥 아래 구석). 러닝헤드·날짜 라벨 없음.</li>
+<li>기록은 마지막 도판 목록에만: 쪽 번호 + 썸네일 + 장소, 그리고 판권 두 문장. 숫자 칸·그래프·눈금·지도 없음.</li>
+</ul></details>
+</section>

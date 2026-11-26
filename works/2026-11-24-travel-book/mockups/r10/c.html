@@ -1,0 +1,255 @@
+<!-- fonts: DM+Mono:wght@500 -->
+<!-- kfonts: Paperlogy:400;500;700 -->
+<style>
+/* Travel notebook r10 — guidebook place pages (Monocle Travel Guide / Wildsam grammar).
+   Page 330x440 units (--u). Margins 22, 3 columns x 88 (x 22 / 121 / 220), gutter 11, column rules at 115.5 / 214.5.
+   Type (units): day title 26 · place name 15/700 · tagline 11.5 acc · body 11 · spec 10 (label acc) · caption 10 · running head / folio 9.5. */
+.t-c{--paper:#FBF6EA;--ink:#1A1A18;--soft:#6B665C;--cap:#4A463F;--line:#D9D2C2;--acc:#A93A28;--on:#ffffff;--land:#EFE7D3;
+  --panel:color-mix(in srgb,var(--ink) 6%,var(--paper));--land-d:color-mix(in srgb,var(--acc) 70%,#000);
+  --f-ko:"Paperlogy",sans-serif;--f-mono:"DM Mono","Paperlogy",monospace}
+.t-c .pg{container-type:inline-size;background:var(--paper)}
+.t-c .in{--u:calc(100cqw/330);position:absolute;inset:0;color:var(--ink);font-family:var(--f-ko);background:var(--paper);overflow:hidden;word-break:keep-all}
+.t-c .in *{margin:0;padding:0;font-style:normal}
+.t-c .p{box-sizing:border-box;position:absolute;left:calc(var(--x,0)*var(--u));top:calc(var(--y,0)*var(--u));width:calc(var(--w)*var(--u))}
+.t-c .p[style*="--h"]{height:calc(var(--h)*var(--u))}
+.t-c .ph{overflow:hidden;background:var(--line)}
+/* covers */
+.t-c .xl{font:700 calc(72*var(--u))/1 var(--f-ko);letter-spacing:-.05em;margin-left:-.04em}
+.t-c .sea{position:absolute;inset:0;background:var(--acc)}
+.t-c .on{color:var(--on)}
+.t-c .cv{font:500 calc(11.5*var(--u))/1.5 var(--f-ko);letter-spacing:-.01em}
+.t-c .series{font:500 calc(9.5*var(--u))/1.3 var(--f-ko);letter-spacing:.02em}
+.t-c .c3{background:var(--paper);padding:calc(14*var(--u)) calc(22*var(--u)) 0;z-index:2}
+.t-c .c3 .tl{font:700 calc(44*var(--u))/1 var(--f-ko);letter-spacing:-.05em}
+.t-c .c3 .cv{margin-top:calc(6*var(--u));color:var(--cap)}
+.t-c .clist{list-style:none;font:500 calc(11*var(--u))/1 var(--f-ko);letter-spacing:-.02em}
+.t-c .clist li{display:flex;align-items:center;gap:calc(7*var(--u));height:calc(22*var(--u))}
+.t-c .accol{background:color-mix(in srgb,var(--acc) 12%,var(--paper))}
+/* map slot (drawn by the map module; temporary island inside) */
+.t-c .map-slot{position:absolute;overflow:hidden}
+.t-c .map-slot svg{position:absolute;inset:0;width:100%;height:100%}
+.t-c .map-slot text{font:700 9.5px var(--f-ko);fill:var(--on);text-anchor:middle;dominant-baseline:central}
+/* running head: city / section, day digit in a circle (Monocle section tab) */
+.t-c .rh{position:absolute;right:calc(22*var(--u));top:calc(15*var(--u));display:flex;align-items:center;gap:calc(6*var(--u));text-align:right;font:500 calc(9.5*var(--u))/1.25 var(--f-ko);color:var(--soft);z-index:3}
+.t-c .rh b{display:block;font-weight:500;color:var(--acc)}
+.t-c .rh i{display:grid;place-items:center;width:calc(17*var(--u));height:calc(17*var(--u));border-radius:50%;background:var(--acc);color:var(--on);font:700 calc(9.5*var(--u))/1 var(--f-ko)}
+.t-c .rh.w,.t-c .rh.w b{color:var(--on)}
+.t-c .rh.w i{background:var(--on);color:var(--acc)}
+.t-c .fo{position:absolute;right:calc(22*var(--u));bottom:calc(14*var(--u));font:500 calc(9.5*var(--u))/1 var(--f-ko);color:var(--soft);z-index:3}
+.t-c .fo.l{right:auto;left:calc(22*var(--u))}
+.t-c .fo.w{color:var(--on)}
+/* place entry */
+.t-c .no{display:grid;place-items:center;width:calc(16*var(--u));height:calc(16*var(--u));border-radius:50%;background:var(--acc);color:var(--on);font:700 calc(9.5*var(--u))/1 var(--f-ko)}
+.t-c .en .no{margin-bottom:calc(6*var(--u))}
+.t-c .en h4{font:700 calc(15*var(--u))/1.25 var(--f-ko);letter-spacing:-.035em}
+.t-c .en .tg{margin-top:calc(3*var(--u));font:500 calc(11.5*var(--u))/1.45 var(--f-ko);letter-spacing:-.02em;color:var(--acc);text-wrap:balance}
+.t-c .sp{font:400 calc(10*var(--u))/1.55 var(--f-ko);letter-spacing:-.01em}
+.t-c .en .sp{margin-top:calc(9*var(--u))}
+.t-c .sp dt{display:inline;font-weight:500;color:var(--acc);margin-right:calc(5*var(--u))}
+.t-c .sp dd{display:inline;white-space:nowrap}
+.t-c .sp div{break-inside:avoid}
+.t-c .tx{font:400 calc(11*var(--u))/1.62 var(--f-ko);letter-spacing:-.015em;text-wrap:pretty}
+.t-c .en .tx,.t-c .sp+.tx{margin-top:calc(9*var(--u))}
+.t-c .cap{font:400 calc(10*var(--u))/1.5 var(--f-ko);letter-spacing:-.01em;color:var(--cap)}
+.t-c .vr{position:absolute;width:0;border-left:.75px solid var(--line)}
+.t-c .hr{position:absolute;height:0;border-top:.75px solid var(--line)}
+.t-c .vid{position:absolute;left:calc(8*var(--u));bottom:calc(8*var(--u));width:calc(26*var(--u));height:calc(26*var(--u));border-radius:50%;background:rgba(255,255,255,.92);display:grid;place-items:center}
+.t-c .vid::before{content:"";border-left:calc(8*var(--u)) solid var(--ink);border-top:calc(5*var(--u)) solid transparent;border-bottom:calc(5*var(--u)) solid transparent;margin-left:calc(2*var(--u))}
+/* day openers (Monocle section column) */
+.t-c .col{background:var(--acc);color:var(--on)}
+.t-c .dayt{font:700 calc(26*var(--u))/1.1 var(--f-ko);letter-spacing:-.045em}
+.t-c .dated{font:500 calc(11*var(--u))/1.4 var(--f-ko);opacity:.9}
+.t-c .dayl{font:400 calc(13*var(--u))/1.55 var(--f-ko);letter-spacing:-.02em}
+.t-c .ttl{font:700 calc(26*var(--u))/1.12 var(--f-ko);letter-spacing:-.045em}
+/* contents by day */
+.t-c .toc h5,.t-c .ab h5{font:500 calc(10*var(--u))/1.3 var(--f-ko);color:var(--acc);padding-bottom:calc(5*var(--u));border-bottom:.75px solid var(--line);margin-bottom:calc(4*var(--u))}
+.t-c .toc ol{list-style:none}
+.t-c .toc li{display:flex;align-items:center;gap:calc(6*var(--u));height:calc(21*var(--u));font:500 calc(11*var(--u))/1 var(--f-ko);letter-spacing:-.02em}
+.t-c .toc li .no{width:calc(14*var(--u));height:calc(14*var(--u));font-size:calc(9.5*var(--u))}
+.t-c .toc li span{margin-left:auto;color:var(--soft);font-size:calc(9.5*var(--u))}
+/* address book panel */
+.t-c .panel{background:var(--panel)}
+.t-c .ab{padding:calc(36*var(--u)) calc(14*var(--u)) 0 calc(14*var(--u))}
+.t-c .ab section+section{margin-top:calc(8*var(--u))}
+.t-c .ab ol{list-style:none}
+.t-c .ab li{display:grid;grid-template-columns:calc(16*var(--u)) 1fr;column-gap:calc(6*var(--u));padding:calc(2*var(--u)) 0}
+.t-c .ab li b{font:700 calc(10.5*var(--u))/1.45 var(--f-ko);color:var(--ink)}
+.t-c .ab li strong{font:700 calc(11*var(--u))/1.45 var(--f-ko);color:var(--acc);letter-spacing:-.02em}
+.t-c .ab li span{grid-column:2;font:400 calc(10*var(--u))/1.35 var(--f-ko);color:var(--cap)}
+/* colophon */
+.t-c .colo{font:400 calc(10*var(--u))/1.75 var(--f-ko);color:var(--cap);border-top:.75px solid var(--ink);padding-top:calc(8*var(--u))}
+.t-c .colo b{display:block;font:700 calc(13*var(--u))/1.4 var(--f-ko);color:var(--ink);margin-bottom:calc(4*var(--u))}
+</style>
+<section class="t-c" data-palettes='[{"--acc":"#A93A28"},{"--acc":"#26406F"},{"--acc":"#245C3F"}]'>
+<div class="head"><h2>여행 수첩</h2><p class="idea">가이드북처럼 짠 내 여행 — 장소마다 번호 동그라미·한 줄 부제·머문 시간, 날마다 색 기둥, 끝에 다닌 곳 주소록과 판권면</p><button class="shuffle" type="button">색 조합 바꾸기</button></div>
+<h3 class="sub"><span class="k">표지 후보</span></h3>
+<div class="strip">
+  <div class="pg"><div class="in">
+    <div class="sea"></div>
+    <h1 class="p xl on" style="--x:22;--y:24;--w:286">제주</h1>
+    <p class="p cv on" style="--x:24;--y:104;--w:200">2026년 6월 12일 — 14일</p>
+    <div class="map-slot" data-style="cover-silhouette" style="left:0;top:calc(140*var(--u));width:100%;height:calc(224*var(--u))"><svg viewBox="0 0 330 224" aria-hidden="true"><path d="M6.5 192.2Q3.1 183.7 4.5 172.8Q6 161.9 12.1 157.1Q18.1 152.2 26.2 144.9Q34.3 137.6 39.4 132.8Q44.5 127.9 49.5 120.6Q54.6 113.3 62.7 108.4Q70.8 103.6 85 98.8Q99.2 93.9 111.3 89Q123.5 84.1 133.7 80.9Q143.8 77.8 159 76.1Q174.2 74.4 184.3 69.6Q194.5 64.7 201.6 64.7Q208.6 64.7 224.8 61Q241.1 57.4 250.2 57.9Q259.3 58.4 272.5 66.4Q285.7 74.4 292.8 76.8Q299.8 79.3 303.9 84.2Q308 89 310 95Q312 101.1 316.1 103Q320.1 105 317.1 108Q314 110.9 313 115.8Q312 120.6 314.1 122.3Q316.1 124 312.1 126Q308 127.9 300.9 135.2Q293.8 142.4 284.6 157Q275.5 171.6 252.2 183.8Q228.9 195.9 216.8 197.1Q204.6 198.3 185.3 205.6Q166.1 212.9 148.8 216.6Q131.6 220.2 118.4 216.6Q105.3 212.9 88 214.1Q70.8 215.3 62.7 223.8Q54.6 232.3 46.5 228.7Q38.4 225 30.3 218.9Q22.2 212.9 16.1 206.8Q10 200.7 6.5 192.2Z" fill="var(--land-d)"/><path d="M320.1 83Q320.1 76.9 323.1 75.7Q326.2 74.4 328.2 79.2Q330.2 84.1 328.2 87.8Q326.2 91.4 323.1 90.2Q320.1 89 320.1 83Z" fill="var(--land-d)"/><path d="M5.5 164.1Q150.2 66.3 324.1 83.1" fill="none" stroke="var(--on)" stroke-width="1" stroke-dasharray="1.5 3" stroke-linecap="round"/><path d="M318.1 106.3Q232.2 155.7 134.6 139" fill="none" stroke="var(--on)" stroke-width="1" stroke-dasharray="1.5 3" stroke-linecap="round"/><path d="M34.6 139.6Q20.8 152.7 5.5 164.1" fill="none" stroke="var(--on)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M324.1 83.1Q310.8 80 297.4 76.9Q278.5 68.6 261.2 57.5Q296.5 73.9 318.1 106.3" fill="none" stroke="var(--on)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M134.6 139Q109.1 157.8 78.2 165.1Q87.4 135 107.5 110.8" fill="none" stroke="var(--on)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+    <p class="p cv on" style="--x:24;--y:392;--w:200">아홉 곳을 다닌 사흘</p>
+    <p class="p series on" style="--x:208;--y:396;--w:100;text-align:right">여행 수첩</p>
+  </div></div>
+  <div class="pg"><div class="in">
+    <h1 class="p xl" style="--x:22;--y:24;--w:200">제주</h1>
+    <p class="p cv" style="--x:24;--y:104;--w:200;color:var(--cap)">2026년 6월 12일 — 14일</p>
+    <div class="p accol" style="--x:0;--y:140;--w:121;--h:300"></div>
+    <ol class="p clist" style="--x:22;--y:156;--w:92">
+      <li><i class="no">1</i>협재 해변</li><li><i class="no">2</i>신창</li><li><i class="no">3</i>우도</li><li><i class="no">4</i>하도</li><li><i class="no">5</i>월정리</li><li><i class="no">6</i>성산일출봉</li><li><i class="no">7</i>어리목</li><li><i class="no">8</i>원물오름</li><li><i class="no">9</i>귤나무 카페</li></ol>
+    <div class="p ph" style="--x:121;--y:140;--w:209;--h:300"><img src="{{udo}}" alt="" style="object-position:30% 50%"></div>
+  </div></div>
+  <div class="pg"><div class="in">
+    <div class="p ph" style="--x:0;--y:0;--w:330;--h:440"><img src="{{doldam}}" alt="" style="object-position:50% 40%"></div>
+    <div class="p c3" style="--x:0;--y:300;--w:330;--h:140"><h1 class="tl">제주</h1><p class="cv">2026년 6월, 아홉 곳을 다닌 사흘</p><p class="series" style="position:absolute;right:calc(22*var(--u));top:calc(22*var(--u));color:var(--acc)">여행 수첩</p></div>
+  </div></div>
+</div>
+<div class="under"><span>① 색 표지 + 지도 자리(map-slot cover-silhouette, 지금은 제주 임시) — 숫자 대신 "아홉 곳을 다닌 사흘" ② 장소 목록 + 사진 ③ 풀블리드 + 종이 띠 라벨</span><span>3개</span></div>
+<h3 class="sub"><span class="k">책 본문</span></h3>
+<div class="strip">
+  <!-- 1 contents -->
+  <div class="pg"><div class="in">
+    <div class="rh"><span>제주<b>차례</b></span></div>
+    <h2 class="p ttl" style="--x:22;--y:40;--w:286">제주, 아홉 곳</h2>
+    <p class="p cap" style="--x:22;--y:74;--w:286">2026년 6월 12일 금요일부터 14일 일요일까지</p>
+    <div class="map-slot" data-style="guide-index" style="left:0;top:calc(96*var(--u));width:100%;height:calc(168*var(--u))"><svg viewBox="0 0 330 168" aria-hidden="true"><path d="M31.9 151.3Q29.1 144.2 30.2 135.1Q31.4 125.9 36.5 121.8Q41.6 117.7 48.5 111.6Q55.3 105.5 59.5 101.4Q63.8 97.3 68 91.2Q72.3 85.1 79.1 81Q85.9 76.9 97.8 72.8Q109.7 68.8 119.9 64.7Q130.2 60.6 138.7 58Q147.2 55.3 159.9 53.8Q172.7 52.4 181.2 48.3Q189.7 44.3 195.7 44.3Q201.7 44.3 215.3 41.2Q228.9 38.2 236.6 38.6Q244.2 39 255.2 45.7Q266.3 52.4 272.3 54.5Q278.3 56.5 281.7 60.6Q285.1 64.7 286.8 69.8Q288.5 74.9 291.9 76.5Q295.3 78.1 292.8 80.5Q290.2 83 289.4 87.1Q288.5 91.2 290.2 92.7Q291.9 94.1 288.5 95.7Q285.1 97.3 279.1 103.4Q273.1 109.6 265.5 121.8Q257.8 134 238.2 144.2Q218.7 154.4 208.5 155.4Q198.3 156.5 182.1 162.6Q165.9 168.7 151.4 171.8Q137 174.8 125.9 171.8Q114.8 168.7 100.3 169.8Q85.9 170.8 79.1 177.9Q72.3 185 65.5 181.9Q58.7 178.9 51.9 173.8Q45.1 168.7 40 163.6Q34.8 158.5 31.9 151.3Z" fill="var(--land)"/><path d="M295.3 59.6Q295.3 54.5 297.9 53.5Q300.4 52.4 302.1 56.5Q303.8 60.6 302.1 63.7Q300.4 66.7 297.9 65.7Q295.3 64.7 295.3 59.6Z" fill="var(--land)"/><path d="M31 127.7Q152.6 45.6 298.6 59.8" fill="none" stroke="var(--ink)" stroke-width=".8" stroke-dasharray="1.5 2.5" stroke-linecap="round"/><path d="M293.6 79.2Q221.5 120.7 139.5 106.7" fill="none" stroke="var(--ink)" stroke-width=".8" stroke-dasharray="1.5 2.5" stroke-linecap="round"/><path d="M55.5 107.2Q43.5 117.7 31 127.7" fill="none" stroke="var(--ink)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M298.6 59.8Q287.4 57.1 276.2 54.5Q260.7 46.9 245.8 38.2Q274 53.7 293.6 79.2" fill="none" stroke="var(--ink)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M139.5 106.7Q117.4 121.1 92.1 128.6Q101.1 104 116.7 83" fill="none" stroke="var(--ink)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="55.5" cy="107.2" r="7.5" fill="var(--acc)"/><text x="55.5" y="107.7">1</text><circle cx="31.0" cy="127.7" r="7.5" fill="var(--acc)"/><text x="31.0" y="128.2">2</text><circle cx="298.6" cy="59.8" r="7.5" fill="var(--acc)"/><text x="298.6" y="60.3">3</text><circle cx="276.2" cy="54.5" r="7.5" fill="var(--acc)"/><text x="276.2" y="55.0">4</text><circle cx="245.8" cy="38.2" r="7.5" fill="var(--acc)"/><text x="245.8" y="38.8">5</text><circle cx="293.6" cy="79.2" r="7.5" fill="var(--acc)"/><text x="293.6" y="79.8">6</text><circle cx="139.5" cy="106.7" r="7.5" fill="var(--acc)"/><text x="139.5" y="107.2">7</text><circle cx="92.1" cy="128.6" r="7.5" fill="var(--acc)"/><text x="92.1" y="129.1">8</text><circle cx="116.7" cy="83.0" r="7.5" fill="var(--acc)"/><text x="116.7" y="83.5">9</text></svg></div>
+    <div class="p toc" style="--x:22;--y:282;--w:88"><h5>첫째 날 · 6.12 금</h5><ol><li><i class="no">1</i>협재 해변<span>2</span></li><li><i class="no">2</i>신창<span>3</span></li></ol></div>
+    <div class="p toc" style="--x:121;--y:282;--w:88"><h5>둘째 날 · 6.13 토</h5><ol><li><i class="no">3</i>우도<span>4</span></li><li><i class="no">4</i>하도<span>5</span></li><li><i class="no">5</i>월정리<span>5</span></li><li><i class="no">6</i>성산일출봉<span>6</span></li></ol></div>
+    <div class="p toc" style="--x:220;--y:282;--w:88"><h5>셋째 날 · 6.14 일</h5><ol><li><i class="no">7</i>어리목<span>7</span></li><li><i class="no">8</i>원물오름<span>8</span></li><li><i class="no">9</i>귤나무 카페<span>9</span></li></ol></div>
+    <div class="fo">1</div>
+  </div></div>
+  <!-- 2 day 1 + place 1 -->
+  <div class="pg"><div class="in">
+    <div class="p col" style="--x:0;--y:0;--w:110;--h:440"></div>
+    <p class="p dayt on" style="--x:16;--y:40;--w:86">첫째 날</p>
+    <p class="p dated on" style="--x:16;--y:74;--w:86">6월 12일 금요일</p>
+    <p class="p dayl on" style="--x:16;--y:300;--w:84">바다 색이 생각보다 진했던 첫날.</p>
+    <div class="rh"><span>제주<b>첫째 날</b></span><i>1</i></div>
+    <div class="p ph" style="--x:121;--y:40;--w:88;--h:150"><img src="{{hyeopjae_2}}" alt="" style="object-position:50% 60%"></div>
+    <div class="p en" style="--x:220;--y:40;--w:88"><i class="no">1</i><h4>협재 해변</h4><p class="tg">비양도가 흐렸다가 맑아짐</p>
+      <dl class="sp"><div><dt>시간</dt><dd>13:20–14:05</dd></div><div><dt>동네</dt><dd>한림읍</dd></div><div><dt>사진</dt><dd>7장</dd></div></dl></div>
+    <div class="p ph" style="--x:121;--y:202;--w:187;--h:118"><img src="{{hyeopjae}}" alt="" style="object-position:50% 50%"></div>
+    <p class="p cap" style="--x:121;--y:327;--w:187">물은 생각보다 차가웠다. 발만 담그고 한참 앉아 있었다.</p>
+    <div class="fo">2</div>
+  </div></div>
+  <!-- 3 place 2 (video) -->
+  <div class="pg"><div class="in">
+    <div class="rh"><span>제주<b>첫째 날</b></span><i>1</i></div>
+    <div class="p ph" style="--x:22;--y:40;--w:286;--h:236"><img src="{{road}}" alt="" style="object-position:50% 62%"><span class="vid"></span></div>
+    <div class="p en" style="--x:22;--y:290;--w:88"><i class="no">2</i><h4>신창 풍차해안도로</h4><p class="tg">해 질 무렵, 바람 셈</p></div>
+    <i class="vr" style="left:calc(115.5*var(--u));top:calc(290*var(--u));height:calc(110*var(--u))"></i>
+    <div class="p" style="--x:121;--y:290;--w:187"><dl class="sp"><div><dt>시간</dt><dd>17:40–18:10</dd></div><div><dt>동네</dt><dd>한경면</dd></div><div><dt>사진</dt><dd>5장, 영상 1편(0:03)</dd></div></dl>
+      <p class="tx">풍차 소리가 생각보다 컸다. 해는 일곱 시 반쯤 바다로 들어갔다.</p></div>
+    <div class="fo">3</div>
+  </div></div>
+  <!-- 4 day 2 + place 3 -->
+  <div class="pg"><div class="in">
+    <div class="p col" style="--x:0;--y:0;--w:330;--h:128"></div>
+    <p class="p dayt on" style="--x:22;--y:36;--w:88">둘째 날</p>
+    <p class="p dated on" style="--x:22;--y:70;--w:88">6월 13일 토요일</p>
+    <p class="p dayl on" style="--x:121;--y:56;--w:170">배를 두 번 타고, 섬의 동쪽 끝까지 간 날.</p>
+    <div class="rh w"><span>제주<b>둘째 날</b></span><i>2</i></div>
+    <div class="p ph" style="--x:22;--y:142;--w:187;--h:125"><img src="{{udo}}" alt="" style="object-position:30% 55%"></div>
+    <div class="p en" style="--x:220;--y:142;--w:88"><i class="no">3</i><h4>우도</h4><p class="tg">모자가 두 번 날아감</p>
+      <dl class="sp"><div><dt>시간</dt><dd>09:42–11:30</dd></div><div><dt>동네</dt><dd>우도면</dd></div><div><dt>사진</dt><dd>8장</dd></div></dl></div>
+    <div class="p ph" style="--x:22;--y:279;--w:88;--h:118"><img src="{{d3}}" alt="" style="object-position:50% 40%"></div>
+    <p class="p cap" style="--x:121;--y:279;--w:88">도항선 15분. 갈매기가 배를 끝까지 따라왔다.</p>
+    <div class="p ph" style="--x:220;--y:300;--w:88;--h:97"><img src="{{udo_2}}" alt="" style="object-position:60% 60%"></div>
+    <div class="fo">4</div>
+  </div></div>
+  <!-- 5 places 4 + 5 -->
+  <div class="pg"><div class="in">
+    <div class="rh"><span>제주<b>둘째 날</b></span><i>2</i></div>
+    <div class="p ph" style="--x:22;--y:40;--w:187;--h:248"><img src="{{haenyeo}}" alt="" style="object-position:50% 70%"><span class="vid"></span></div>
+    <div class="p en" style="--x:220;--y:40;--w:88"><i class="no">4</i><h4>하도 해녀 탈의장</h4><p class="tg">그물 정리하던 두 분</p>
+      <dl class="sp"><div><dt>시간</dt><dd>14:10–14:35</dd></div><div><dt>동네</dt><dd>구좌읍</dd></div><div><dt>사진</dt><dd>3장, 영상 1편</dd></div></dl></div>
+    <i class="hr" style="left:calc(22*var(--u));top:calc(302*var(--u));width:calc(286*var(--u))"></i>
+    <div class="p en" style="--x:22;--y:314;--w:88"><i class="no">5</i><h4>월정리</h4><p class="tg">분홍 벤치, 커피 두 잔</p></div>
+    <div class="p ph" style="--x:121;--y:314;--w:88;--h:92"><img src="{{woljeongri}}" alt="" style="object-position:50% 45%"></div>
+    <div class="p" style="--x:220;--y:314;--w:88"><dl class="sp"><div><dt>시간</dt><dd>16:05–17:20</dd></div><div><dt>동네</dt><dd>구좌읍</dd></div><div><dt>사진</dt><dd>6장</dd></div></dl></div>
+    <div class="fo">5</div>
+  </div></div>
+  <!-- 6 place 6 -->
+  <div class="pg"><div class="in">
+    <div class="p ph" style="--x:0;--y:0;--w:330;--h:262"><img src="{{seongsan}}" alt="" style="object-position:55% 60%"></div>
+    <div class="p en" style="--x:22;--y:278;--w:88"><i class="no">6</i><h4>성산일출봉</h4><p class="tg">해가 넘어간다</p></div>
+    <i class="vr" style="left:calc(115.5*var(--u));top:calc(278*var(--u));height:calc(120*var(--u))"></i>
+    <div class="p" style="--x:121;--y:278;--w:88"><dl class="sp"><div><dt>시간</dt><dd>19:05–19:30</dd></div><div><dt>동네</dt><dd>성산읍</dd></div><div><dt>사진</dt><dd>4장</dd></div></dl></div>
+    <div class="p ph" style="--x:220;--y:278;--w:88;--h:120"><img src="{{seongsan_2}}" alt="" style="object-position:50% 70%"></div>
+    <p class="p cap" style="--x:121;--y:340;--w:88">둘째 날의 마지막 사진.</p>
+    <div class="fo">6</div>
+  </div></div>
+  <!-- 7 day 3 + place 7 -->
+  <div class="pg"><div class="in">
+    <div class="p col" style="--x:220;--y:0;--w:110;--h:440"></div>
+    <p class="p dayt on" style="--x:232;--y:40;--w:86">셋째 날</p>
+    <p class="p dated on" style="--x:232;--y:74;--w:86">6월 14일 일요일</p>
+    <p class="p dayl on" style="--x:232;--y:300;--w:84">안개 속에서 시작해 귤밭에서 끝난 날.</p>
+    <div class="rh w"><span>제주<b>셋째 날</b></span><i>3</i></div>
+    <div class="p ph" style="--x:22;--y:40;--w:187;--h:250"><img src="{{hallasan}}" alt="" style="object-position:50% 40%"></div>
+    <div class="p en" style="--x:22;--y:304;--w:88"><i class="no">7</i><h4>한라산 어리목</h4><p class="tg">계단만 보고 걸음</p></div>
+    <div class="p" style="--x:121;--y:304;--w:88"><dl class="sp"><div><dt>시간</dt><dd>08:30–09:40</dd></div><div><dt>동네</dt><dd>제주시</dd></div><div><dt>사진</dt><dd>5장, 영상 1편</dd></div></dl></div>
+    <div class="fo w">7</div>
+  </div></div>
+  <!-- 8 place 8 -->
+  <div class="pg"><div class="in">
+    <div class="rh"><span>제주<b>셋째 날</b></span><i>3</i></div>
+    <div class="p ph" style="--x:22;--y:40;--w:286;--h:172"><img src="{{oreum_2}}" alt="" style="object-position:50% 50%"></div>
+    <div class="p en" style="--x:22;--y:226;--w:88"><i class="no">8</i><h4>원물오름</h4><p class="tg">억새가 키만 하다</p>
+      <dl class="sp"><div><dt>시간</dt><dd>11:10–11:45</dd></div><div><dt>동네</dt><dd>안덕면</dd></div><div><dt>사진</dt><dd>4장</dd></div></dl></div>
+    <div class="p ph" style="--x:121;--y:226;--w:187;--h:106"><img src="{{oreum}}" alt="" style="object-position:62% 40%"></div>
+    <p class="p cap" style="--x:121;--y:340;--w:187">꼭대기에서 보니 멀리 한라산이 걸려 있었다.</p>
+    <div class="fo">8</div>
+  </div></div>
+  <!-- 9 place 9 -->
+  <div class="pg"><div class="in">
+    <div class="rh"><span>제주<b>셋째 날</b></span><i>3</i></div>
+    <div class="p ph" style="--x:22;--y:40;--w:187;--h:250"><img src="{{tangerine_2}}" alt="" style="object-position:50% 40%"></div>
+    <div class="p en" style="--x:220;--y:40;--w:88"><i class="no">9</i><h4>귤나무 카페 마당</h4><p class="tg">하나 까먹음</p>
+      <dl class="sp"><div><dt>시간</dt><dd>13:30–13:48</dd></div><div><dt>동네</dt><dd>애월읍</dd></div><div><dt>사진</dt><dd>4장</dd></div></dl></div>
+    <div class="p ph" style="--x:220;--y:232;--w:88;--h:58"><img src="{{d6}}" alt="" style="object-position:50% 50%"></div>
+    <p class="p cap" style="--x:22;--y:300;--w:187">비행기 시간까지 귤 구경. 마지막 사진은 손 위의 귤 하나.</p>
+    <div class="fo">9</div>
+  </div></div>
+  <!-- 10 address book -->
+  <div class="pg"><div class="in">
+    <div class="rh" style="right:auto;left:calc(22*var(--u));text-align:left"><span>제주<b>다닌 곳</b></span></div>
+    <h2 class="p ttl" style="--x:22;--y:40;--w:92">다닌 곳</h2>
+    <p class="p cap" style="--x:22;--y:76;--w:88">사진이 찍힌 차례대로. 시간은 그곳에서 찍은 첫 사진과 마지막 사진.</p>
+    <div class="p panel" style="--x:121;--y:0;--w:209;--h:440"><div class="ab">
+      <section><h5>첫째 날 · 6월 12일 금요일</h5><ol>
+        <li><b>1</b><strong>협재 해변</strong><span>한림읍 · 13:20–14:05 · 2쪽</span></li>
+        <li><b>2</b><strong>신창 풍차해안도로</strong><span>한경면 · 17:40–18:10 · 3쪽</span></li></ol></section>
+      <section><h5>둘째 날 · 6월 13일 토요일</h5><ol>
+        <li><b>3</b><strong>우도</strong><span>우도면 · 09:42–11:30 · 4쪽</span></li>
+        <li><b>4</b><strong>하도 해녀 탈의장</strong><span>구좌읍 · 14:10–14:35 · 5쪽</span></li>
+        <li><b>5</b><strong>월정리</strong><span>구좌읍 · 16:05–17:20 · 5쪽</span></li>
+        <li><b>6</b><strong>성산일출봉</strong><span>성산읍 · 19:05–19:30 · 6쪽</span></li></ol></section>
+      <section><h5>셋째 날 · 6월 14일 일요일</h5><ol>
+        <li><b>7</b><strong>한라산 어리목</strong><span>제주시 · 08:30–09:40 · 7쪽</span></li>
+        <li><b>8</b><strong>원물오름</strong><span>안덕면 · 11:10–11:45 · 8쪽</span></li>
+        <li><b>9</b><strong>귤나무 카페 마당</strong><span>애월읍 · 13:30–13:48 · 9쪽</span></li></ol></section>
+    </div></div>
+    <div class="fo l">10</div>
+  </div></div>
+  <!-- 11 colophon -->
+  <div class="pg"><div class="in">
+    <div class="p ph" style="--x:22;--y:40;--w:88;--h:132"><img src="{{d8}}" alt="" style="object-position:50% 50%"></div>
+    <p class="p cap" style="--x:121;--y:40;--w:88">돌아오는 길.</p>
+    <div class="p colo" style="--x:22;--y:290;--w:187"><b>제주</b>2026년 6월 12일 — 14일, 2박 3일<br>아홉 곳, 사진 46장과 영상 3편<br>사진 위치를 이은 거리 214km<br>첫 사진 6월 12일 13:20, 협재 해변<br>마지막 사진 6월 14일 13:48, 귤나무 카페</div>
+    <p class="p cap" style="--x:220;--y:398;--w:88;text-align:right">여행 한 권</p>
+    <div class="fo l">11</div>
+  </div></div>
+</div>
+<div class="under"><span>차례(지도 자리 guide-index + 날별 목록·쪽) → 첫째 날 색 기둥+1 → 2(영상) → 둘째 날 색 띠+3 → 4·5 한 쪽 → 6 → 셋째 날 오른쪽 기둥+7 → 8 → 9 → 다닌 곳 주소록 → 판권면. 기록은 장소마다 "머문 때(그곳 첫~마지막 사진)·동네(역지오코딩)·사진 n장" 세 줄뿐, 거리는 판권면 한 줄.</span><span>11쪽</span></div>
+<details class="notes"><summary>디자인 규칙</summary><ul>
+<li>근거: Monocle Travel Guide 장소 쪽(번호 동그라미 → 장소명 → 색 부제 한 줄 → 라벨 붙은 정보 줄 → 본문), 주소록 회색 기둥, 섹션 첫 쪽 색 기둥. 앱 대시보드식 그래프·숫자 칸·눈금은 모두 뺌.</li>
+<li>그리드 330×440: 바깥 여백 22, 3단 88 + 간격 11(단 x 22/121/220), 단 사이 괘선 0.75. 사진은 단에 맞춰 1단·2단·3단·블리드 네 크기만, 같은 쪽에 두 크기 이상.</li>
+<li>글자(단위): 날 제목 26/700 · 장소명 15/700 · 부제 11.5 acc · 본문 11/1.62 · 정보 줄 10(라벨 acc) · 사진 설명 10(먹 75%) · 머리말·쪽번호 9.5. 가장 작은 글자 9.5 = 360px 폭에서 10.4px.</li>
+<li>머리말(오른쪽 위): 제주 / 날 이름(acc) + 날 숫자 동그라미. 쪽번호는 바깥 아래 모서리.</li>
+<li>날 첫 쪽마다 acc 면 하나 — 첫째 날 왼쪽 기둥, 둘째 날 위 띠, 셋째 날 오른쪽 기둥(같은 모양 반복 금지). 그 안에 날 제목·날짜·AI 날 한 줄.</li>
+<li>장소가 짧은 날은 두 장소를 한 쪽에(괘선으로 나눔). 영상은 사진 왼쪽 아래 작은 ▶ 동그라미, PDF 에선 뺌.</li>
+<li>지도는 map-slot 두 곳(표지 ① cover-silhouette, 차례 guide-index)만. 지도 모듈이 그림, 지금은 제주 임시.</li>
+</ul></details>
+</section>
