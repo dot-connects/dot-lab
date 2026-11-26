@@ -150,7 +150,7 @@ class Photo extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ClipRRect(
         borderRadius: BorderRadius.circular(r),
-        child: Image(image: imageOf(path), width: w, height: h, fit: BoxFit.cover, gaplessPlayback: true),
+        child: Image(image: sizedImage(context, path, w, h), width: w, height: h, fit: BoxFit.cover, gaplessPlayback: true),
       );
 }
 

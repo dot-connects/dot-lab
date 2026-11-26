@@ -12,8 +12,8 @@ from pathlib import Path
 R3 = Path(__file__).resolve().parent
 IMG = R3.parent / "img5"
 IMG_OLD = R3.parent / "img"
-ORDER = ["a", "b", "c", "diary", "mag", "album"]
-NAMES = {"a": "여백의 책", "b": "기록 카드", "c": "여행 수첩", "diary": "일기", "mag": "잡지", "album": "앨범"}
+ORDER = ["peek", "a", "b", "c", "diary", "mag", "album", "photo"]
+NAMES = {"a": "여백의 책", "b": "기록 카드", "c": "여행 수첩", "diary": "일기", "mag": "잡지", "album": "앨범", "photo": "사진만", "peek": "살짝 보기"}
 
 
 def _img(k: str) -> bytes:

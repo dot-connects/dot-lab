@@ -71,6 +71,15 @@ ImageProvider imageOf(String path) => path.startsWith('assets/')
         ? GalleryImage(path.substring(8))
         : FileImage(File(path));
 
+/// Decode at about the size it is drawn, not at the stored 1600-4000 px (shelf covers, photo tiles: memory, CPU, heat).
+/// Fit in a square twice the box's long side, so a cover crop stays sharp for photos up to 2:1.
+ImageProvider sizedImage(BuildContext context, String path, double? w, double? h) {
+  final side = [w, h].whereType<double>().fold<double>(0, (a, b) => a > b ? a : b);
+  if (side <= 0 || !side.isFinite) return imageOf(path);
+  final px = (side * MediaQuery.devicePixelRatioOf(context) * 2).round();
+  return ResizeImage(imageOf(path), width: px, height: px, policy: ResizeImagePolicy.fit);
+}
+
 /// Thumbnail loader for `gallery:<id>` images; set once at start-up (main.dart) to the phone source.
 Future<Uint8List?> Function(String id, int long)? galleryThumbs;
 

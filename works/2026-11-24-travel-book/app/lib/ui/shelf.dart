@@ -390,7 +390,7 @@ class _Cover extends StatelessWidget {
           ],
         ),
         child: b.cover != null
-            ? Image(image: imageOf(b.cover!), fit: BoxFit.cover)
+            ? Image(image: sizedImage(context, b.cover!, w, h), fit: BoxFit.cover)
             : Padding(padding: const EdgeInsets.all(8), child: Text(b.title, style: ui(w > 100 ? 13 : 9, w: FontWeight.w700))),
       );
 }

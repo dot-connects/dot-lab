@@ -28,6 +28,11 @@ android {
         versionName = flutter.versionName
     }
 
+    packaging {
+        // bcprov's post-quantum parameter tables (~4 MB): pdfbox only uses classic ciphers for encrypted PDFs.
+        resources.excludes += "org/bouncycastle/pqc/**"
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.

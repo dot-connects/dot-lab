@@ -100,6 +100,8 @@ class _MakingFlowState extends State<MakingFlow> {
     }
     await Future<void>.delayed(const Duration(milliseconds: 700)); // let "38" be seen
     if (!mounted) return;
+    // the picker is done; the review screen waits on the person, so the screen may sleep again (battery)
+    unawaited(mc.keepScreenOn(false).catchError((_) {}));
     setState(() {
       _ask = r.ask;
       _phase = _ask.isEmpty ? _Phase.review : _Phase.pairs;
@@ -115,7 +117,10 @@ class _MakingFlowState extends State<MakingFlow> {
     });
     unawaited(mc.keepScreenOn(true).catchError((_) {}));
     // /write is one call: the page count is a time estimate (about 20 s), it never claims the last page early
-    _tick = Timer.periodic(const Duration(milliseconds: 800), (_) => setState(() => _page = (_page + 1).clamp(0, pages - 1)));
+    _tick = Timer.periodic(const Duration(milliseconds: 800), (t) {
+      if (_page >= pages - 1) return t.cancel(); // last page shown: stop rebuilding every 800 ms
+      setState(() => _page++);
+    });
     final r = await app.pipe.write(b, notes: _notes);
     _tick?.cancel();
     if (!mounted) return;
