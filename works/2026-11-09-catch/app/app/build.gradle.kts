@@ -5,7 +5,7 @@ plugins {
 }
 
 // Play Integrity: the Google Cloud project number linked in Play Console (wizard menu 7); 0 = not linked yet
-val cloudProject = 0L
+val cloudProject = 447354767842L
 
 android {
     namespace = "kr.dot.catchpet"
@@ -14,8 +14,8 @@ android {
         applicationId = "kr.dot.catchpet"
         minSdk = 34 // specialUse foreground service
         targetSdk = 36
-        versionCode = 600
-        versionName = "0.6.0"
+        versionCode = 601
+        versionName = "0.6.1"
         ndk { abiFilters += "arm64-v8a" }
         // Worker that draws the AI pictures (works/2026-11-09-catch/worker)
         buildConfigField("String", "DEBUG_PURCHASE", "\"\"")
