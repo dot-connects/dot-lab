@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>여행 한 권 — 사진 먼저, 테마는 나중 · 로딩 화면 시안</title>
+<style>
+@font-face{font-family:"Pretendard";font-weight:45 920;src:url(PretendardVariable.woff2) format("woff2")}
+:root{--paper:#F4EFE7;--ink:#2B2621;--ink2:#7D7366;--card:#EFE8DD;--on:#E4D7C3;--line:#CCC7BC;--body:#4D463E;--oak:#9A6F45;--tint:#E7DCCB}
+*{box-sizing:border-box}
+body{margin:0;background:#d9d2c6;font-family:Pretendard,"Apple SD Gothic Neo",sans-serif;color:var(--ink)}
+header,.note{max-width:1180px;margin:0 auto;padding:22px 16px 4px}
+header h1{font-size:21px;margin:0 0 8px;letter-spacing:-.02em}
+header p,.note p{margin:0 0 8px;font-size:14px;line-height:1.65;color:var(--body);max-width:760px}
+.flow{display:flex;gap:6px;flex-wrap:wrap;font-size:12.5px;margin:6px 0 4px}
+.flow span{background:#efe7da;border-radius:8px;padding:5px 9px}.flow span.new{background:var(--ink);color:#F4EFE7}
+h2.sec{max-width:1180px;margin:26px auto 0;padding:14px 16px 0;border-top:2px solid var(--ink);font-size:18px}
+h2.sec small{font-weight:400;font-size:13px;color:var(--ink2);margin-left:6px}
+.row{display:flex;flex-wrap:wrap;gap:26px;justify-content:center;padding:14px 12px 10px}
+.opt{width:340px}.opt h3{font-size:15px;margin:0 0 4px}.opt .why{font-size:12.5px;line-height:1.55;color:var(--body);margin:0 0 10px;min-height:58px}
+.phone{width:340px;height:700px;background:var(--paper);border-radius:32px;box-shadow:0 10px 30px rgba(60,45,30,.22);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.bar{height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:13px;color:var(--ink2)}
+.ttl{padding:4px 20px 2px;font-size:21px;font-weight:700;letter-spacing:-.02em;line-height:1.3}
+.sub{padding:2px 20px 12px;font-size:12.5px;color:var(--ink2);line-height:1.5}
+.body{flex:1;overflow:hidden;padding:0 16px;position:relative}
+.foot{flex:none;padding:10px 16px 20px;display:flex;flex-direction:column;gap:8px}
+.btn{background:var(--ink);color:#F4EFE7;border-radius:14px;padding:14px;text-align:center;font-weight:700;font-size:14.5px}
+.btn.g{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:500;font-size:13px;padding:11px}
+.seg{display:flex;background:var(--card);border-radius:12px;padding:3px;gap:3px;margin-top:6px}
+.seg div{flex:1;text-align:center;font-size:12.5px;padding:8px 2px;border-radius:9px;color:var(--ink2)}
+.seg div b{display:block;font-size:13px;color:var(--ink)}.seg div.on{background:#FBF8F3;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.lab{font-size:11.5px;font-weight:700;color:var(--ink2);margin:12px 2px 4px;display:flex;justify-content:space-between}
+.badge{display:inline-block;background:var(--ink);color:#F4EFE7;font-size:10.5px;font-weight:700;border-radius:6px;padding:2px 6px;margin-left:6px;vertical-align:2px}
+img{display:block}
+
+/* A1 carousel */
+.fan{position:relative;height:300px;margin:4px 0 0}
+.fan img{position:absolute;top:10px;width:150px;height:200px;object-fit:cover;border-radius:3px;box-shadow:0 6px 18px rgba(40,25,10,.25);transition:opacity .5s,transform .6s}
+.fan img:nth-child(1){left:8px;transform:rotate(-6deg) translateY(18px)}
+.fan img:nth-child(2){left:86px;z-index:2;transform:translateY(0)}
+.fan img:nth-child(3){left:160px;transform:rotate(6deg) translateY(18px)}
+.fan.out img{opacity:0;transform:translateY(30px) scale(.96)}
+.tname{text-align:center;font-size:17px;font-weight:700;margin-top:-26px}
+.treason{text-align:center;font-size:12px;color:var(--ink2);margin-top:3px}
+.dots{display:flex;justify-content:center;gap:5px;margin:9px 0 2px}.dots i{width:6px;height:6px;border-radius:3px;background:var(--line);transition:all .3s}.dots i.on{width:16px;background:var(--ink)}
+
+/* A2 list */
+.tl{display:flex;flex-direction:column;gap:7px}
+.trow{display:flex;gap:10px;align-items:center;background:var(--card);border-radius:14px;padding:8px 10px}
+.trow.on{background:var(--on);outline:2px solid var(--ink)}
+.trow .strip{display:flex;gap:3px;flex:none}.trow .strip img{width:30px;height:40px;object-fit:cover;border-radius:2px}
+.trow b{font-size:13.5px}.trow span:not(.badge){display:block;font-size:11px;color:var(--ink2);margin-top:1px}
+
+/* A3 covers */
+.covers{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 10px}
+.cov{text-align:center}.cov img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:2px;box-shadow:3px 4px 10px rgba(40,25,10,.22)}
+.cov b{display:block;font-size:12px;margin-top:6px}.cov.on img{outline:3px solid var(--ink);outline-offset:3px}
+.peek{position:absolute;left:0;right:0;bottom:0;background:#FBF8F3;border-radius:20px 20px 0 0;box-shadow:0 -8px 24px rgba(0,0,0,.14);padding:10px 16px 18px;transform:translateY(100%);transition:transform .6s}
+.peek.up{transform:translateY(0)}.peek .grab{width:36px;height:4px;border-radius:4px;background:#d6cdbf;margin:0 auto 10px}
+.peek .pp{display:flex;gap:6px}.peek .pp img{width:94px;height:125px;object-fit:cover;border-radius:2px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+
+/* B loading: picking */
+.big{font-size:64px;font-weight:300;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+.stage{font-size:13px;color:var(--body);min-height:20px;margin-top:6px}
+.tiles{display:grid;grid-template-columns:repeat(8,1fr);gap:3px;margin-top:14px}
+.tiles div{aspect-ratio:1;background-size:cover;background-position:center;border-radius:2px;transition:opacity .6s,filter .6s,transform .6s}
+.tiles div.blur{filter:blur(2px) brightness(.55);opacity:.35;transform:scale(.8)}
+.tiles div.dup{opacity:.25;transform:scale(.6) translateX(-60%)}
+.tiles div.cap{opacity:0;transform:scale(.4)}
+.tiles div.keep{outline:2px solid var(--ink);outline-offset:-2px}
+.film{position:relative;height:120px;margin-top:22px;overflow:hidden}
+.film .reel{position:absolute;left:0;top:10px;display:flex;gap:8px;animation:reel 9s linear infinite}
+.film .reel div{width:76px;height:100px;flex:none;background-size:cover;background-position:center;border-radius:3px;transition:transform .5s,opacity .5s,filter .5s}
+@keyframes reel{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.film .lens{position:absolute;left:50%;top:4px;width:88px;height:112px;margin-left:-44px;border:2px solid var(--ink);border-radius:6px;z-index:2;pointer-events:none}
+.stack{position:relative;height:200px;margin-top:20px}
+.stack div{position:absolute;left:50%;top:20px;width:120px;height:150px;margin-left:-60px;background-size:cover;background-position:center;border:4px solid #FBF8F3;box-shadow:0 4px 12px rgba(40,25,10,.25);transition:transform .7s,opacity .7s}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.col{background:var(--card);border-radius:12px;padding:8px 6px;min-height:330px}
+.col h4{margin:0 0 6px;font-size:12px;display:flex;justify-content:space-between}.col h4 span{font-weight:400;color:var(--ink2);font-variant-numeric:tabular-nums}
+.col .g{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.col .g div{aspect-ratio:1;background-size:cover;background-position:center;border-radius:2px;transition:opacity .5s,transform .5s}
+.col .g div.out{opacity:.15;transform:scale(.7)}
+.col .g div.drop{opacity:0;transform:translateY(-40px)}
+
+/* C loading: making */
+.pages{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.pages img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:2px;box-shadow:0 2px 8px rgba(40,25,10,.2);opacity:0;transform:translateY(-14px) rotate(-2deg);transition:opacity .5s,transform .5s}
+.pages img.in{opacity:1;transform:none}
+.steps{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.steps div{font-size:12.5px;color:var(--ink2);display:flex;gap:8px;align-items:center}
+.steps div i{width:14px;height:14px;border-radius:7px;border:1.5px solid var(--line);flex:none}
+.steps div.now{color:var(--ink);font-weight:700}.steps div.now i{border-color:var(--ink);border-top-color:transparent;animation:spin 1s linear infinite}
+.steps div.done i{background:var(--ink);border-color:var(--ink)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.leave{margin-top:10px;background:var(--card);border-radius:12px;padding:10px 12px;font-size:12px;color:var(--body);line-height:1.5}
+.notif{position:absolute;left:10px;right:10px;top:8px;background:#fff;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.2);padding:10px 12px;font-size:12px;z-index:5;transform:translateY(-130%);transition:transform .6s}
+.notif.show{transform:none}.notif b{font-size:12.5px}
+.book{position:relative;width:200px;height:250px;margin:16px auto 0;perspective:900px}
+.book .base,.book .leaf{position:absolute;inset:0;background-size:cover;background-position:center;border-radius:2px 6px 6px 2px;box-shadow:0 8px 20px rgba(40,25,10,.3)}
+.book .leaf{transform-origin:left center;animation:flip 2.4s ease-in-out infinite;backface-visibility:hidden}
+@keyframes flip{0%,20%{transform:rotateY(0)}70%,100%{transform:rotateY(-170deg)}}
+.typed{min-height:44px;margin-top:22px;font-size:14px;line-height:1.6;text-align:center;color:var(--body)}
+.typed::after{content:"";display:inline-block;width:1.5px;height:15px;background:var(--ink);vertical-align:-2px;margin-left:2px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.desk{position:relative;height:360px;margin-top:6px}
+.desk div{position:absolute;width:82px;height:104px;background-size:cover;background-position:center;border:3px solid #FBF8F3;box-shadow:0 3px 10px rgba(40,25,10,.25);transition:all 1s cubic-bezier(.5,0,.2,1)}
+.desk .cover{position:absolute;left:50%;top:40px;width:180px;height:240px;margin-left:-90px;border:0;background:#1d1a17;opacity:0;transform:scale(.8);display:flex;align-items:flex-end;padding:16px;color:#fff;font-size:34px;font-weight:800;letter-spacing:-.03em;transition:all .8s}
+.desk .cover.on{opacity:1;transform:none}
+.adslot{margin-top:10px;border:1px dashed #b9ad9c;border-radius:10px;height:54px;display:flex;align-items:center;justify-content:center;font-size:11.5px;color:#9b8f80;background:#efe9df}
+</style>
+<body>
+<header>
+<h1>여행 한 권 — 사진 먼저 고르고 테마는 나중에 · 로딩 화면 시안</h1>
+<p>바뀌는 흐름: 테마를 처음에 고르지 않고, <b>사진을 다 고른 뒤 그 사진으로 미리 만들어 본 책 모양을 보고</b> 고른다. 추천은 고른 사진(풍경·사람·음식 비율, 메모 유무, 날 수)을 보고 한다.
+로딩 두 곳(사진 고르기 ~30초, 책 만들기 2~3분)은 숫자가 줄어들고 쪽이 쌓이는 움직임을 넣었다. 모든 화면은 움직이는 시안이다(저절로 반복).</p>
+<div class="flow"><span>날짜</span><span>앨범</span><span>더 넣을 것(누구랑·꼭 넣을 사진·메모)</span><span class="new">사진 고르는 중 ▶ B</span><span>고른 사진 보기</span><span class="new">책 모양 고르기 ▶ A</span><span class="new">책 만드는 중 ▶ C</span><span>책</span></div>
+</header>
+
+<h2 class="sec">A. 책 모양 고르기 <small>사진을 다 고른 뒤 · 고른 38장으로 만든 미리보기</small></h2>
+<div class="row">
+<section class="opt"><h3>A1. 추천 한 권을 크게, 옆으로 넘겨 다른 테마</h3>
+<p class="why">추천 테마를 내 사진으로 세 쪽 펼쳐 보여 준다. 옆으로 넘기면 다른 테마(시안에선 저절로 넘어감). 길이·글 양은 아래 한 줄씩.</p>
+<div class="phone"><div class="bar"><span>‹</span><span>3 / 3</span></div>
+<div class="ttl">어떤 책으로 만들까요?</div><div class="sub">고른 38장으로 미리 만들어 봤어요</div>
+<div class="body">
+ <div class="fan" id="fan"><img><img><img></div>
+ <div class="tname" id="tname"></div><div class="treason" id="treason"></div>
+ <div class="dots" id="dots"></div>
+ <div class="lab">길이</div><div class="seg"><div><b>짧게</b>16쪽</div><div class="on"><b>보통</b>24쪽</div><div><b>길게</b>36쪽</div></div>
+ <div class="lab">글</div><div class="seg"><div><b>사진만</b></div><div><b>짧은 캡션</b></div><div class="on"><b>캡션 + 글</b></div></div>
+</div>
+<div class="foot"><div class="btn">이 모양으로 책 만들기</div></div></div></section>
+
+<section class="opt"><h3>A2. 일곱 테마를 한눈에, 내 사진으로</h3>
+<p class="why">목록 한 줄마다 내 사진으로 만든 첫 세 쪽. 추천이 맨 위. 비교가 쉽고 스크롤 한 번이면 다 본다. 길이·글 양은 접어 둔다.</p>
+<div class="phone"><div class="bar"><span>‹</span><span>3 / 3</span></div>
+<div class="ttl">어떤 책으로 만들까요?</div><div class="sub">내 사진 38장으로 만든 첫 세 쪽이에요</div>
+<div class="body"><div class="tl" id="tl"></div></div>
+<div class="foot"><div class="btn g">보통 24쪽 · 캡션 + 글 · 바꾸기 ›</div><div class="btn">여백의 책으로 만들기</div></div></div></section>
+
+<section class="opt"><h3>A3. 표지를 고르듯이</h3>
+<p class="why">일곱 테마의 표지(내 사진)를 서점처럼 늘어놓는다. 누르면 아래에서 안쪽 세 쪽이 올라온다. 가장 직관적이고 화면이 조용하다.</p>
+<div class="phone"><div class="bar"><span>‹</span><span>3 / 3</span></div>
+<div class="ttl">표지를 골라 보세요</div><div class="sub">누르면 안쪽을 살짝 보여 드려요 · <b style="color:var(--ink)">추천</b>은 여백의 책</div>
+<div class="body"><div class="covers" id="covers"></div>
+ <div class="peek" id="peek"><div class="grab"></div><div style="display:flex;justify-content:space-between;align-items:baseline"><b id="peekname" style="font-size:15px"></b><span style="font-size:11.5px;color:var(--ink2)">보통 24쪽 · 캡션 + 글</span></div>
+ <div class="pp" id="pp" style="margin-top:8px"><img><img><img></div><div class="btn" style="margin-top:10px">이 책으로 만들기</div></div>
+</div><div class="foot" style="padding-bottom:12px"></div></div></section>
+</div>
+
+<h2 class="sec">B. 사진 고르는 중 <small>폰에서 거르기 → AI 고르기, 30초쯤</small></h2>
+<div class="row">
+<section class="opt"><h3>B1. 숫자가 줄어든다</h3>
+<p class="why">412 → 186 → 57 → 38. 단계마다 걸러지는 사진이 흐려지거나(흔들림) 겹치며 사라지고(비슷함), 남은 사진에 테두리. 지금 화면을 움직이게 만든 판.</p>
+<div class="phone"><div class="bar"><span>✕</span><span>1 / 2</span></div>
+<div class="ttl">사진을 고르고 있어요</div>
+<div class="body"><div class="big" id="b1n">412</div><div class="stage" id="b1s"></div><div class="tiles" id="b1t"></div>
+<div class="adslot" id="b1ad">(광고를 넣는다면 여기 · 시안에선 비워 둠)</div></div>
+<div class="foot"><div class="leave" style="margin:0">작게 줄인 미리보기만 AI로 보내요. 원본은 폰에 그대로 있어요.</div></div></div></section>
+
+<section class="opt"><h3>B2. 필름이 지나가며 골라진다</h3>
+<p class="why">사진이 필름처럼 흘러가고 가운데 틀을 지날 때 고른 사진은 위로 올라가 아래 더미에 쌓인다. 더미 위 숫자가 하나씩 오른다.</p>
+<div class="phone"><div class="bar"><span>✕</span><span>1 / 2</span></div>
+<div class="ttl">잘 나온 사진을 고르는 중</div><div class="sub" id="b2s">6월 12일 · 협재</div>
+<div class="body"><div class="film"><div class="lens"></div><div class="reel" id="reel"></div></div>
+<div class="stack" id="b2stack"></div><div style="text-align:center;margin-top:-4px"><span class="big" style="font-size:40px" id="b2n">0</span><span style="font-size:13px;color:var(--ink2)"> 장 골랐어요</span></div></div>
+<div class="foot"><div class="btn g">기다리는 동안 앱을 나가도 돼요</div></div></div></section>
+
+<section class="opt"><h3>B3. 날마다 정리된다</h3>
+<p class="why">날짜 칸 세 개에 사진이 떨어지고, 흐리거나 겹치는 사진이 빠지며 날마다 장수가 줄어든다. 여행이 며칠짜리였는지 한눈에.</p>
+<div class="phone"><div class="bar"><span>✕</span><span>1 / 2</span></div>
+<div class="ttl">날마다 골라 담는 중</div><div class="sub" id="b3s">412장 살펴보는 중</div>
+<div class="body"><div class="cols" id="cols"></div></div>
+<div class="foot"><div class="btn g">기다리는 동안 앱을 나가도 돼요</div></div></div></section>
+</div>
+
+<h2 class="sec">C. 책 만드는 중 <small>AI 편집, 2~3분 · 앱을 나가도 계속되고 다 되면 알림</small></h2>
+<div class="row">
+<section class="opt"><h3>C1. 쪽이 한 장씩 놓인다</h3>
+<p class="why">하는 일을 네 단계로 보여 주고(지금 단계가 돈다), 그 테마의 쪽이 한 장씩 놓인다. 맨 아래 "나가 있기". 다 되면 위에 알림이 내려온다.</p>
+<div class="phone"><div class="notif" id="c1n"><b>책이 다 됐어요</b><br>제주 2박 3일 · 여백의 책 24쪽 — 눌러서 보기</div>
+<div class="bar"><span></span><span>2 / 2</span></div>
+<div class="ttl">책을 만들고 있어요</div><div class="sub">여백의 책 · 보통 24쪽 · 2~3분</div>
+<div class="body"><div class="pages" id="c1p"></div><div class="steps" id="c1s"></div></div>
+<div class="foot"><div class="btn g">나가 있기 · 다 되면 알려 드릴게요</div></div></div></section>
+
+<section class="opt"><h3>C2. 책장이 넘어간다</h3>
+<p class="why">가운데 책이 천천히 넘어가며 내 사진이 지나가고, 아래에 AI가 쓰는 캡션이 한 줄씩 타이핑된다(실제로는 끝나야 글이 나와서, 기다리는 동안엔 사진에 붙은 장소·날짜를 보여 줌).</p>
+<div class="phone"><div class="bar"><span></span><span>2 / 2</span></div>
+<div class="ttl">한 장씩 엮는 중</div><div class="sub">다 되면 알림으로 알려 드려요</div>
+<div class="body"><div class="book" id="c2b"><div class="base"></div><div class="leaf"></div></div><div class="typed" id="c2t"></div></div>
+<div class="foot"><div class="btn g">나가 있기</div></div></div></section>
+
+<section class="opt"><h3>C3. 책상 위에서 엮인다</h3>
+<p class="why">흩어진 사진들이 날짜 순서로 줄을 서고, 그 줄이 한 권으로 접혀 표지가 나온다. 가장 "만드는" 느낌. 반복될 때마다 순서가 달라진다.</p>
+<div class="phone"><div class="bar"><span></span><span>2 / 2</span></div>
+<div class="ttl">순서를 정하는 중</div><div class="sub" id="c3s">날짜와 장면을 보고 있어요</div>
+<div class="body"><div class="desk" id="desk"><div class="cover" id="dcover">제주</div></div></div>
+<div class="foot"><div class="btn g">나가 있기 · 다 되면 알려 드릴게요</div></div></div></section>
+</div>
+
+<div class="note">
+<p><b>광고에 대해</b> — B1 에 자리만 점선으로 표시했다. 넣는다면 기다리는 화면(B·C)의 아래 띠 하나가 최대. 다만 1,500원을 받는 책에 광고가 보이면 "돈 내고도 광고 본다"는 느낌이 커서 추천하지 않는다. 배너 한 번 노출 수익은 1~3원 수준이라 책 한 권 원가(300~500원)를 거의 못 메운다. 무료 2권에만 넣는 방법은 있다.</p>
+</div>
+
+<script>
+const P=["d8","d5","hyeopjae","hyeopjae_2","d9","d10","road_2","road","udo","d3","udo_2","d7","haenyeo","haenyeo_2","d4","woljeongri","d2","woljeongri_2","seongsan_2","seongsan","hallasan","hallasan_2","oreum","oreum_2","doldam","doldam_2","d1","tangerine","tangerine_2","d6"];
+const img=k=>`img/${k}.jpg`, pg=(t,i)=>`pg/${t}-${i}.jpg`;
+const T=[["a","여백의 책","풍경 사진이 많고 메모가 있어서",1],["photo","사진만","글 없이 사진으로만"],["album","앨범","인화해서 붙인 앨범처럼"],["b","기록 카드","들른 곳마다 한 장씩"],["c","여행 수첩","모눈 수첩에 적은 듯"],["diary","일기","날마다 쓴 글이 주인공"],["mag","잡지","여행 기사 한 호"]];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+// A1
+(async()=>{const fan=document.getElementById("fan"),imgs=fan.querySelectorAll("img"),dots=document.getElementById("dots");
+ dots.innerHTML=T.map(()=>"<i></i>").join("");
+ for(let n=0;;n=(n+1)%T.length){const[t,name,why,rec]=T[n];fan.classList.add("out");await sleep(400);
+  imgs.forEach((m,i)=>m.src=pg(t,i));document.getElementById("tname").innerHTML=name+(rec?'<span class="badge">추천</span>':"");
+  document.getElementById("treason").textContent=why;[...dots.children].forEach((d,i)=>d.classList.toggle("on",i===n));
+  fan.classList.remove("out");await sleep(n===0?4200:2600);}})();
+// A2
+document.getElementById("tl").innerHTML=T.map(([t,name,why,rec],i)=>`<div class="trow${i===0?" on":""}"><div class="strip"><img src="${pg(t,0)}"><img src="${pg(t,1)}"><img src="${pg(t,2)}"></div><div><b>${name}</b>${rec?'<span class="badge">추천</span>':""}<span>${why}</span></div></div>`).join("");
+// A3
+(async()=>{const c=document.getElementById("covers");c.innerHTML=T.map(([t,name,,rec],i)=>`<div class="cov" data-i="${i}"><img src="${pg(t,0)}"><b>${name}${rec?" · 추천":""}</b></div>`).join("");
+ const peek=document.getElementById("peek");
+ for(let n=0;;n=(n+1)%T.length){const[t,name]=T[n];[...c.children].forEach((d,i)=>d.classList.toggle("on",i===n));await sleep(900);
+  document.getElementById("peekname").textContent=name;document.querySelectorAll("#pp img").forEach((m,i)=>m.src=pg(t,i+1));
+  peek.classList.add("up");await sleep(2600);peek.classList.remove("up");await sleep(700);}})();
+
+// B1
+(async()=>{const t=document.getElementById("b1t"),n=document.getElementById("b1n"),s=document.getElementById("b1s");
+ const cells=[...Array(48)].map((_,i)=>{const d=document.createElement("div");d.style.backgroundImage=`url(${img(P[i%P.length])})`;t.append(d);return d});
+ const count=async(a,b,ms)=>{const st=performance.now();for(;;){const k=Math.min(1,(performance.now()-st)/ms);n.textContent=Math.round(a+(b-a)*(1-Math.pow(1-k,3)));if(k>=1)break;await sleep(30);}};
+ const pickIdx=(m,seed)=>[...Array(48).keys()].filter(i=>(i*7+seed)%m===0);
+ for(;;){cells.forEach(c=>c.className="");n.textContent=412;s.textContent="이 기간에 찍은 사진 412장";await sleep(1400);
+  s.textContent="고른 앨범 2개 · 186장";await count(412,186,1000);await sleep(800);
+  s.textContent="흔들리거나 어두운 사진 거르는 중";pickIdx(5,1).forEach(i=>cells[i].classList.add("blur"));await count(186,120,1200);
+  s.textContent="비슷한 사진은 한 장만";pickIdx(4,2).forEach(i=>cells[i].classList.contains("blur")||cells[i].classList.add("dup"));await count(120,64,1200);
+  s.textContent="화면 캡처 빼기";pickIdx(9,3).forEach(i=>cells[i].className||cells[i].classList.add("cap"));await count(64,57,700);await sleep(600);
+  s.textContent="AI가 잘 나온 사진 고르는 중";await sleep(1800);cells.filter(c=>!c.className).forEach((c,i)=>i%5!==3&&c.classList.add("keep"));
+  cells.filter(c=>!c.className).forEach(c=>c.classList.add("dup"));await count(57,38,1400);s.innerHTML="<b>38장</b> 골랐어요 · 꼭 넣을 사진 3장 포함";await sleep(3200);}})();
+
+// B2
+(async()=>{const reel=document.getElementById("reel"),stack=document.getElementById("b2stack"),n=document.getElementById("b2n"),s=document.getElementById("b2s");
+ const seq=[...P,...P];reel.innerHTML=seq.map(k=>`<div style="background-image:url(${img(k)})"></div>`).join("");
+ const places=["6월 12일 · 협재","6월 12일 · 신창","6월 13일 · 우도","6월 13일 · 하도","6월 13일 · 성산","6월 14일 · 어리목","6월 14일 · 남원"];
+ let c=0;for(let i=0;;i++){await sleep(700);const k=P[i%P.length];if(i%3!==1){const d=document.createElement("div");d.style.backgroundImage=`url(${img(k)})`;
+  d.style.transform=`translateY(-120px) rotate(${(Math.random()*10-5).toFixed(1)}deg)`;d.style.opacity=0;stack.append(d);
+  requestAnimationFrame(()=>{d.style.transform=`rotate(${(Math.random()*14-7).toFixed(1)}deg)`;d.style.opacity=1});
+  if(stack.children.length>6)stack.firstChild.remove();c++;n.textContent=c;}
+  s.textContent=places[Math.floor(i/5)%places.length];if(c>=38){await sleep(2500);c=0;n.textContent=0;stack.innerHTML="";}}})();
+
+// B3
+(async()=>{const cols=document.getElementById("cols"),s=document.getElementById("b3s");
+ const days=[["6월 12일",P.slice(0,10)],["6월 13일",P.slice(8,20)],["6월 14일",P.slice(18,30)]];
+ for(;;){cols.innerHTML=days.map(([d,ks])=>`<div class="col"><h4>${d}<span>0</span></h4><div class="g">${[...ks,...ks.slice(0,5)].map(k=>`<div class="drop" style="background-image:url(${img(k)})"></div>`).join("")}</div></div>`).join("");
+  s.textContent="412장 살펴보는 중";const all=[...cols.querySelectorAll(".g div")];
+  for(let i=0;i<all.length;i++){all[i].classList.remove("drop");const col=all[i].closest(".col").querySelector("h4 span");col.textContent=+col.textContent+Math.round(412/all.length*(1+Math.random()*.3)/3);await sleep(70);}
+  await sleep(900);s.textContent="흐리거나 비슷한 사진 빼는 중";
+  for(const [ci,col] of [...cols.children].entries()){const ds=[...col.querySelectorAll(".g div")];ds.forEach((d,i)=>{if((i+ci)%3===0||i>11)d.classList.add("out")});
+   col.querySelector("h4 span").textContent=[9,13,16][ci]+"장";await sleep(700);}
+  s.innerHTML="<b>38장</b> 골랐어요";await sleep(3200);}})();
+
+// C1
+(async()=>{const p=document.getElementById("c1p"),st=document.getElementById("c1s"),nt=document.getElementById("c1n");
+ const steps=["사진 38장을 날짜와 장면으로 나누는 중","장면마다 쪽 모양 고르는 중","캡션과 짧은 글 쓰는 중","빠진 곳·겹친 곳 검사하는 중"];
+ for(;;){p.innerHTML=[0,1,2,3,4,5].map(i=>`<img src="${pg("a",i)}">`).join("");nt.classList.remove("show");
+  const ims=[...p.children];for(let k=0;k<steps.length;k++){st.innerHTML=steps.map((x,i)=>`<div class="${i<k?"done":i===k?"now":""}"><i></i>${x}</div>`).join("");
+   for(const m of ims.slice(k*1.5|0,(k+1)*1.5|0))m.classList.add("in");await sleep(2200);}
+  ims.forEach(m=>m.classList.add("in"));st.innerHTML=steps.map(x=>`<div class="done"><i></i>${x}</div>`).join("");await sleep(500);nt.classList.add("show");await sleep(3200);}})();
+
+// C2
+(async()=>{const b=document.getElementById("c2b"),base=b.querySelector(".base"),leaf=b.querySelector(".leaf"),t=document.getElementById("c2t");
+ const lines=["6월 12일 · 협재, 물이 발목까지 왔다 돌아간다","6월 13일 · 우도 가는 배, 갑판 쪽 바람","6월 13일 · 하도, 해녀 할머니들의 노래","6월 14일 · 어리목, 안개는 아직 위에 있다","6월 14일 · 남원, 귤 하나 까는 동안"];
+ let i=0;setInterval(()=>{leaf.style.backgroundImage=`url(${img(P[i%P.length])})`;base.style.backgroundImage=`url(${img(P[(i+1)%P.length])})`;i++},2400);
+ leaf.style.backgroundImage=`url(${img(P[0])})`;base.style.backgroundImage=`url(${img(P[1])})`;
+ for(let k=0;;k=(k+1)%lines.length){const s=lines[k];for(let j=0;j<=s.length;j++){t.textContent=s.slice(0,j);await sleep(55);}await sleep(1600);}})();
+
+// C3
+(async()=>{const desk=document.getElementById("desk"),cover=document.getElementById("dcover"),s=document.getElementById("c3s");
+ const ks=P.slice(0,12);const ds=ks.map(k=>{const d=document.createElement("div");d.style.backgroundImage=`url(${img(k)})`;desk.insertBefore(d,cover);return d});
+ const scatter=()=>ds.forEach(d=>{d.style.left=(Math.random()*220)+"px";d.style.top=(Math.random()*240)+"px";d.style.transform=`rotate(${Math.random()*40-20}deg)`;d.style.opacity=1});
+ for(;;){cover.classList.remove("on");scatter();s.textContent="날짜와 장면을 보고 있어요";await sleep(2200);
+  s.textContent="여는 사진과 닫는 사진을 고르는 중";ds.forEach((d,i)=>{d.style.left=(8+(i%4)*76)+"px";d.style.top=(10+Math.floor(i/4)*112)+"px";d.style.transform="rotate(0)"});await sleep(2600);
+  s.textContent="한 권으로 엮는 중";ds.forEach(d=>{d.style.left="129px";d.style.top="108px";d.style.transform="rotate(0) scale(.9)";d.style.opacity=.0});await sleep(900);
+  cover.style.background=`linear-gradient(transparent 50%,rgba(0,0,0,.45)),url(${img("seongsan")}) center/cover`;cover.classList.add("on");s.textContent="거의 다 됐어요";await sleep(3000);}})();
+</script>
+</body>
+</html>
