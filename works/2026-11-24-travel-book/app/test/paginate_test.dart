@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tripbook/core/models.dart';
 import 'package:tripbook/core/paginate.dart';
 
-final defs = (jsonDecode(File('assets/book/themes/a/layouts.json').readAsStringSync()) as List)
+final defs = (jsonDecode(File('test/fixtures/r8-a-layouts.json') /* paginate rules, frozen r8 layouts */.readAsStringSync()) as List)
     .map((j) => LayoutDef.fromJson(j as Map<String, dynamic>))
     .toList();
 final slotsOf = {for (final d in defs) d.id: d.slots};
@@ -110,4 +110,27 @@ void main() {
     final a = c('a', 12, 0), b = c('b', 12, 1000); // 1 degree of latitude apart
     expect(travelKm([a, b]), closeTo(111.2, 0.5));
   });
+
+  // paginate is the fallback book when the AI editor is off: it must stay sound on every designer theme (r11)
+  for (final t in ['a', 'photo', 'album', 'b', 'c', 'diary', 'mag']) {
+    test('fallback on designer theme $t: cover fits, every pick placed or spare, slots fit', () {
+      final ds = (jsonDecode(File('assets/book/themes/$t/layouts.json').readAsStringSync()) as List)
+          .map((j) => LayoutDef.fromJson(j as Map<String, dynamic>))
+          .toList();
+      final slots = {for (final d in ds) d.id: d.slots};
+      final (chs, plan) = trip();
+      final byId = index(chs);
+      final r = paginate(plan, chs, BookOptions(), ds, cover: '', title: '제주');
+      expect(ds.firstWhere((d) => d.id == r.pages.first.layout).kind, 'cover');
+      final placed = {for (final p in r.pages.skip(1)) ...p.ids};
+      expect({...placed, ...r.spare, ...r.pages.first.ids}, containsAll(plan.picks.map((p) => p.id).where((id) => !id.startsWith('v'))));
+      for (final pg in r.pages) {
+        for (var i = 0; i < pg.ids.length; i++) {
+          final s = slots[pg.layout]![i], x = byId[pg.ids[i]]!;
+          if (s == 'P') expect(x.shot.portrait, isTrue, reason: '${pg.layout} $i');
+          if (s == 'L') expect(x.shot.portrait, isFalse, reason: '${pg.layout} $i');
+        }
+      }
+    });
+  }
 }

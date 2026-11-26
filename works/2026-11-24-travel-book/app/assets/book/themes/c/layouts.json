@@ -1,0 +1,363 @@
+[
+ {
+  "id": "c/cover-kraft",
+  "kind": "cover",
+  "slots": [],
+  "texts": {
+   "title": 5,
+   "period": 22
+  },
+  "when": "사진 없는 크라프트 표지(고무줄 밴드). 조용한 여행, 또는 첫 쪽 사진이 셀 때 그 앞에"
+ },
+ {
+  "id": "c/cover-first",
+  "kind": "cover",
+  "slots": [
+   "A"
+  ],
+  "texts": {
+   "title": 5,
+   "period": 22,
+   "route": 40
+  },
+  "when": "기본 표지. 수첩 첫 쪽: 제목·날짜·간 길 한 줄 + 도착 컷 크게 아래"
+ },
+ {
+  "id": "c/cover-photo",
+  "kind": "cover",
+  "slots": [
+   "A"
+  ],
+  "texts": {
+   "title": 5,
+   "period": 22,
+   "route": 40
+  },
+  "when": "센 풍경 한 장이 있는 여행. 사진이 위 3/4을 채우고 아래 모눈 칸에 제목"
+ },
+ {
+  "id": "c/day-route",
+  "kind": "chapter",
+  "slots": [
+   "L"
+  ],
+  "texts": {
+   "date": 18,
+   "dayline": 16,
+   "times": 48,
+   "stops": 150
+  },
+  "when": "날 여는 기본 쪽. 그날 간 길을 시각·장소 줄로(times 와 stops 는 같은 줄 수, 4~8줄) + 이동·첫 장면 가로 컷"
+ },
+ {
+  "id": "c/day-wide",
+  "kind": "chapter",
+  "slots": [
+   "L"
+  ],
+  "texts": {
+   "day": 8,
+   "dayline": 16,
+   "note": 110
+  },
+  "when": "날 첫 컷이 넓은 가로일 때(배·길·바다). 사진이 위를 채우고 아래에 날짜 크게 + 그날 아침 메모"
+ },
+ {
+  "id": "c/day-pair",
+  "kind": "chapter",
+  "slots": [
+   "L",
+   "S"
+  ],
+  "texts": {
+   "date": 18,
+   "dayline": 16,
+   "note": 90
+  },
+  "when": "날 여는 쪽, 사진 둘(이동 컷 가로 + 그날 첫 디테일). 왼쪽 아래 정사각 옆에 아침 메모"
+ },
+ {
+  "id": "c/entry-big",
+  "kind": "photo",
+  "slots": [
+   "A"
+  ],
+  "texts": {
+   "date": 18,
+   "time": 5,
+   "no": 2,
+   "place": 9,
+   "area": 16,
+   "note": 52
+  },
+  "when": "장소 한 곳 기본 쪽. 시각·번호·장소·동네 + 메모 두 줄 + 그곳의 가장 좋은 한 장"
+ },
+ {
+  "id": "c/entry-pair",
+  "kind": "photo",
+  "slots": [
+   "P",
+   "P"
+  ],
+  "texts": {
+   "date": 18,
+   "time": 5,
+   "no": 2,
+   "place": 9,
+   "area": 16,
+   "note": 52,
+   "cap": 24,
+   "cap2": 24
+  },
+  "when": "장소 한 곳, 세로 두 컷 짝(같은 곳의 먼 컷·가까운 컷, 사람·물건). 사진마다 아래 한 줄"
+ },
+ {
+  "id": "c/entry-side",
+  "kind": "photo",
+  "slots": [
+   "P"
+  ],
+  "texts": {
+   "date": 18,
+   "time": 5,
+   "no": 2,
+   "place": 10,
+   "area": 12,
+   "note": 80,
+   "cap": 34
+  },
+  "when": "장소 한 곳, 세로 컷이 셀 때. 오른쪽 큰 세로 사진, 왼쪽 좁은 단에 장소와 긴 메모(수첩 여백에 적듯)"
+ },
+ {
+  "id": "c/entry-scene",
+  "kind": "photo",
+  "slots": [
+   "L"
+  ],
+  "texts": {
+   "date": 18,
+   "time": 5,
+   "no": 2,
+   "place": 9,
+   "area": 16,
+   "note": 150
+  },
+  "when": "장소 한 곳에서 한 장면을 길게 적고 싶을 때(메모가 긴 곳). 가로 한 장 + 그 아래 문단"
+ },
+ {
+  "id": "c/two-entries",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "L"
+  ],
+  "texts": {
+   "date": 18,
+   "time": 5,
+   "no": 2,
+   "place": 9,
+   "area": 14,
+   "note": 40,
+   "time2": 5,
+   "no2": 2,
+   "place2": 9,
+   "area2": 14,
+   "note2": 40
+  },
+  "when": "짧게 들른 곳 둘을 한 쪽에(각 가로 한 장 + 옆 메모). 같은 날 이어 들른 곳"
+ },
+ {
+  "id": "c/eat",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "S"
+  ],
+  "texts": {
+   "date": 18,
+   "time": 5,
+   "no": 2,
+   "place": 9,
+   "area": 16,
+   "eats": 110
+  },
+  "when": "먹은 것 쪽. 그 집 가로 한 장 + 먹은 것 목록(한 줄에 하나, 값까지, 10줄 이내) + 음식 한 장"
+ },
+ {
+  "id": "c/full",
+  "kind": "photo",
+  "slots": [
+   "A"
+  ],
+  "texts": {
+   "time": 5,
+   "cap": 44
+  },
+  "when": "센 컷 하나(노을·바다·얼굴). 쪽 꽉 + 아래 모눈 띠에 시각·한 줄. 하루 한 번"
+ },
+ {
+  "id": "c/stack-time",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "L"
+  ],
+  "texts": {
+   "date": 18,
+   "time": 5,
+   "cap": 24,
+   "time2": 5,
+   "cap2": 24
+  },
+  "when": "같은 곳 가로 두 컷, 시간이 흐른 것(낮→노을, 썰물→밀물). 왼쪽 여백에 각각 시각과 한 줄"
+ },
+ {
+  "id": "c/three-moments",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "L",
+   "L"
+  ],
+  "texts": {
+   "date": 18,
+   "time": 5,
+   "cap": 22,
+   "time2": 5,
+   "cap2": 22,
+   "time3": 5,
+   "cap3": 22
+  },
+  "when": "이어진 세 순간(가는 길·바뀌는 하늘·걸음). 가로 셋을 오른쪽에 쌓고 왼쪽에 시각·한 줄씩"
+ },
+ {
+  "id": "c/strip-wide",
+  "kind": "photo",
+  "slots": [
+   "S",
+   "S",
+   "S",
+   "L"
+  ],
+  "texts": {
+   "date": 18,
+   "time": 5,
+   "cap": 60
+  },
+  "when": "한 장소의 디테일 셋(손·간판·음식)을 띠로 위 + 그곳 넓은 가로 컷 아래 + 한 줄"
+ },
+ {
+  "id": "c/grid4",
+  "kind": "photo",
+  "slots": [
+   "A",
+   "A",
+   "A",
+   "A"
+  ],
+  "texts": {
+   "date": 18,
+   "caps": 75
+  },
+  "when": "같은 곳 다른 순간 넷(사람 여럿·식탁·골목). 2×2, 아래에 번호 붙여 한 줄씩"
+ },
+ {
+  "id": "c/big-small",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "S"
+  ],
+  "texts": {
+   "date": 18,
+   "time": 5,
+   "place": 9,
+   "note": 60
+  },
+  "when": "넓은 가로 한 장 위 + 아래 정사각(그 안의 것) + 옆 좁은 단에 시각·장소·메모"
+ },
+ {
+  "id": "c/pano-tall",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "P"
+  ],
+  "texts": {
+   "cap": 24,
+   "time": 5,
+   "place": 9,
+   "note": 78
+  },
+  "when": "바다·능선 같은 넓은 컷을 띠로 위(쪽 끝까지) + 세로 한 장 + 옆 단에 장소와 메모"
+ },
+ {
+  "id": "c/move",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "S"
+  ],
+  "texts": {
+   "date": 18,
+   "route": 16,
+   "area": 30,
+   "note": 66
+  },
+  "when": "이동한 쪽(배·버스·렌터카·비행기). 어디서→어디로 한 줄 + 걸린 시간·값 + 창밖 가로 컷 + 표·창 정사각"
+ },
+ {
+  "id": "c/note-page",
+  "kind": "text",
+  "slots": [
+   "L"
+  ],
+  "texts": {
+   "date": 18,
+   "dayline": 16,
+   "body": 320
+  },
+  "when": "글이 긴 메모가 있는 날(그날 있었던 일 하나). 모눈 위 한 단락 + 그날 가로 한 장"
+ },
+ {
+  "id": "c/places",
+  "kind": "text",
+  "slots": [],
+  "texts": {
+   "dayline": 16,
+   "places": 420
+  },
+  "when": "끝에서 둘째 쪽. 다닌 곳 목록(날마다 머리 줄 하나 + '번호 장소 — 동네 시각' 한 줄씩, 22줄 이내, 동그라미 숫자 금지)"
+ },
+ {
+  "id": "c/last",
+  "kind": "end",
+  "slots": [
+   "A"
+  ],
+  "texts": {
+   "date": 18,
+   "note": 52,
+   "colophon": 90
+  },
+  "when": "닫는 쪽. 돌아가는 길·마지막 저녁 한 장 + 한 줄 + 판권"
+ },
+ {
+  "id": "c/back",
+  "kind": "end",
+  "slots": [],
+  "texts": {
+   "colophon": 90
+  },
+  "when": "맨 뒤 크라프트 뒤표지. 판권 두세 줄만"
+ },
+ {
+  "id": "c/vd",
+  "kind": "video",
+  "slots": [
+   "V"
+  ],
+  "texts": {},
+  "when": "영상 한 편을 쪽 전체로. 움직임이 있는 장면(파도·사람·거리)일 때, 책에 한두 번"
+ }
+]

@@ -1,0 +1,165 @@
+/* kfonts: Pretendard:400;500;600;700 */
+/* 잡지 r11d: one trip = one issue of a quiet travel magazine (Openhouse / Kinfolk / Cereal / Magazine B grammar).
+   Latin + numerals: "Instrument Serif" (bundled by the app's index.html). Korean: Pretendard only, never a display face.
+   Page 100 x 133.33cqw. Margins: sides 7, top 9, bottom 11 (live bottom 122.33). Six columns 12.667, gutter 2:
+   column lefts 7 / 21.667 / 36.333 / 51 / 65.667 / 80.333; half = 42 wide at 7 and 51.
+   Type: caption 2.8 / body 3.3 (lh 1.75, ragged, 2 columns; justify + keep-all leaves holes) / deck 3.6 / heading 7-10 / masthead 15-19 (serif).
+   Colour: paper + ink only. One tone (--tone) for the window cover; photos bring the colour. */
+.t-mag{--paper:#F5F3EE;--ink:#1A1A18;--soft:#625F58;--tone:#E2DFD8;--rule:rgba(26,26,24,.22);
+  --M:7cqw;--T:9cqw;--f:"Pretendard",sans-serif;--s:"Instrument Serif","Pretendard",serif}
+.t-mag .pg{container-type:inline-size;position:relative;overflow:hidden;background:var(--paper);color:var(--ink);
+  font-family:var(--f);word-break:keep-all;overflow-wrap:break-word}
+.t-mag .pg p,.t-mag .pg h3,.t-mag .pg ol{margin:0;padding:0;position:absolute}
+.t-mag .ph{position:absolute;overflow:hidden;background:var(--tone)}
+.t-mag .ph img,.t-mag .ph video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+
+/* type */
+.t-mag .cp{font:500 2.8cqw/1.5 var(--f);color:var(--soft);letter-spacing:.005em}
+.t-mag .bd{font:400 3.3cqw/1.75 var(--f);letter-spacing:-.015em;columns:2;column-gap:2.4cqw;white-space:pre-line}
+.t-mag .bd1{columns:1}
+.t-mag .dk{font:500 3.6cqw/1.6 var(--f);letter-spacing:-.02em}
+.t-mag .hd{font:600 7.4cqw/1.22 var(--f);letter-spacing:-.04em}
+.t-mag .kk{font:italic 400 4.6cqw/1 var(--s);letter-spacing:.01em}
+.t-mag .mast{font:400 15cqw/.9 var(--s);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+/* folio: page number from data-page, serif, outer bottom */
+.t-mag .pg.fo::after{content:attr(data-page);position:absolute;right:var(--M);bottom:5cqw;font:400 3.6cqw/1 var(--s);color:var(--soft)}
+
+/* ---------- covers ---------- */
+/* full-bleed portrait, spaced serif masthead over the sky, Korean title + cover lines bottom left */
+.t-mag .c-mast .ph{inset:0}
+.t-mag .c-mast .st{position:absolute;inset:0 0 auto 0;height:38%;background:linear-gradient(rgba(10,10,10,.55),rgba(10,10,10,.32) 60%,rgba(10,10,10,0))}
+.t-mag .c-mast .sb{position:absolute;inset:auto 0 0 0;height:48%;background:linear-gradient(0deg,rgba(10,10,10,.68),rgba(10,10,10,.45) 50%,rgba(10,10,10,0))}
+.t-mag .c-mast .mast{left:0;right:0;top:8cqw;text-align:center;color:#fff;font-size:17cqw;letter-spacing:.14em;text-indent:.14em}
+.t-mag .c-mast .per{right:var(--M);width:26cqw;bottom:11cqw;text-align:right;color:#fff;font:500 2.9cqw/1.6 var(--f);letter-spacing:.06em}
+.t-mag .c-mast .ttl{left:var(--M);bottom:31cqw;color:#fff;font:600 9cqw/1.1 var(--f);letter-spacing:-.04em;white-space:nowrap}
+.t-mag .c-mast .ln{left:var(--M);width:58cqw;bottom:11cqw;color:#fff;font:500 3.4cqw/1.6 var(--f);white-space:pre-line}
+/* Cereal: grey tone, small spaced masthead, one photo window, small title under it */
+.t-mag .c-window{background:var(--tone)}
+.t-mag .c-window .mast{left:0;right:0;top:11cqw;text-align:center;font-size:10cqw;letter-spacing:.34em;text-indent:.34em}
+.t-mag .c-window .ph{left:18cqw;right:18cqw;top:29cqw;height:80cqw}
+.t-mag .c-window .ttl{left:0;right:0;top:113cqw;text-align:center;font:600 4.2cqw/1 var(--f);letter-spacing:.02em}
+.t-mag .c-window .per{left:0;right:0;top:119.5cqw;text-align:center}
+/* Travel Almanac: big serif masthead across the top, framed photo, title + one line under it */
+.t-mag .c-frame .mast{left:calc(var(--M) - .04em);top:8cqw;font-size:16.5cqw;letter-spacing:.02em}
+.t-mag .c-frame .per{left:var(--M);top:26cqw}
+.t-mag .c-frame .ph{left:var(--M);right:var(--M);top:31.5cqw;bottom:22cqw}
+.t-mag .c-frame .ttl{left:var(--M);top:114.5cqw;font:600 5cqw/1 var(--f);letter-spacing:-.03em;white-space:nowrap}
+.t-mag .c-frame .ln{right:var(--M);top:115.6cqw;text-align:right;width:52cqw}
+
+/* ---------- front matter ---------- */
+/* contents: photo across the top, serif "Contents", ruled list with serif numbers and page numbers */
+.t-mag .toc .ph{left:0;right:0;top:0;height:56cqw}
+.t-mag .toc .kt{left:var(--M);top:63cqw;font:400 9cqw/1 var(--s)}
+.t-mag .toc .per{right:var(--M);top:67cqw;text-align:right}
+.t-mag .toc ol{left:var(--M);right:var(--M);top:77cqw;list-style:none;counter-reset:n}
+.t-mag .toc li{position:relative;display:grid;grid-template-columns:9cqw 1fr auto;align-items:baseline;padding:2.3cqw 0 2.6cqw;border-top:1px solid var(--rule);counter-increment:n}
+.t-mag .toc li:last-child{border-bottom:1px solid var(--rule)}
+.t-mag .toc li:not(:has(span)){display:none}
+.t-mag .toc li::before{content:counter(n,decimal-leading-zero);font:400 4.4cqw/1 var(--s);color:var(--soft)}
+.t-mag .toc li span{font:500 3.6cqw/1.4 var(--f);letter-spacing:-.02em}
+.t-mag .toc li b{font:400 4.4cqw/1 var(--s);padding-left:3cqw}
+/* editor's letter: one column, signed */
+.t-mag .letter .kt{left:var(--M);top:11cqw;font:italic 400 6cqw/1 var(--s)}
+.t-mag .letter .rl{position:absolute;left:var(--M);right:var(--M);top:20cqw;border-top:1px solid var(--rule)}
+.t-mag .letter .bd{left:var(--M);width:78cqw;top:25cqw;font-size:3.5cqw;line-height:1.85}
+.t-mag .letter .sg{right:var(--M);bottom:11cqw;text-align:right}
+
+/* ---------- article openers ---------- */
+/* Openhouse right-hand page: centred kicker, title, 4:5 photo, deck, credit */
+.t-mag .op-spread .kk{left:0;right:0;top:10cqw;text-align:center}
+.t-mag .op-spread .ttl{left:0;right:0;top:17cqw;text-align:center;font:600 10cqw/1.05 var(--f);letter-spacing:-.05em;white-space:nowrap}
+.t-mag .op-spread .ph{left:22cqw;right:22cqw;top:33cqw;height:70cqw}
+.t-mag .op-spread .dk{left:14cqw;right:14cqw;top:106.5cqw;text-align:center}
+.t-mag .op-spread .cp{left:0;right:0;top:119.5cqw;text-align:center}
+/* full-bleed opener, words in the dark bottom */
+.t-mag .op-bleed .ph{inset:0}
+.t-mag .op-bleed .sb{position:absolute;inset:auto 0 0 0;height:64%;background:linear-gradient(0deg,rgba(10,10,10,.76),rgba(10,10,10,.64) 50%,rgba(10,10,10,.4) 75%,rgba(10,10,10,0))}
+.t-mag .op-bleed .kk{left:var(--M);bottom:46cqw;color:#fff;font-size:5.2cqw}
+.t-mag .op-bleed .ttl{left:calc(var(--M) - .03em);bottom:30.5cqw;color:#fff;font:700 13cqw/1 var(--f);letter-spacing:-.05em;white-space:nowrap}
+.t-mag .op-bleed .dk{left:var(--M);width:72cqw;bottom:17cqw;color:#fff}
+.t-mag .op-bleed .cp{left:var(--M);bottom:11cqw;color:#fff}
+/* Kinfolk: photo on the top half, credit, title, deck and the first lines of the article */
+.t-mag .op-half .ph{left:0;right:0;top:0;height:60cqw}
+.t-mag .op-half .cp{left:var(--M);top:65cqw;letter-spacing:.06em}
+.t-mag .op-half .ttl{left:var(--M);right:var(--M);top:70cqw;font:600 8.4cqw/1.2 var(--f);letter-spacing:-.045em}
+.t-mag .op-half .dk{left:var(--M);right:var(--M);top:82cqw}
+.t-mag .op-half .bd{left:var(--M);right:var(--M);top:96cqw;columns:1}
+
+/* ---------- photo stories ---------- */
+.t-mag .bleed .ph{inset:0}
+.t-mag .plate .ph{left:var(--M);right:var(--M);top:var(--T);height:101cqw}
+.t-mag .plate .cp{left:var(--M);width:62cqw;top:112.5cqw}
+.t-mag .stack .p0{left:var(--M);right:var(--M);top:var(--T);height:52cqw}
+.t-mag .stack .p1{left:var(--M);right:var(--M);top:63cqw;height:52cqw}
+.t-mag .stack .cp{left:var(--M);width:70cqw;top:117.5cqw}
+.t-mag .strip .ph{left:0;right:0;height:35.5cqw}
+.t-mag .strip .p0{top:var(--T)}.t-mag .strip .p1{top:46cqw}.t-mag .strip .p2{top:83cqw}
+.t-mag .strip .cp{left:var(--M);width:70cqw;top:120.5cqw}
+.t-mag .mosaic .p0{left:0;right:0;top:0;height:62cqw}
+.t-mag .mosaic .p1{left:var(--M);width:42cqw;top:64cqw;height:48cqw}
+.t-mag .mosaic .p2{left:51cqw;width:42cqw;top:64cqw;height:48cqw}
+.t-mag .mosaic .cp{left:var(--M);width:70cqw;top:114.5cqw}
+/* POPEYE / Magazine B guide grid: head, four squares, numbered captions */
+.t-mag .grid4 .hd{left:var(--M);top:var(--T);font-size:5cqw;white-space:nowrap}
+.t-mag .grid4 .g{position:absolute;width:42cqw}
+.t-mag .grid4 .g .ph{position:relative;width:100%;height:40cqw}
+.t-mag .grid4 .g .cp{position:relative;margin-top:1.6cqw;color:var(--ink);counter-increment:g}
+.t-mag .grid4 .g .cp::before{content:counter(g);font:400 3.6cqw/1 var(--s);color:var(--soft);margin-right:1.4cqw}
+.t-mag .grid4{counter-reset:g}
+.t-mag .grid4 .g0{left:var(--M);top:18cqw}.t-mag .grid4 .g1{left:51cqw;top:18cqw}
+.t-mag .grid4 .g2{left:var(--M);top:70cqw}.t-mag .grid4 .g3{left:51cqw;top:70cqw}
+/* three portraits under a short head + paragraph */
+.t-mag .triptych .hd{left:var(--M);top:var(--T);font-size:5cqw;white-space:nowrap}
+.t-mag .triptych .bd{left:var(--M);right:var(--M);top:17.5cqw;columns:1}
+.t-mag .triptych .ph{top:46cqw;height:64cqw;width:27.333cqw}
+.t-mag .triptych .p0{left:var(--M)}.t-mag .triptych .p1{left:36.333cqw}.t-mag .triptych .p2{left:65.667cqw}
+.t-mag .triptych .cp{left:var(--M);width:70cqw;top:112.5cqw}
+
+/* ---------- article pages: photos + body copy ---------- */
+.t-mag .wide-text .ph{left:0;right:0;top:0;height:64cqw}
+.t-mag .wide-text .cp{left:var(--M);width:86cqw;top:66.5cqw;white-space:nowrap;overflow:hidden}
+.t-mag .wide-text .bd{left:var(--M);right:var(--M);top:74cqw}
+.t-mag .text-photo .bd{left:var(--M);right:var(--M);top:var(--T)}
+.t-mag .text-photo .ph{left:var(--M);right:var(--M);top:66cqw;height:50cqw}
+.t-mag .text-photo .cp{left:var(--M);width:86cqw;top:118cqw;white-space:nowrap;overflow:hidden}
+.t-mag .pair-text .ph{top:var(--T);width:42cqw;height:56cqw}
+.t-mag .pair-text .p0{left:var(--M)}.t-mag .pair-text .p1{left:51cqw}
+.t-mag .pair-text .cp{left:var(--M);width:86cqw;top:67.5cqw;white-space:nowrap;overflow:hidden}
+.t-mag .pair-text .bd{left:var(--M);right:var(--M);top:74cqw}
+.t-mag .detail .p0{left:var(--M);right:var(--M);top:var(--T);height:57cqw}
+.t-mag .detail .cp{left:var(--M);width:86cqw;top:68.5cqw;white-space:nowrap;overflow:hidden}
+.t-mag .detail .bd{left:var(--M);width:42cqw;top:76cqw;columns:1}
+.t-mag .detail .p1{left:51cqw;width:42cqw;top:76cqw;height:42cqw}
+/* a section break inside the article: kicker, sub-head, deck, photo to the bottom edge */
+.t-mag .subhead .kk{left:var(--M);top:11cqw}
+.t-mag .subhead .hd{left:var(--M);right:var(--M);top:17.5cqw}
+.t-mag .subhead .dk{left:var(--M);right:var(--M);top:38cqw}
+.t-mag .subhead .ph{left:0;right:0;top:62cqw;bottom:0}
+/* pull quotes: set in the text face, ink, never a poster */
+.t-mag .quote .qb{position:absolute;left:var(--M);width:80cqw;top:0;height:72cqw;display:flex;flex-direction:column;justify-content:center}
+.t-mag .quote .qb>p{position:static}
+.t-mag .quote .qm{font:400 22cqw/.5 var(--s);color:var(--soft);margin:3cqw 0 1cqw -.6cqw;height:9cqw}
+.t-mag .quote .q{font:500 6cqw/1.5 var(--f);letter-spacing:-.035em}
+.t-mag .quote .cp{margin-top:3.6cqw}
+.t-mag .quote .ph{left:0;right:0;top:72cqw;bottom:0}
+.t-mag .quote-side .ph{left:0;top:0;bottom:0;width:58cqw}
+.t-mag .quote-side .qm{position:absolute;left:62cqw;top:5cqw;font:400 18cqw/1 var(--s);color:var(--soft)}
+.t-mag .quote-side .q{left:63cqw;right:var(--M);top:22cqw;font:500 4.8cqw/1.55 var(--f);letter-spacing:-.035em}
+.t-mag .quote-side .cp{left:63cqw;right:var(--M);bottom:11cqw}
+
+/* ---------- text ---------- */
+.t-mag .text2 .hd{left:var(--M);right:var(--M);top:var(--T);font-size:4.6cqw}
+.t-mag .text2 .rl{position:absolute;left:var(--M);right:var(--M);top:17cqw;border-top:1px solid var(--rule)}
+.t-mag .text2 .bd{left:var(--M);right:var(--M);top:21cqw}
+
+/* ---------- back matter ---------- */
+/* colophon: the last photo as a plate, then the masthead small and a few lines of facts, flush to the bottom */
+.t-mag .colophon .ph{left:var(--M);right:var(--M);top:var(--T);height:62cqw}
+.t-mag .colophon .mast{left:var(--M);top:82cqw;font-size:8cqw;letter-spacing:.16em}
+.t-mag .colophon .rl{position:absolute;left:var(--M);right:var(--M);top:93cqw;border-top:1px solid var(--rule)}
+.t-mag .colophon .cl{left:var(--M);width:60cqw;top:96cqw;font:500 2.9cqw/1.75 var(--f);color:var(--ink);white-space:pre-line}
+.t-mag .colophon .end{position:absolute;right:var(--M);top:96.6cqw;width:2.4cqw;height:2.4cqw;background:var(--ink)}
+/* back cover */
+.t-mag .back .ph{inset:0}
+.t-mag .back .sb{position:absolute;inset:auto 0 0 0;height:30%;background:linear-gradient(0deg,rgba(10,10,10,.6),rgba(10,10,10,0))}
+.t-mag .back .mast{left:0;right:0;bottom:10cqw;text-align:center;color:#fff;font-size:6cqw;letter-spacing:.34em;text-indent:.34em}

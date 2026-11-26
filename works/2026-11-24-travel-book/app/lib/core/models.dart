@@ -92,11 +92,13 @@ class BookOptions {
   bool toneMatch = false;
   int highlightSec = 45;
   String music = 'calm';
+  String? who; // 혼자|연인·부부|친구|가족|부모님 or the user's own words; null = skipped
+  String about = ''; // one free line: what kind of trip it was
 
   Map<String, dynamic> toJson() => {
         'length': length, 'theme': theme, 'textAmount': textAmount, 'tone': tone, 'chapterBy': chapterBy,
         'people': people, 'extras': extras.toList(), 'format': format, 'quality': quality,
-        'toneMatch': toneMatch, 'highlightSec': highlightSec, 'music': music,
+        'toneMatch': toneMatch, 'highlightSec': highlightSec, 'music': music, 'who': who, 'about': about,
       };
   static BookOptions fromJson(Map<String, dynamic> j) => BookOptions()
     ..length = j['length'] as String
@@ -110,7 +112,9 @@ class BookOptions {
     ..quality = j['quality'] as String
     ..toneMatch = j['toneMatch'] as bool
     ..highlightSec = j['highlightSec'] as int
-    ..music = j['music'] as String;
+    ..music = j['music'] as String
+    ..who = j['who'] as String?
+    ..about = j['about'] as String? ?? '';
 }
 
 class Chapter {
@@ -142,18 +146,27 @@ class BookPlan {
 }
 
 class LayoutDef {
-  final String id, kind; // kind: cover|chapter|photo|video|numbers|map|essay|back
-  final List<String> slots; // P|L|A
+  final String id, kind; // kind: cover|chapter|photo|text|end|video (older themes: numbers|map|essay|back)
+  final List<String> slots; // P|L|S|A|V
   final List<String> texts;
+  final Map<String, int> limits; // text key -> max characters (designer layouts, r11)
+  final String when; // when the editor should use it (read by the model)
   final List<String> formats;
-  const LayoutDef(this.id, this.kind, this.slots, {this.texts = const [], this.formats = const ['phone', 'a5', 'square']});
-  factory LayoutDef.fromJson(Map<String, dynamic> j) => LayoutDef(
-        j['id'] as String,
-        j['kind'] as String,
-        (j['slots'] as List).cast<String>(),
-        texts: (j['texts'] as List? ?? const []).cast<String>(),
-        formats: (j['formats'] as List? ?? const ['phone', 'a5', 'square']).cast<String>(),
-      );
+  const LayoutDef(this.id, this.kind, this.slots,
+      {this.texts = const [], this.limits = const {}, this.when = '', this.formats = const ['phone', 'a5', 'square']});
+  factory LayoutDef.fromJson(Map<String, dynamic> j) {
+    final t = j['texts'];
+    final limits = t is Map ? {for (final e in t.entries) e.key as String: (e.value as num).toInt()} : <String, int>{};
+    return LayoutDef(
+      j['id'] as String,
+      j['kind'] as String,
+      (j['slots'] as List).cast<String>(),
+      texts: t is Map ? limits.keys.toList() : (t as List? ?? const []).cast<String>(),
+      limits: limits,
+      when: j['when'] as String? ?? '',
+      formats: (j['formats'] as List? ?? const ['phone', 'a5', 'square']).cast<String>(),
+    );
+  }
 }
 
 class PageSpec {

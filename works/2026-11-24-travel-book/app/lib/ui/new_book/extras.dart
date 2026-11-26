@@ -1,8 +1,10 @@
-// D3 3/3 더 넣을 것: optional side roads (must-include, notes, timeline) and the estimate before [책 만들기].
+// D3 3/3 더 넣을 것: who/what kind of trip (mockup r11 concept C), optional side roads (must-include, notes, timeline)
+// and the estimate before [책 만들기].
 import 'package:material_ui/material_ui.dart';
 
 import '../tokens.dart';
 import '../widgets.dart';
+import '../../core/models.dart' show BookOptions;
 import 'draft.dart';
 
 class ExtrasScreen extends StatelessWidget {
@@ -39,6 +41,8 @@ class ExtrasScreen extends StatelessWidget {
       title: '더 넣을 게 있어요?',
       titleSmall: '(없어도 돼요)',
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        ConceptBox(opts: o),
+        const SizedBox(height: 14),
         _row(Icons.check_box_outlined, '꼭 넣을 사진', must > 0 ? '$must장 골랐어요' : '빠지면 안 되는 사진이 있으면 골라 두세요', must > 0, onMust,
             trail: mustThumbs.isEmpty ? null : _stack()),
         const SizedBox(height: 8),
@@ -114,4 +118,131 @@ class ExtrasScreen extends StatelessWidget {
           ]),
         ),
       );
+}
+
+const whoChoices = ['혼자', '연인·부부', '친구', '가족', '부모님'];
+
+/// 누구랑 + 어떤 여행 (r11 concept C): chips, "직접 쓰기" for other company, one free line, and [건너뛰기].
+/// Writes straight into the draft's BookOptions (who / about); skipping clears both.
+class ConceptBox extends StatefulWidget {
+  final BookOptions opts;
+  const ConceptBox({super.key, required this.opts});
+  @override
+  State<ConceptBox> createState() => _ConceptBoxState();
+}
+
+class _ConceptBoxState extends State<ConceptBox> {
+  late final TextEditingController _who, _about;
+  late bool _own = widget.opts.who != null && !whoChoices.contains(widget.opts.who);
+  bool _skipped = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _who = TextEditingController(text: _own ? widget.opts.who : '');
+    _about = TextEditingController(text: widget.opts.about);
+  }
+
+  @override
+  void dispose() {
+    _who.dispose();
+    _about.dispose();
+    super.dispose();
+  }
+
+  void _skip() => setState(() {
+        _skipped = true;
+        _own = false;
+        _who.clear();
+        _about.clear();
+        widget.opts
+          ..who = null
+          ..about = '';
+      });
+
+  Widget _chip(String t, bool on, VoidCallback tap) => GestureDetector(
+        onTap: tap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          decoration: BoxDecoration(
+            color: on ? C.ink : const Color(0xFFFBF8F3),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: on ? C.ink : C.line),
+          ),
+          child: Text(t, style: ui(13.5, color: on ? C.paper : C.ink)),
+        ),
+      );
+
+  InputDecoration _box(String hint) => InputDecoration(
+        hintText: hint,
+        hintStyle: ui(13.5, color: const Color(0xFFADA395)),
+        isDense: true,
+        filled: true,
+        fillColor: const Color(0xFFFBF8F3),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.line)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.line)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.ink2)),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final o = widget.opts;
+    if (_skipped) {
+      return GestureDetector(
+        onTap: () => setState(() => _skipped = false),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(14)),
+          child: Row(children: [
+            Expanded(child: Text('누구랑 · 어떤 여행: 건너뛰었어요', style: ui(13, color: C.ink2))),
+            Text('다시 넣기', style: ui(12.5, w: FontWeight.w700)),
+          ]),
+        ),
+      );
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
+        Expanded(child: Text('누구랑 다녀왔어요?', style: ui(12, w: FontWeight.w700, color: C.ink2))),
+        GestureDetector(onTap: _skip, child: Padding(padding: const EdgeInsets.all(4), child: Text('건너뛰기', style: ui(12.5, color: C.ink2)))),
+      ]),
+      const SizedBox(height: 8),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        for (final w in whoChoices)
+          _chip(w, !_own && o.who == w, () => setState(() {
+                _own = false;
+                o.who = o.who == w ? null : w;
+              })),
+        _chip('직접 쓰기', _own, () => setState(() {
+              _own = !_own;
+              o.who = _own && _who.text.trim().isNotEmpty ? _who.text.trim() : null;
+            })),
+      ]),
+      if (_own) ...[
+        const SizedBox(height: 8),
+        TextField(
+          controller: _who,
+          maxLength: 20,
+          style: ui(13.5),
+          decoration: _box('예: 회사 동기 셋, 강아지랑').copyWith(counterText: ''),
+          onChanged: (v) => o.who = v.trim().isEmpty ? null : v.trim(),
+        ),
+      ],
+      const SizedBox(height: 14),
+      Text.rich(TextSpan(children: [
+        TextSpan(text: '어떤 여행이었어요? ', style: ui(12, w: FontWeight.w700, color: C.ink2)),
+        TextSpan(text: '(선택)', style: ui(12, color: C.ink2)),
+      ])),
+      const SizedBox(height: 8),
+      TextField(
+        controller: _about,
+        maxLength: 40,
+        style: ui(13.5),
+        decoration: _box('예: 먹으러 간 여행 · 엄마 환갑 · 2주 신혼여행').copyWith(counterText: ''),
+        onChanged: (v) => o.about = v.trim(),
+      ),
+      const SizedBox(height: 6),
+      Text('책에 이 말이 그대로 나오진 않아요. 사진 고르기와 글의 시점에만 써요', style: ui(11.5, color: C.ink2, h: 1.45)),
+    ]);
+  }
 }

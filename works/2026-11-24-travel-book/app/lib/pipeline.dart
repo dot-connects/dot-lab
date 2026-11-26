@@ -12,6 +12,7 @@ import 'package:image/image.dart' as img;
 import 'ai/client.dart';
 import 'book/store.dart';
 import 'core/book.dart';
+import 'core/book_layout.dart';
 import 'core/chapters.dart';
 import 'core/models.dart';
 import 'core/paginate.dart';
@@ -287,34 +288,50 @@ class Pipeline {
     return true;
   }
 
-  // ----- /write -----
+  // ----- /layout (the AI editor) -----
 
-  /// Text for the confirmed photos in the theme's shape, then pages and files. A failure leaves the book at
-  /// "picked" with its picks untouched: [다시 시도] calls this again (no new /pick).
+  /// The AI editor lays out the whole book from the theme's designer layouts (order, layout per page, photos, texts).
+  /// One more call when checkLayout finds problems; whatever comes back is repaired into a usable book.
+  /// A failure leaves the book at "picked" with its picks untouched: [다시 시도] calls this again (no new /pick).
   Future<AiState> write(Book b, {List<NoteInput> notes = const []}) async {
-    final shape = shapeOf(b.theme);
-    // 사진만 has no words inside: no /write call, the cover takes the default title (operator 11-26)
-    if (b.theme != 'photo' && !b.texts.containsKey(shape)) {
-      final pool = _pool(b);
-      final picked = [for (final p in b.picks) pool[p.id]].whereType<Candidate>().toList();
-      final images = <AiImage>[];
-      for (final c in picked) {
-        if (c.shot.isVideo) {
-          final fs = await src.videoFrames(c.id); // one scene per video for /write
-          if (fs.isNotEmpty) images.add(AiImage(c.id, fs[fs.length > 1 ? 1 : 0]));
-        } else {
-          final j = await src.jpeg(c.id, 512);
-          if (j != null) images.add(AiImage(c.id, j));
-        }
+    final pool = _pool(b);
+    final picked = [for (final p in b.picks) pool[p.id]].whereType<Candidate>().toList();
+    final images = <AiImage>[];
+    for (final c in picked) {
+      if (c.shot.isVideo) {
+        final fs = await src.videoFrames(c.id); // one scene per video
+        if (fs.isNotEmpty) images.add(AiImage(c.id, fs[fs.length > 1 ? 1 : 0]));
+      } else {
+        final j = await src.jpeg(c.id, 512);
+        if (j != null) images.add(AiImage(c.id, j));
       }
-      final r = await ai.write(images, [for (final c in picked) _aiShot(c)], shape, notes: _notes(notes), opts: b.opts.toJson());
-      final res = r is AiOk ? checkWrite(r.body, [for (final c in picked) c.id], shape) : null;
-      if (res == null) return r is AiOff ? AiState.off : AiState.failed;
-      b.texts[shape] = res;
-      await store.save(b); // saved before layout: a crash here never asks /write again
     }
-    b.stage = 'written';
-    await finish(b);
+    final defs = await _layouts(b.theme);
+    final theme = layoutRules.containsKey(b.theme) ? b.theme : 'a';
+    final rules = layoutRules[theme]!;
+    final byId = {for (final c in picked) c.id: c};
+    final shots = [for (final c in picked) _aiShot(c)];
+    Future<AiResult> ask({List<String>? fix, Map<String, dynamic>? prev}) => ai.layout(images, shots,
+        theme: theme, catalog: layoutCatalog(defs), rules: rules.toJson(picked.length), notes: _notes(notes), opts: b.opts.toJson(), fix: fix, prev: prev);
+    final r = await ask();
+    if (r is! AiOk) return r is AiOff ? AiState.off : AiState.failed;
+    var body = r.body;
+    final errs = checkLayout(body, defs, byId, rules);
+    if (errs.isNotEmpty) {
+      final r2 = await ask(fix: errs.take(20).toList(), prev: body);
+      if (r2 is AiOk && checkLayout(r2.body, defs, byId, rules).length < errs.length) body = r2.body;
+    }
+    final out = repairLayout(body, defs, byId, fallbackTitle: _defaultTitle(b), coverPhoto: b.cover);
+    if (out.pages.length < 2) return AiState.failed;
+    final used = {for (final p in out.pages) ...p.ids};
+    if (b.title.isEmpty) b.title = out.title;
+    b
+      ..pages = out.pages
+      ..original = out.pages
+      ..spare = [for (final p in b.picks) if (!used.contains(p.id)) p.id]
+      ..stage = 'written';
+    await _copyMedia(b, used);
+    await store.save(b);
     return AiState.ok;
   }
 
@@ -403,12 +420,12 @@ class Pipeline {
     final shape = shapeOf(b.theme);
     final j = c.shot.isVideo ? (await src.videoFrames(c.id)).firstOrNull : await src.jpeg(c.id, 512);
     final r = await ai.rewrite([if (j != null) AiImage(c.id, j)],
-        {'local': _localIso(c.local), 'place': c.place ?? '', 'caption': spec.text['caption0'] ?? ''}, shape,
+        {'local': _localIso(c.local), 'place': c.place ?? '', 'caption': spec.text[_captionKey(spec)] ?? ''}, shape,
         notes: _notes(notes));
     final cap = r is AiOk && r.body['caption'] is String ? fitText(r.body['caption'] as String, shape) : null;
     if (cap == null) return r is AiOff ? AiState.off : AiState.failed;
     b.rewrites++;
-    spec.text['caption0'] = cap;
+    spec.text[_captionKey(spec)] = cap;
     final t = b.texts[shape];
     if (t != null) t.captions[c.id] = cap;
     await store.save(b);
@@ -430,7 +447,13 @@ class Pipeline {
 
   // ----- helpers -----
 
-  AiShot _aiShot(Candidate c) => AiShot(c.id, _localIso(c.local), c.place, video: c.shot.isVideo, durMs: c.shot.durationMs);
+  /// The page's own words to rewrite: its first filled text slot that is not a heading or a date.
+  String _captionKey(PageSpec p) =>
+      p.text.entries.where((e) => e.value.isNotEmpty && !const {'title', 'period', 'stamp', 'colophon', 'dayline', 'day', 'date'}.contains(e.key)).firstOrNull?.key ??
+      'caption0';
+
+  AiShot _aiShot(Candidate c) =>
+      AiShot(c.id, _localIso(c.local), c.place, video: c.shot.isVideo, durMs: c.shot.durationMs, w: c.shot.w, h: c.shot.h);
 
   List<Map<String, String?>> _notes(List<NoteInput> ns) =>
       [for (final p in trimForAi([for (final n in ns) ...n.pieces])) {'day': p.day, 'text': p.text}];

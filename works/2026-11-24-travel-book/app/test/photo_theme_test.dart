@@ -7,7 +7,7 @@ import 'package:tripbook/core/paginate.dart';
 
 import 'paginate_test.dart' show trip;
 
-final photoDefs = (jsonDecode(File('assets/book/themes/photo/layouts.json').readAsStringSync()) as List)
+final photoDefs = (jsonDecode(File('test/fixtures/r8-photo-layouts.json').readAsStringSync()) as List)
     .map((j) => LayoutDef.fromJson(j as Map<String, dynamic>))
     .toList();
 

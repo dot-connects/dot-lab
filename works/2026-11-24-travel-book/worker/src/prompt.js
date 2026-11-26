@@ -53,3 +53,54 @@ export const WRITE_SCHEMA = obj({
 });
 
 export const REWRITE_SCHEMA = obj({ caption: str });
+
+// /layout: the model as book editor over the theme's designer layouts (ported from mock r11 engine2.py).
+// Guides are Korean markdown in ./themes, imported as text (wrangler [[rules]] Text; tests load them via test/md.mjs).
+import a from "./themes/a.md";
+import photo from "./themes/photo.md";
+import album from "./themes/album.md";
+import b from "./themes/b.md";
+import c from "./themes/c.md";
+import diary from "./themes/diary.md";
+import mag from "./themes/mag.md";
+import common from "./themes/_common.md";
+
+export const THEMES = { a, photo, album, b, c, diary, mag };
+
+const cut = (s, n) => (typeof s === "string" ? s.slice(0, n) : "");
+
+/** System prompt for /layout: theme guide + common guide + layout catalog + output rules. `n` = photos in the book. */
+export function systemLayout(theme, catalog, rules, n) {
+  const cat = catalog.map(l => {
+    const slots = (Array.isArray(l.slots) ? l.slots : []).map(s => cut(s, 2)).join(" ");
+    const texts = Object.entries(l.texts && typeof l.texts === "object" ? l.texts : {}).slice(0, 12)
+      .map(([k, v]) => `${cut(k, 20)}≤${Math.floor(+v) || 0}자`).join(", ");
+    return `- ${cut(l.id, 40)} [${cut(l.kind, 20)}] 칸 ${slots || "없음"}` + (texts ? ` · 글 ${texts}` : "") + ` — ${cut(l.when, 200)}`;
+  }).join("\n");
+  let [lo, hi] = Array.isArray(rules?.pages) ? rules.pages.map(x => Math.floor(+x) || 0) : [16, 26];
+  if (n > 40) [lo, hi] = [Math.max(lo, Math.round(n * 0.4)), Math.max(hi, Math.round(n * 0.75))];
+  const distinct = Math.floor(+rules?.min_distinct) || 6;
+  return `${THEMES[theme]}\n\n${common}
+
+## 쪽 틀 (디자이너가 만든 것. 모양은 못 바꾼다. 쪽마다 하나를 고르고 칸에 사진을 넣는다)
+칸: P=세로 사진, L=가로 사진, S=정사각에 가까운 사진, A=아무 사진, V=영상(움직이는 장면). 칸 순서대로 photos 를 준다.
+${cat}
+
+## 출력 규칙 (기계가 검사한다)
+- 1쪽은 cover 틀. 쪽 수 ${lo}~${hi}. 같은 틀 3쪽 연속 금지. 본문 틀 최소 ${distinct}가지.
+- 칸의 방향과 사진 방향을 맞춘다. 한 사진은 한 번만(표지 사진은 본문에 한 번 더 가능). 약한 사진은 빼도 된다.
+- fx, fy(0~100): 칸에 맞춰 잘릴 때 남길 중심.
+- texts: 그 틀에 있는 글 칸만, 글자 수 이하. 글 칸이 있어도 비워 둘 거면 넣지 않는다(표지 title·period 는 꼭).
+- intent: 그 쪽에서 하려는 것 한 줄(책에 안 나온다). plan: 책 전체 흐름 3~6줄.
+
+답은 스키마 JSON 만.`;
+}
+
+export const LAYOUT_SCHEMA = obj({
+  title: str, plan: str,
+  pages: { type: "array", items: obj({
+    layout: str, intent: str,
+    photos: { type: "array", items: obj({ id: str, fx: int, fy: int }) },
+    texts: { type: "array", items: obj({ key: str, text: str }) },
+  }) },
+});

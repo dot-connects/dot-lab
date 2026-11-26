@@ -1,0 +1,303 @@
+[
+ {
+  "id": "album/cover-board",
+  "kind": "cover",
+  "slots": [
+   "A"
+  ],
+  "texts": {
+   "title": 5,
+   "period": 22,
+   "memo": 18
+  },
+  "when": "기본 표지. 가장 센 한 장(도착 컷·바다)을 위에 크게, 아래 큰 제목"
+ },
+ {
+  "id": "album/cover-side",
+  "kind": "cover",
+  "slots": [
+   "P"
+  ],
+  "texts": {
+   "title": 5,
+   "period": 22,
+   "place": 12
+  },
+  "when": "세로 사진이 센 여행. 제목 위 왼쪽, 세로 인화가 오른쪽 아래 모서리에"
+ },
+ {
+  "id": "album/cover-cloth",
+  "kind": "cover",
+  "slots": [
+   "S"
+  ],
+  "texts": {
+   "title": 5,
+   "period": 22
+  },
+  "when": "천 표지에 정사각 인화 한 장을 끼운 앨범. 차분한 여행, 사람·가족 여행"
+ },
+ {
+  "id": "album/day-road",
+  "kind": "chapter",
+  "slots": [
+   "L",
+   "S"
+  ],
+  "texts": {
+   "dayline": 18,
+   "stamp": 6,
+   "memo": 24
+  },
+  "when": "날이 바뀔 때 기본. 이동 컷(차창·배·길)을 가로로 크게 + 그날 둘째 컷 정사각"
+ },
+ {
+  "id": "album/day-tall",
+  "kind": "chapter",
+  "slots": [
+   "P"
+  ],
+  "texts": {
+   "dayline": 16,
+   "stamp": 6,
+   "memo": 24
+  },
+  "when": "날 첫 컷이 세로일 때. 큰 세로 인화 + 오른쪽 여백에 세로로 쓴 머리줄(쉼표 없이)"
+ },
+ {
+  "id": "album/day-note",
+  "kind": "chapter",
+  "slots": [
+   "P"
+  ],
+  "texts": {
+   "dayline": 18,
+   "body": 44,
+   "stamp": 6
+  },
+  "when": "날을 글로 열고 싶을 때(날씨·계획이 바뀐 날). 머리줄 + 두 줄 글 + 세로 인화"
+ },
+ {
+  "id": "album/full",
+  "kind": "photo",
+  "slots": [
+   "P"
+  ],
+  "texts": {},
+  "when": "센 컷 하나(얼굴·노을·풍경). 한 쪽 꽉, 글 없음. 빽빽한 쪽 다음, 끝에서 셋째 쪽쯤"
+ },
+ {
+  "id": "album/big",
+  "kind": "photo",
+  "slots": [
+   "P"
+  ],
+  "texts": {
+   "memo": 22
+  },
+  "when": "센 세로 컷 하나 + 위 왼쪽 메모 한 줄. 왼쪽 한 변이 비는 쉬어 가는 쪽"
+ },
+ {
+  "id": "album/square",
+  "kind": "photo",
+  "slots": [
+   "S"
+  ],
+  "texts": {
+   "memo": 30
+  },
+  "when": "정사각으로 잘라도 되는 한 장(물건·음식·사람). 아래 오른쪽에 메모 두 줄"
+ },
+ {
+  "id": "album/stack",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "L"
+  ],
+  "texts": {},
+  "when": "같은 곳 가로 두 컷, 넓은 컷 위 → 그 안의 사람·장면 아래. 위아래 맞붙임, 글 없음"
+ },
+ {
+  "id": "album/offset",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "L"
+  ],
+  "texts": {
+   "memo": 24
+  },
+  "when": "이어진 가로 두 컷(걷다가·차 타고). 왼쪽-오른쪽 엇갈림, 아래 장 살짝 기울임 + 메모"
+ },
+ {
+  "id": "album/pair-wide",
+  "kind": "photo",
+  "slots": [
+   "P",
+   "P",
+   "L"
+  ],
+  "texts": {},
+  "when": "세로 두 컷 짝(같은 종류: 가게·사람·음식) 위 + 그 장소 넓은 가로 컷 아래"
+ },
+ {
+  "id": "album/squares-wide",
+  "kind": "photo",
+  "slots": [
+   "S",
+   "S",
+   "L"
+  ],
+  "texts": {
+   "memo": 26
+  },
+  "when": "정사각 두 장 나란히(손·음식·물건) + 메모 + 그 자리 가로 컷"
+ },
+ {
+  "id": "album/satellite",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "P",
+   "S"
+  ],
+  "texts": {
+   "memo": 22
+  },
+  "when": "큰 가로 하나 + 아래 세로·정사각 위성 둘. 장면 첫 넓은 컷과 그 안의 것들"
+ },
+ {
+  "id": "album/corner-wide",
+  "kind": "photo",
+  "slots": [
+   "S",
+   "L"
+  ],
+  "texts": {
+   "memo": 26
+  },
+  "when": "가까운 정사각 한 장 위 + 넓은 가로 한 장 아래. 왼쪽 위 귀퉁이에 메모"
+ },
+ {
+  "id": "album/pano",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "P"
+  ],
+  "texts": {
+   "memo": 30
+  },
+  "when": "바다·능선·해안도로 같은 넓은 컷을 파노라마 띠로 위에 + 세로 한 장, 오른쪽 아래 메모"
+ },
+ {
+  "id": "album/dense",
+  "kind": "photo",
+  "slots": [
+   "P",
+   "S",
+   "S",
+   "L"
+  ],
+  "texts": {
+   "memo": 20
+  },
+  "when": "볼거리 많은 장소(시장·골목). 큰 세로 + 정사각 둘 + 아래 파노라마, 오른쪽에 메모"
+ },
+ {
+  "id": "album/stair",
+  "kind": "photo",
+  "slots": [
+   "A",
+   "A",
+   "A"
+  ],
+  "texts": {
+   "memo": 20,
+   "place": 14
+  },
+  "when": "같은 장면 연속 세 컷(노을·파도·아이 걸음). 왼쪽-오른쪽-왼쪽 계단, 빈 귀퉁이에 메모·장소"
+ },
+ {
+  "id": "album/column",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "L",
+   "L"
+  ],
+  "texts": {
+   "memo": 26
+  },
+  "when": "시간 순서가 중요한 가로 세 컷(가는 길·변하는 하늘). 오른쪽 한 줄 세로 배열, 왼쪽 위 메모"
+ },
+ {
+  "id": "album/seq",
+  "kind": "photo",
+  "slots": [
+   "S",
+   "S",
+   "S",
+   "A"
+  ],
+  "texts": {},
+  "when": "같은 자리 세 순간을 작은 정사각 띠로 위 + 그중 가장 좋은 한 장 크게 아래. 글 없음"
+ },
+ {
+  "id": "album/grid",
+  "kind": "photo",
+  "slots": [
+   "A",
+   "A",
+   "A",
+   "A"
+  ],
+  "texts": {
+   "memo": 24
+  },
+  "when": "같은 자리 다른 순간 네 장(사람 여럿·식탁). 2×2, 가운데 틈에 메모 한 줄"
+ },
+ {
+  "id": "album/note",
+  "kind": "text",
+  "slots": [
+   "S"
+  ],
+  "texts": {
+   "dayline": 18,
+   "body": 200
+  },
+  "when": "글이 긴 메모가 있을 때(그날 있었던 일). 위에 글, 오른쪽 아래 정사각 인화"
+ },
+ {
+  "id": "album/last",
+  "kind": "end",
+  "slots": [
+   "A"
+  ],
+  "texts": {
+   "memo": 24,
+   "colophon": 48
+  },
+  "when": "닫는 쪽. 돌아가는 길·마지막 저녁 한 장 + 짧은 한 줄 + 판권 두 줄"
+ },
+ {
+  "id": "album/back",
+  "kind": "end",
+  "slots": [],
+  "texts": {
+   "colophon": 48
+  },
+  "when": "맨 뒤 천 대지. 판권 두 줄만"
+ },
+ {
+  "id": "album/vd",
+  "kind": "video",
+  "slots": [
+   "V"
+  ],
+  "texts": {},
+  "when": "영상 한 편을 쪽 전체로. 움직임이 있는 장면(파도·사람·거리)일 때, 책에 한두 번"
+ }
+]

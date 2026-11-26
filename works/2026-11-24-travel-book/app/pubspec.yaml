@@ -73,6 +73,11 @@ flutter:
     - assets/book/fonts/
     - assets/book/themes/a/
     - assets/book/themes/photo/
+    - assets/book/themes/album/
+    - assets/book/themes/b/
+    - assets/book/themes/c/
+    - assets/book/themes/diary/
+    - assets/book/themes/mag/
     - assets/covers/
     - assets/sample/
 

@@ -1,0 +1,50 @@
+/* kfonts: Pretendard:400;500;600;700;800 */
+/* theme c 「여행 수첩」 r11d: a passport-size travel notebook on 5 mm graph paper. 21 x 28 squares per page
+   (1 square = 4.7619cqw). Photos are pasted on grid lines, text is written one line per square row.
+   Two pens: blue-black ink for writing, vermilion for times and place numbers. Kraft cover with the elastic band. */
+.t-c{--paper:#F6F2E9;--grid:rgba(110,130,140,.16);--ink:#1F2A3C;--dim:#5F6470;--red:#B5402A;
+  --kraft:#B08A5E;--kink:#2A2017;--g:4.7619cqw;--f:"Pretendard",system-ui,sans-serif}
+.t-c .pg{container-type:inline-size;position:relative;overflow:hidden;color:var(--ink);font-family:var(--f);
+  word-break:keep-all;background-color:var(--paper);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:calc(100% / 21) calc(100% / 28);background-position:-.5px -.5px}
+.t-c .pg.kraft{background-color:var(--kraft);color:var(--kink);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .25 0 0 0 0 .16 0 0 0 0 .07 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:auto}
+/* the elastic band of the notebook */
+.t-c .band{position:absolute;top:0;bottom:0;left:82cqw;width:1.5cqw;background:linear-gradient(90deg,#2B2622,#4A423B 45%,#2B2622);
+  box-shadow:.3cqw 0 .5cqw rgba(0,0,0,.25)}
+/* everything sits on squares */
+.t-c .pg>.ph,.t-c .pg>p{position:absolute;margin:0;box-sizing:border-box;
+  left:calc(var(--c)*var(--g));top:calc(var(--r)*var(--g));width:calc(var(--w)*var(--g));height:calc(var(--h)*var(--g))}
+.t-c .ph{background:#cfc8bb;box-shadow:0 0 0 .1cqw rgba(40,30,20,.12)}
+.t-c .ph img{width:100%;height:100%;object-fit:cover;display:block}
+/* writing: one line per square row */
+.t-c p{line-height:var(--g);text-wrap:pretty}
+.t-c .hd{font:500 2.9cqw/var(--g) var(--f);color:var(--dim);letter-spacing:.01em}
+.t-c .tm{font:600 3.1cqw/var(--g) var(--f);color:var(--red);font-variant-numeric:tabular-nums;letter-spacing:.01em;white-space:nowrap}
+.t-c .no{display:flex;align-items:center;justify-content:center;width:var(--g)!important;height:var(--g)!important}
+.t-c .no{font:700 2.8cqw/1 var(--f);color:var(--red);font-variant-numeric:tabular-nums}
+.t-c .no::before{content:"";position:absolute;inset:.45cqw;border:.25cqw solid var(--red);border-radius:50%}
+.t-c .pl{font:700 5cqw/calc(1.5*var(--g)) var(--f);letter-spacing:-.03em;white-space:nowrap;overflow:hidden}
+.t-c .pl.n{white-space:normal;font-size:4.4cqw;line-height:var(--g)}
+.t-c .pl.sm{font-size:4.2cqw}
+.t-c .pl.rt2{font-size:5.2cqw}
+.t-c .ar{font:500 2.9cqw/var(--g) var(--f);color:var(--dim)}
+.t-c .nt{font:400 3.25cqw/var(--g) var(--f);letter-spacing:-.015em;white-space:pre-line}
+.t-c .nt.n{font-size:3cqw}
+.t-c .cp{font:400 2.9cqw/var(--g) var(--f);color:var(--dim);letter-spacing:-.01em}
+.t-c .cp.lg{font-size:3.1cqw;color:var(--ink)}
+.t-c .cp.lst{white-space:pre-line;color:var(--ink)}
+.t-c .dl{font:700 4.6cqw/calc(2*var(--g)) var(--f);letter-spacing:-.03em;white-space:nowrap}
+.t-c .tms{font:600 3.1cqw/var(--g) var(--f);color:var(--red);font-variant-numeric:tabular-nums;white-space:pre}
+.t-c .stp{font:400 3.25cqw/var(--g) var(--f);white-space:pre;overflow:hidden;letter-spacing:-.015em}
+.t-c .eats{font:400 3.1cqw/var(--g) var(--f);white-space:pre-line;letter-spacing:-.015em}
+.t-c .lst{font:400 3cqw/var(--g) var(--f);white-space:pre-line;letter-spacing:-.01em}
+.t-c .bigd{font:800 9.5cqw/calc(2*var(--g)) var(--f);letter-spacing:-.04em;white-space:nowrap}
+.t-c .ttl{font:800 22cqw/1.05 var(--f);letter-spacing:-.06em;white-space:nowrap}
+.t-c .ttl.s{font-size:16cqw}
+.t-c .per{font:600 3.4cqw/var(--g) var(--f);letter-spacing:.02em;white-space:nowrap}
+.t-c .rt{font:400 3.1cqw/var(--g) var(--f);color:var(--dim)}
+.t-c .col{font:400 2.9cqw/var(--g) var(--f);color:var(--dim);white-space:pre-line}
+.t-c .kraft .per,.t-c .kraft .col{color:var(--kink)}

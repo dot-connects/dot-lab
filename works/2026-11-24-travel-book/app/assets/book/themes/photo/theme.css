@@ -1,26 +1,54 @@
-/* theme photo 「사진만」: from mockups/r5/photo.html (operator 11-26). Title on the cover only; inside pages are photos
-   and paper, no words, no page numbers. Photos butt at --gap. App font: Pretendard (the mockup's Spoqa is not bundled). */
-.t-photo{--paper:#FAF9F6;--ink:#141414;--gap:3px;--f:"Pretendard",sans-serif}
-.t-photo .pg{container-type:inline-size;background:var(--paper);color:var(--ink);font-family:var(--f);word-break:keep-all}
-.t-photo .g{position:absolute;inset:0;display:grid;gap:var(--gap)}
+/* kfonts: Pretendard:300;700 */
+/* theme photo 「사진만」 r11 library. Title on the cover, one tiny day line on day openers, nothing else.
+   Page = 100cqw x 133.33cqw. Paper shows on ONE edge only: the FOOT means "a new day" (openers only),
+   the TOP or a SIDE is a breath inside the day. Dark pages = night. Photos butt at --gap. */
+.t-photo{--paper:#FAF9F6;--ink:#141414;--night:#121212;--gap:3px;--f:"Pretendard",sans-serif}
+.t-photo .pg{container-type:inline-size;position:relative;overflow:hidden;background:var(--paper);color:var(--ink);font-family:var(--f);word-break:keep-all}
+.t-photo .g{position:absolute;inset:0;display:grid;gap:var(--gap);grid-template:1fr/1fr}
 .t-photo .g>div{position:relative;overflow:hidden;min-width:0;min-height:0;background:#d9d6cf}
-.t-photo .g img,.t-photo .g video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.t-photo .g img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.t-photo .pg.dark{background:var(--night);color:#EDEBE6}
+.t-photo .dark .g>div{background:#262626}
+
 /* covers */
-.t-photo .scrim{position:absolute;inset:auto 0 0 0;height:46%;background:linear-gradient(to top,rgba(0,0,0,.62),rgba(0,0,0,0))}
-.t-photo .ttl{position:absolute;margin:0;font-weight:700;letter-spacing:-.04em;line-height:.9;white-space:nowrap}
-.t-photo .sub{position:absolute;margin:0;font-weight:400;font-size:3.4cqw;letter-spacing:.08em}
-.t-photo .c1 .ttl{left:7%;bottom:12%;font-size:20cqw;color:#fff}
-.t-photo .c1 .sub{left:7.4%;bottom:7%;color:#fff}
-.t-photo .c3 .g{inset:30% 0 0 0}
-.t-photo .c3 .ttl{left:6%;top:6%;font-size:24cqw}
-.t-photo .c3 .sub{left:6.6%;top:24%}
-/* inside pages */
-.t-photo .full{grid-template:1fr/1fr}
-.t-photo .two{grid-template:1fr 1fr/1fr}
-.t-photo .side{grid-template:1fr 1fr/1.25fr 1fr}.t-photo .side>div:first-child{grid-row:1/3}
-.t-photo .six{grid-template:repeat(3,1fr)/1fr 1fr}
-.t-photo .band{inset:14% 0;grid-template:1fr/1fr}
-.t-photo .big3{grid-template:2.1fr 1fr/repeat(3,1fr)}.t-photo .big3>div:first-child{grid-column:1/4}
-.t-photo .duo{grid-template:1fr/1fr 1fr}
-/* the cover text block follows the book's palette in export too */
-.export .t-photo .scrim{opacity:1}
+.t-photo .ttl{position:absolute;margin:0;font-weight:700;letter-spacing:-.04em;line-height:.92}
+.t-photo .sub{position:absolute;margin:0;font-weight:300;font-size:3.4cqw;letter-spacing:.06em;white-space:nowrap}
+.t-photo .scrim{position:absolute;inset:auto 0 0 0;height:50%;background:linear-gradient(to top,rgba(0,0,0,.66),rgba(0,0,0,0))}
+.t-photo .c1 .ttl{left:7cqw;right:7cqw;bottom:16cqw;font-size:19cqw;color:#fff}
+.t-photo .c1 .sub{left:7.4cqw;bottom:9cqw;color:#fff}
+.t-photo .c2 .g{inset:0 0 auto 0;height:96cqw}
+.t-photo .c2 .ttl{left:7cqw;top:103cqw;font-size:17cqw;white-space:nowrap}
+.t-photo .c2 .sub{left:7.6cqw;top:123cqw}
+.t-photo .c3 .g{inset:40cqw 0 0 0}
+.t-photo .c3 .ttl{left:6cqw;top:6cqw;font-size:21cqw;white-space:nowrap}
+.t-photo .c3 .sub{left:6.6cqw;top:29cqw;font-size:3.6cqw}
+
+/* day openers: always paper at the foot, same place every day; the day line sits in it */
+.t-photo .day{position:absolute;margin:0;font-weight:300;font-size:3.2cqw;letter-spacing:.04em;white-space:nowrap}
+.t-photo .op .g{inset:0 0 auto 0;height:106cqw}
+.t-photo :is(.op,.op2,.opp) .day{left:8cqw;top:114cqw}
+.t-photo .op2 .g{inset:0 0 auto 0;height:106cqw;grid-template:1fr 1fr/1fr}
+.t-photo .opp .g{inset:0 0 auto 0;height:106cqw;grid-template:1fr/1fr 1fr}
+
+/* body */
+.t-photo .b3 .g{inset:0 25cqw 0 0}
+.t-photo .b3l .g{inset:0 0 0 25cqw}
+.t-photo .low .g,.t-photo .duo .g{top:22cqw}
+.t-photo .duo .g{grid-template:1fr/1fr 1fr}
+.t-photo .plate .g{inset:5cqw 5cqw 17cqw 5cqw}
+.t-photo .two .g{grid-template:1fr 1fr/1fr}
+.t-photo .top2 .g{grid-template:1fr 1fr/1fr 1fr}.t-photo .top2 .g>div:first-child{grid-column:1/3}
+.t-photo .side .g{grid-template:1fr 1fr/3fr 2fr}.t-photo .side .g>div:first-child{grid-row:1/3}
+.t-photo .big3 .g{grid-template:2fr 1fr/repeat(3,1fr)}.t-photo .big3 .g>div:first-child{grid-column:1/4}
+.t-photo .seq3 .g{grid-template:repeat(3,1fr)/1fr}
+.t-photo .four .g{grid-template:1fr 1fr/1fr 1fr}
+.t-photo .six .g{grid-template:repeat(3,1fr)/1fr 1fr}
+/* night: dark ground shows as a thin frame, like prints laid on black */
+.t-photo .n1 .g{inset:5cqw 5cqw 17cqw 5cqw}
+.t-photo .n2 .g{inset:5cqw 4cqw;grid-template:1fr 1fr/1fr;gap:2.5cqw}
+.t-photo .n4 .g{inset:5cqw 4cqw;grid-template:1fr 1fr/1fr 1fr;gap:2cqw}
+
+/* end */
+.t-photo .last .g{inset:auto 0 0 auto;width:70cqw;height:93.33cqw}
+.t-photo .ix12 .g{grid-template:repeat(4,1fr)/repeat(3,1fr)}
+.t-photo .ix20 .g{grid-template:repeat(5,1fr)/repeat(4,1fr)}

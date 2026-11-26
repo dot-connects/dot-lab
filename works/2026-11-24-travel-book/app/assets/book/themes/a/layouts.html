@@ -1,86 +1,49 @@
-<!-- theme a layouts: one mockup page (mockups/r5/a.html) = one template. data-slot = photo index in PageSpec.ids,
-     data-crop on the img = default object-position, data-text = PageSpec.text key. Empty text keys hide their node. -->
-<template id="a/c1"><div class="pg c1">
-  <div class="ph full sh-t"><img data-slot="0" data-crop="66% 50%" alt=""></div>
-  <p class="tx lb w a" data-text="period"></p>
-  <p class="tx sm w b" data-text="nights"></p>
-  <h3 class="tx big w t" data-text="title_latin"></h3>
-</div></template>
+<!-- theme a 「여백의 책」 r11b. Every plate hangs from one line (10cqw); photos 84cqw wide unless they bleed. -->
 
-<template id="a/c2"><div class="pg c2">
-  <p class="tx lb a" data-text="period"></p>
-  <p class="tx sm b" data-text="nights"></p>
-  <h3 class="tx t" data-text="title"></h3>
-  <div class="ph sh-b"><img data-slot="0" data-crop="50% 36%" alt=""></div>
-  <p class="tx lb w c" data-text="tag"></p>
-</div></template>
+<template id="a/c-bleed"><div class="pg c-bleed"><div class="ph"><img data-slot="0" alt=""></div><div class="sh"></div><h3 class="ttl" data-text="title"></h3><p class="cp sub" data-text="period"></p></div></template>
 
-<template id="a/c3"><div class="pg c3">
-  <div class="ph full"><img data-slot="0" alt=""></div>
-  <h3 class="tx big thin w t1" data-text="first_day"></h3>
-  <p class="tx sm w a" data-text="running"></p>
-  <p class="tx lb w b" data-text="year"></p>
-  <h3 class="tx big thin w t2" data-text="last_day"></h3>
-</div></template>
+<template id="a/c-paper"><div class="pg c-paper"><h3 class="ttl" data-text="title"></h3><p class="cp sub" data-text="period"></p><div class="ph"><img data-slot="0" alt=""></div></div></template>
 
-<template id="a/op"><div class="pg op">
-  <div class="ph full sh-b"><img data-slot="0" data-crop="42% 40%" alt=""></div>
-  <p class="tx d r w"><span class="cp" data-text="day_name"></span>&ensp;<span class="sm" data-text="date"></span><br><span class="lb" data-text="time0"></span>&ensp;<span class="sm" data-text="place0"></span></p>
-  <p class="tx big thin w n" data-text="day_no"></p>
-  <p class="tx fo w"><span class="lb" data-text="folio"></span><span class="sm" data-text="running"></span></p>
-</div></template>
+<template id="a/c-plate"><div class="pg c-plate"><div class="ph"><img data-slot="0" alt=""></div><h3 class="ttl" data-text="title"></h3><p class="cp sub sf" data-text="period"></p></div></template>
 
-<template id="a/sz"><div class="pg sz">
-  <div class="ph p1 sh-b"><img data-slot="0" alt=""></div>
-  <div class="ph p2"><img data-slot="1" data-crop="50% 70%" alt=""></div>
-  <div class="tx cap stk c"><span class="lb" data-text="time0"></span><span class="cp" data-text="place0"></span><span class="cp sf" data-text="caption0"></span></div>
-  <p class="tx fo w"><span class="lb" data-text="folio"></span><span class="sm" data-text="running"></span></p>
-</div></template>
+<template id="a/op-bleed"><div class="pg op-bleed fo"><div class="ph"><img data-slot="0" alt=""></div><h3 class="hd" data-text="dayline"></h3><p class="cp sf" data-text="day"></p></div></template>
 
-<template id="a/rd"><div class="pg rd">
-  <div class="ph full sh-b"><img data-slot="0" alt=""></div>
-  <p class="tx cap cb w"><span class="lb" data-text="time0"></span><span class="cp" data-text="place0"></span><span class="cp n sf" data-text="caption0"></span></p>
-  <p class="tx fo w"><span class="lb" data-text="folio"></span><span class="sm" data-text="running"></span></p>
-</div></template>
+<template id="a/op-title"><div class="pg op-title fo"><h3 class="hd" data-text="dayline"></h3><p class="cp sf" data-text="day"></p><div class="ph"><img data-slot="0" alt=""></div></div></template>
 
-<template id="a/vd"><div class="pg vd">
-  <div class="ph v1"><img data-slot="0" data-frame="0" data-crop="50% 30%" alt=""><div class="play"><span></span></div></div>
-  <div class="ph v2"><img data-slot="0" data-frame="1" alt=""></div>
-  <div class="ph v3"><img data-slot="0" data-frame="2" alt=""></div>
-  <p class="tx cap c"><span class="lb" data-text="time0"></span><span class="cp" data-text="place0"></span><span class="cp n" data-text="dur"></span></p>
-  <p class="tx fo"><span class="lb" data-text="folio"></span><span class="sm" data-text="running"></span></p>
-</div></template>
+<template id="a/bleed"><div class="pg bleed"><div class="ph"><img data-slot="0" alt=""></div></div></template>
 
-<template id="a/dl"><div class="pg dl">
-  <div class="ph p1"><img data-slot="0" alt=""></div>
-  <p class="tx cap c"><span class="lb" data-text="time0"></span><span class="cp" data-text="place0"></span><span class="cp n sf" data-text="caption0"></span></p>
-  <p class="tx fo"><span class="lb" data-text="folio"></span><span class="sm" data-text="running"></span></p>
-</div></template>
+<template id="a/frame"><div class="pg frame"><div class="ph"><img data-slot="0" alt=""></div></div></template>
 
-<template id="a/st"><div class="pg st">
-  <div class="ph p1"><img data-slot="0" alt=""></div>
-  <div class="ph p2"><img data-slot="1" alt=""></div>
-  <p class="tx cap c1"><span class="lb" data-text="time0"></span><span class="cp" data-text="place0"></span><span class="cp n sf" data-text="caption0"></span></p>
-  <p class="tx cap c2"><span class="lb" data-text="time1"></span><span class="cp" data-text="place1"></span></p>
-  <div class="ph p3"><img data-slot="2" alt=""></div>
-  <p class="tx cap c3"><span class="lb" data-text="time2"></span><span class="cp" data-text="place2"></span></p>
-  <p class="tx fo"><span class="lb" data-text="folio"></span><span class="sm" data-text="running"></span></p>
-</div></template>
+<template id="a/plate"><div class="pg plate fo"><div class="ph"><img data-slot="0" alt=""></div><p class="cp" data-text="cap"></p></div></template>
 
-<template id="a/pn"><div class="pg pn">
-  <div class="ph p0"><img data-slot="0" alt=""></div>
-  <p class="tx cap c1"><span class="lb" data-text="time0"></span><span class="cp" data-text="place0"></span><span class="cp n sf" data-text="caption0"></span></p>
-  <div class="ph s sa"><img data-slot="1" alt=""></div>
-  <div class="ph s sb"><img data-slot="2" alt=""></div>
-  <div class="ph s sc"><img data-slot="3" alt=""></div>
-  <p class="tx cap c2"><span class="lb" data-text="time1"></span><span class="cp" data-text="place1"></span><span class="cp n sf" data-text="caption1"></span></p>
-  <p class="tx fo"><span class="lb" data-text="folio"></span><span class="sm" data-text="running"></span></p>
-</div></template>
+<template id="a/square"><div class="pg square fo"><div class="ph"><img data-slot="0" alt=""></div><p class="cp" data-text="cap"></p></div></template>
 
-<template id="a/en"><div class="pg en">
-  <div class="ph"><img data-slot="0" data-crop="50% 58%" alt=""></div>
-  <div class="tx s"><p class="cp">간 곳</p><span class="sm sf" data-text="n_photos"></span><span class="sm sf" data-text="n_videos"></span><span class="sm sf" data-text="n_places"></span><span class="sm sf" data-text="km"></span></div>
-  <div class="tx ix" data-index></div>
-  <p class="tx cp e" data-text="last_line"></p>
-  <p class="tx fo"><span class="lb" data-text="folio"></span><span class="sm" data-text="running"></span></p>
-</div></template>
+<template id="a/drop"><div class="pg drop fo"><div class="ph"><img data-slot="0" alt=""></div><p class="cp" data-text="cap"></p></div></template>
+
+<template id="a/plate-text"><div class="pg plate-text fo"><div class="ph"><img data-slot="0" alt=""></div><p class="cp sf" data-text="cap"></p><p class="bd" data-text="body"></p></div></template>
+
+<template id="a/stack"><div class="pg stack fo"><div class="ph p0"><img data-slot="0" alt=""></div><div class="ph p1"><img data-slot="1" alt=""></div><p class="cp" data-text="cap"></p></div></template>
+
+<template id="a/row"><div class="pg row fo"><div class="ph p0"><img data-slot="0" alt=""></div><div class="ph p1"><img data-slot="1" alt=""></div><p class="cp" data-text="cap"></p></div></template>
+
+<template id="a/detail"><div class="pg detail fo"><div class="ph p0"><img data-slot="0" alt=""></div><p class="cp c0" data-text="cap"></p><div class="ph p1"><img data-slot="1" alt=""></div><p class="cp c1" data-text="cap2"></p></div></template>
+
+<template id="a/lead3"><div class="pg lead3 fo"><div class="ph p0"><img data-slot="0" alt=""></div><div class="ph p1"><img data-slot="1" alt=""></div><div class="ph p2"><img data-slot="2" alt=""></div><p class="cp" data-text="cap"></p></div></template>
+
+<template id="a/side3"><div class="pg side3 fo"><div class="ph p0"><img data-slot="0" alt=""></div><div class="ph p1"><img data-slot="1" alt=""></div><div class="ph p2"><img data-slot="2" alt=""></div><p class="cp" data-text="cap"></p></div></template>
+
+<template id="a/strip3"><div class="pg strip3 fo"><div class="ph p0"><img data-slot="0" alt=""></div><div class="ph p1"><img data-slot="1" alt=""></div><div class="ph p2"><img data-slot="2" alt=""></div><p class="cp" data-text="cap"></p></div></template>
+
+<template id="a/scene4"><div class="pg scene4 fo"><div class="ph p0"><img data-slot="0" alt=""></div><div class="ph s p1"><img data-slot="1" alt=""></div><div class="ph s p2"><img data-slot="2" alt=""></div><div class="ph s p3"><img data-slot="3" alt=""></div><p class="cp" data-text="cap"></p></div></template>
+
+<template id="a/grid4"><div class="pg grid4 fo"><div class="ph p0"><img data-slot="0" alt=""></div><div class="ph p1"><img data-slot="1" alt=""></div><div class="ph p2"><img data-slot="2" alt=""></div><div class="ph p3"><img data-slot="3" alt=""></div><p class="cp" data-text="cap"></p></div></template>
+
+<template id="a/grid6"><div class="pg grid6 fo"><div class="ph p0"><img data-slot="0" alt=""></div><div class="ph p1"><img data-slot="1" alt=""></div><div class="ph p2"><img data-slot="2" alt=""></div><div class="ph p3"><img data-slot="3" alt=""></div><div class="ph p4"><img data-slot="4" alt=""></div><div class="ph p5"><img data-slot="5" alt=""></div><p class="cp" data-text="cap"></p></div></template>
+
+<template id="a/text"><div class="pg text fo"><p class="cp sf" data-text="place"></p><p class="bd" data-text="body"></p></div></template>
+
+<template id="a/end-photo"><div class="pg end-photo fo"><div class="ph"><img data-slot="0" alt=""></div><p class="bd last" data-text="last"></p><p class="cp sf col" data-text="colophon"></p></div></template>
+
+<template id="a/end"><div class="pg end"><p class="bd last" data-text="last"></p><p class="cp sf col" data-text="colophon"></p></div></template>
+
+<template id="a/vd"><div class="pg"><img data-slot="0" data-frame="0" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></div></template>

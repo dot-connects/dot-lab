@@ -76,6 +76,8 @@ class FakeSource implements Source {
 class FakeAi implements AiClient {
   AiResult Function(List<AiImage> images)? onPick;
   AiResult Function(List<AiImage> images, String shape)? onWrite;
+  AiResult Function(List<AiImage> images)? onLayout;
+  final laidOut = <Map<String, Object?>>[];
   AiResult onRewrite = const AiOk({'caption': '물이 차갑다.'});
   final picked = <List<AiImage>>[];
   final written = <List<AiImage>>[];
@@ -105,6 +107,40 @@ class FakeAi implements AiClient {
       'captions': [for (final i in images) {'id': i.id, 'text': '캡션 ${i.id}'}],
       'chapters': [{'day': '2026-06-12', 'line': '첫날'}],
       'essay': '좋았다.',
+    });
+  }
+
+  /// A plain editor: cover, then one page a photo (a captioned single-slot layout, the video layout for clips).
+  @override
+  Future<AiResult> layout(List<AiImage> images, List<AiShot> shots,
+      {required String theme,
+      required List<Map<String, Object>> catalog,
+      required Map<String, Object> rules,
+      List<Map<String, String?>> notes = const [],
+      Map<String, Object?> opts = const {},
+      List<String>? fix,
+      Map<String, dynamic>? prev}) async {
+    laidOut.add({'theme': theme, 'fix': fix, 'opts': opts, 'n': images.length});
+    if (onLayout != null) return onLayout!(images);
+    Map<String, Object> first(bool Function(Map<String, Object>) f) => catalog.firstWhere(f);
+    final cover = first((l) => l['kind'] == 'cover' && (l['slots'] as List).length == 1);
+    final one = first((l) => l['kind'] == 'photo' && (l['slots'] as List).length == 1 && l['slots'].toString().contains('L') &&
+        (l['texts'] as Map).isNotEmpty);
+    final vd = first((l) => l['kind'] == 'video');
+    final photos = [for (final i in images) if (!i.id.startsWith('v')) i.id];
+    return AiOk({
+      'title': '제주 바다',
+      'plan': '',
+      'pages': [
+        {'layout': cover['id'], 'intent': '', 'photos': [{'id': photos.first, 'fx': 50, 'fy': 50}], 'texts': [{'key': 'title', 'text': '제주'}]},
+        for (final i in images)
+          i.id.startsWith('v')
+              ? {'layout': vd['id'], 'intent': '', 'photos': [{'id': i.id, 'fx': 50, 'fy': 50}], 'texts': []}
+              : {
+                  'layout': one['id'], 'intent': '', 'photos': [{'id': i.id, 'fx': 50, 'fy': 40}],
+                  'texts': [{'key': (one['texts'] as Map).keys.first, 'text': '캡션 ${i.id}'}],
+                },
+      ],
     });
   }
 
@@ -220,8 +256,10 @@ void main() {
     expect(await p.write(b), AiState.ok);
     expect(b.stage, 'written');
     expect(b.title, '제주 바다');
-    expect(b.texts['short']!.captions, isNotEmpty);
-    expect(b.pages, isNotEmpty);
+    expect(b.pages.first.layout, startsWith('a/c-'));
+    expect(b.pages.where((p) => p.text.values.any((t) => t.startsWith('캡션 '))), isNotEmpty);
+    expect(b.pages.skip(1).first.crop.first, '50% 40%');
+    expect(ai.laidOut.first['theme'], 'a');
     final js = bookJs(b);
     final media = js['media'] as Map<String, Object?>;
     for (final m in media.values) {
@@ -238,13 +276,13 @@ void main() {
     final p = pipe(src());
     final r = await p.pick(from: DateTime(2026, 6, 12), to: DateTime(2026, 6, 14), shots: trip(), inRange: 25, albums: 1, opts: BookOptions());
     final picks = [for (final x in r.book.picks) x.id];
-    ai.onWrite = (_, _) => const AiFailed('offline');
+    ai.onLayout = (_) => const AiFailed('offline');
     expect(await p.write(r.book), AiState.failed);
     final saved = (await store.load('b1'))!;
     expect(saved.stage, 'picked');
     expect(saved.texts, isEmpty);
     expect(saved.picks.map((x) => x.id), picks);
-    ai.onWrite = null;
+    ai.onLayout = null;
     expect(await p.write(saved), AiState.ok);
     expect(ai.picked, hasLength(1)); // no second /pick
     expect((await store.load('b1'))!.stage, 'written');
@@ -262,9 +300,10 @@ void main() {
     final p = pipe(src());
     final r = await p.pick(from: DateTime(2026, 6, 12), to: DateTime(2026, 6, 14), shots: trip(), inRange: 25, albums: 1, opts: BookOptions());
     await p.write(r.book);
-    final i = r.book.pages.indexWhere((x) => x.text.containsKey('caption0'));
+    final i = r.book.pages.indexWhere((x) => x.text.values.any((t) => t.startsWith('캡션 ')));
+    final key = r.book.pages[i].text.entries.firstWhere((e) => e.value.startsWith('캡션 ')).key;
     expect(await p.rewritePage(r.book, i, max: 2), AiState.ok);
-    expect(r.book.pages[i].text['caption0'], '물이 차갑다.');
+    expect(r.book.pages[i].text[key], '물이 차갑다.');
     ai.onRewrite = const AiFailed('x');
     expect(await p.rewritePage(r.book, i, max: 2), AiState.failed);
     ai.onRewrite = const AiOk({'caption': '둘'});

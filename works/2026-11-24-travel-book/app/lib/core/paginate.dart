@@ -20,7 +20,7 @@ String _md(DateTime t) => '${_2(t.month)}.${_2(t.day)}';
 DateTime _day(String ymd) => DateTime.parse(ymd);
 
 bool _fits(String slot, Candidate c) => switch (slot) {
-      'A' => !c.shot.isVideo,
+      'A' || 'S' => !c.shot.isVideo, // S = near-square slot: any photo, cropped
       'P' => !c.shot.isVideo && c.shot.portrait,
       'L' => !c.shot.isVideo && !c.shot.portrait,
       'V' => c.shot.isVideo,
@@ -92,8 +92,11 @@ double travelKm(List<Candidate> xs) {
   Map<String, String> foot() => {'folio': '${++folio}', 'running': running};
 
   // cover: the best-scored photo
-  final coverDef = usable.where((d) => d.id == cover).firstOrNull ?? kind('cover');
   final best = ([...all.where((c) => !c.shot.isVideo)]..sort((a, b) => (score[b.id] ?? 0).compareTo(score[a.id] ?? 0))).firstOrNull;
+  // a one-photo cover whose slot fits the photo (designer themes have a P, an L and an S cover)
+  final coverDef = usable.where((d) => d.id == cover).firstOrNull ??
+      (best == null ? null : usable.where((d) => d.kind == 'cover' && d.slots.length == 1 && _fits(d.slots.first, best)).firstOrNull) ??
+      kind('cover');
   if (coverDef != null && best != null) {
     pages.add(PageSpec(coverDef.id, [best.id], text: {
       'period': '${first.year}.${_md(first)} — ${_md(last)}',
@@ -116,10 +119,11 @@ double travelKm(List<Candidate> xs) {
   for (var ci = 0; ci < chs.length; ci++) {
     final (ch, xs) = chs[ci];
     final dayIndex = _day(ch.day).difference(first).inDays;
-    final opener = kind('chapter');
     final rest = [...xs];
+    final o0 = rest.firstWhere((c) => !c.shot.isVideo, orElse: () => rest.first);
+    // a one-photo opener whose slot fits the day's first photo (designer themes have P/L/A openers)
+    final opener = usable.where((d) => d.kind == 'chapter' && d.slots.length == 1 && _fits(d.slots.first, o0)).firstOrNull;
     if (opener != null) {
-      final o0 = rest.firstWhere((c) => !c.shot.isVideo, orElse: () => rest.first);
       if (!o0.shot.isVideo) {
         rest.remove(o0);
         final d = _day(ch.day);

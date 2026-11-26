@@ -1,0 +1,13 @@
+[
+ {"id":"a/c1","kind":"cover","slots":["A"],"texts":["period","nights","title_latin"]},
+ {"id":"a/c2","kind":"cover","slots":["A"],"texts":["period","nights","title","tag"]},
+ {"id":"a/c3","kind":"cover","slots":["A"],"texts":["first_day","running","year","last_day"]},
+ {"id":"a/op","kind":"chapter","slots":["A"],"texts":["day_name","date","time0","place0","day_no","folio","running"]},
+ {"id":"a/sz","kind":"photo","slots":["P","P"],"texts":["time0","place0","caption0","folio","running"]},
+ {"id":"a/rd","kind":"photo","slots":["A"],"texts":["time0","place0","caption0","folio","running"]},
+ {"id":"a/dl","kind":"photo","slots":["P"],"texts":["time0","place0","caption0","folio","running"]},
+ {"id":"a/st","kind":"photo","slots":["L","L","L"],"texts":["time0","place0","caption0","time1","place1","time2","place2","folio","running"]},
+ {"id":"a/pn","kind":"photo","slots":["L","P","P","P"],"texts":["time0","place0","caption0","time1","place1","caption1","folio","running"]},
+ {"id":"a/vd","kind":"video","slots":["V"],"texts":["time0","place0","dur","folio","running"]},
+ {"id":"a/en","kind":"numbers","slots":["L"],"texts":["n_photos","n_videos","n_places","km","last_line","folio","running"]}
+]

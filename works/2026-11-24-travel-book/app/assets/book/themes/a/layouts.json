@@ -1,13 +1,286 @@
 [
- {"id":"a/c1","kind":"cover","slots":["A"],"texts":["period","nights","title_latin"]},
- {"id":"a/c2","kind":"cover","slots":["A"],"texts":["period","nights","title","tag"]},
- {"id":"a/c3","kind":"cover","slots":["A"],"texts":["first_day","running","year","last_day"]},
- {"id":"a/op","kind":"chapter","slots":["A"],"texts":["day_name","date","time0","place0","day_no","folio","running"]},
- {"id":"a/sz","kind":"photo","slots":["P","P"],"texts":["time0","place0","caption0","folio","running"]},
- {"id":"a/rd","kind":"photo","slots":["A"],"texts":["time0","place0","caption0","folio","running"]},
- {"id":"a/dl","kind":"photo","slots":["P"],"texts":["time0","place0","caption0","folio","running"]},
- {"id":"a/st","kind":"photo","slots":["L","L","L"],"texts":["time0","place0","caption0","time1","place1","time2","place2","folio","running"]},
- {"id":"a/pn","kind":"photo","slots":["L","P","P","P"],"texts":["time0","place0","caption0","time1","place1","caption1","folio","running"]},
- {"id":"a/vd","kind":"video","slots":["V"],"texts":["time0","place0","dur","folio","running"]},
- {"id":"a/en","kind":"numbers","slots":["L"],"texts":["n_photos","n_videos","n_places","km","last_line","folio","running"]}
+ {
+  "id": "a/c-bleed",
+  "kind": "cover",
+  "slots": [
+   "P"
+  ],
+  "texts": {
+   "title": 3,
+   "period": 22
+  },
+  "when": "기본 표지. 여행을 대표하는 세로 사진 한 장을 꽉 채우고 아래에 큰 제목. 제목 3자 이하"
+ },
+ {
+  "id": "a/c-paper",
+  "kind": "cover",
+  "slots": [
+   "L"
+  ],
+  "texts": {
+   "title": 2,
+   "period": 22
+  },
+  "when": "제목이 두 글자일 때. 종이 위 아주 큰 제목 + 아래 가로 사진(노을·바다 같은 넓은 풍경)"
+ },
+ {
+  "id": "a/c-plate",
+  "kind": "cover",
+  "slots": [
+   "S"
+  ],
+  "texts": {
+   "title": 6,
+   "period": 22
+  },
+  "when": "조용한 사진집 표지. 정사각에 가까운 사진 한 장 + 그 아래 제목. 제목이 4~6자일 때도"
+ },
+ {
+  "id": "a/op-bleed",
+  "kind": "chapter",
+  "slots": [
+   "A"
+  ],
+  "texts": {
+   "dayline": 6,
+   "day": 26
+  },
+  "when": "날을 여는 쪽(기본). 그날 가장 넓은 첫 컷을 크게, 아래 종이에 '둘째 날' + '6월 13일 토요일, 우도 가는 배'"
+ },
+ {
+  "id": "a/op-title",
+  "kind": "chapter",
+  "slots": [
+   "L"
+  ],
+  "texts": {
+   "dayline": 6,
+   "day": 26
+  },
+  "when": "날을 여는 쪽(조용한 쪽). 위에 '셋째 날'과 한 줄, 그 아래 이동 컷(창밖·길·배·표) 가로 한 장"
+ },
+ {
+  "id": "a/bleed",
+  "kind": "photo",
+  "slots": [
+   "A"
+  ],
+  "texts": {},
+  "when": "하루에 한 번, 그날의 가장 센 한 장을 쪽 끝까지. 글 없음"
+ },
+ {
+  "id": "a/frame",
+  "kind": "photo",
+  "slots": [
+   "P"
+  ],
+  "texts": {},
+  "when": "사람이 많은 스냅·가까운 인물 세로 사진. 얇은 흰 테만 두르고 글 없음"
+ },
+ {
+  "id": "a/plate",
+  "kind": "photo",
+  "slots": [
+   "P"
+  ],
+  "texts": {
+   "cap": 40
+  },
+  "when": "세로 사진 한 장(본문 기본). 걸이선에 크게 걸고 아래 캡션 한 줄"
+ },
+ {
+  "id": "a/square",
+  "kind": "photo",
+  "slots": [
+   "S"
+  ],
+  "texts": {
+   "cap": 40
+  },
+  "when": "정사각에 가까운 사진 한 장 또는 음식·물건 가까운 컷. 아래 캡션"
+ },
+ {
+  "id": "a/drop",
+  "kind": "photo",
+  "slots": [
+   "L"
+  ],
+  "texts": {
+   "cap": 40
+  },
+  "when": "가로 풍경 한 장, 분위기 강한 장면. 위·양옆 끝까지, 아래 종이에 캡션. 2~3쪽 이어 쓸 수 있다"
+ },
+ {
+  "id": "a/plate-text",
+  "kind": "photo",
+  "slots": [
+   "L"
+  ],
+  "texts": {
+   "cap": 24,
+   "body": 110
+  },
+  "when": "가로 사진 한 장 + 짧은 글 한 단락(여행작가의 몇 문장). 장면을 한 번 쉬어 갈 때, 세 쪽에 한 번 이하"
+ },
+ {
+  "id": "a/stack",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "L"
+  ],
+  "texts": {
+   "cap": 40
+  },
+  "when": "가로 두 장 위아래. 같은 대상의 먼 컷/가까운 컷, 또는 모양·색이 운을 맞추는 두 장"
+ },
+ {
+  "id": "a/row",
+  "kind": "photo",
+  "slots": [
+   "P",
+   "P"
+  ],
+  "texts": {
+   "cap": 40
+  },
+  "when": "세로 두 장 나란히. 시선이 마주보거나 모양이 닮은 두 장(시간만 같은 두 장은 짝이 아니다)"
+ },
+ {
+  "id": "a/detail",
+  "kind": "photo",
+  "slots": [
+   "P",
+   "L"
+  ],
+  "texts": {
+   "cap": 24,
+   "cap2": 40
+  },
+  "when": "작은 디테일(음식·표·손) 하나 + 그 장소의 넓은 가로 한 장. 디테일 옆에 짧은 메모, 큰 사진 아래 캡션"
+ },
+ {
+  "id": "a/lead3",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "S",
+   "S"
+  ],
+  "texts": {
+   "cap": 40
+  },
+  "when": "한 장소에서 넓게 1 + 가까이 2. 장면 하나를 한 쪽에 정리할 때"
+ },
+ {
+  "id": "a/side3",
+  "kind": "photo",
+  "slots": [
+   "P",
+   "P",
+   "P"
+  ],
+  "texts": {
+   "cap": 40
+  },
+  "when": "세로 큰 1 + 오른쪽 작은 세로 2. 인물·골목처럼 세로가 많은 장면"
+ },
+ {
+  "id": "a/strip3",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "L",
+   "L"
+  ],
+  "texts": {
+   "cap": 40
+  },
+  "when": "같은 자리 연속 세 컷 또는 영상에서 뽑은 세 장면(가늘고 긴 띠로 잘림). 바다·길처럼 가로로 긴 장면"
+ },
+ {
+  "id": "a/scene4",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "P",
+   "P",
+   "P"
+  ],
+  "texts": {
+   "cap": 40
+  },
+  "when": "넓은 한 장 + 같은 시간대 작은 세로 세 컷. 시장·카페·골목에서 여러 장 남긴 장면"
+ },
+ {
+  "id": "a/grid4",
+  "kind": "photo",
+  "slots": [
+   "A",
+   "A",
+   "A",
+   "A"
+  ],
+  "texts": {
+   "cap": 28
+  },
+  "when": "비슷한 크기의 네 장(먹은 것·본 것 모음). 하루에 한 번 이하"
+ },
+ {
+  "id": "a/grid6",
+  "kind": "photo",
+  "slots": [
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A"
+  ],
+  "texts": {
+   "cap": 28
+  },
+  "when": "작은 사진 여섯 장 밀착 인화. 연사가 많은 장면, 남은 사진을 한 쪽에 모을 때. 책에 한 번"
+ },
+ {
+  "id": "a/text",
+  "kind": "text",
+  "slots": [],
+  "texts": {
+   "place": 24,
+   "body": 300
+  },
+  "when": "글 한 쪽. 하루를 닫을 때 여행작가의 짧은 글(장소·본 것·한 생각), 문단은 줄바꿈 두 번. 책에 한두 번"
+ },
+ {
+  "id": "a/end-photo",
+  "kind": "end",
+  "slots": [
+   "L"
+  ],
+  "texts": {
+   "last": 40,
+   "colophon": 80
+  },
+  "when": "마지막 쪽(기본). 마지막 빛 가로 한 장 + 마지막 한 문장 + 판권 두 줄. 첫 장과 같은 모티프 사진"
+ },
+ {
+  "id": "a/end",
+  "kind": "end",
+  "slots": [],
+  "texts": {
+   "last": 40,
+   "colophon": 80
+  },
+  "when": "사진 없는 판권 쪽. 마지막 한 문장 + 판권 두 줄. end-photo 뒤에 따로 한 쪽 더 둘 때"
+ },
+ {
+  "id": "a/vd",
+  "kind": "video",
+  "slots": [
+   "V"
+  ],
+  "texts": {},
+  "when": "영상 한 편을 쪽 전체로. 움직임이 있는 장면(파도·사람·거리)일 때, 책에 한두 번"
+ }
 ]

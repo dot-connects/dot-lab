@@ -24,3 +24,9 @@ database_id = "33bf654f-96be-4d9a-9a30-854daaacab6d"
 name = "LIMIT"
 namespace_id = "2613"
 simple = { limit = 4, period = 60 }
+
+# theme guides for /layout (src/themes/*.md) are imported as strings
+[[rules]]
+type = "Text"
+globs = ["**/*.md"]
+fallthrough = true

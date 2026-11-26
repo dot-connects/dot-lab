@@ -13,9 +13,13 @@
 @font-face{font-family:"Inter Tight";font-weight:100 900;src:url(fonts/InterTightwght.ttf)}
 @font-face{font-family:"Instrument Serif";font-style:normal;src:url(fonts/InstrumentSerif-Regular.ttf)}
 @font-face{font-family:"Instrument Serif";font-style:italic;src:url(fonts/InstrumentSerif-Italic.ttf)}
-@font-face{font-family:"DM Mono";font-weight:500;src:url(fonts/DMMono-Medium.ttf)}
-@font-face{font-family:"Red Hat Mono";font-weight:300 700;src:url(fonts/RedHatMonowght.ttf)}
-@font-face{font-family:"JetBrains Mono";font-weight:100 800;src:url(fonts/JetBrainsMonowght.ttf)}
+@font-face{font-family:"SUIT";font-weight:400;src:url(fonts/SUIT-Regular.otf)}
+@font-face{font-family:"SUIT";font-weight:500;src:url(fonts/SUIT-Medium.otf)}
+@font-face{font-family:"SUIT";font-weight:700;src:url(fonts/SUIT-Bold.otf)}
+@font-face{font-family:"SUIT";font-weight:800;src:url(fonts/SUIT-ExtraBold.otf)}
+@font-face{font-family:"Spoqa Han Sans Neo";font-weight:400;src:url(fonts/SpoqaHanSansNeo-Regular.woff)}
+@font-face{font-family:"Spoqa Han Sans Neo";font-weight:500;src:url(fonts/SpoqaHanSansNeo-Medium.woff)}
+@font-face{font-family:"Spoqa Han Sans Neo";font-weight:700;src:url(fonts/SpoqaHanSansNeo-Bold.woff)}
 html,body{margin:0;height:100%;background:#1b1b1b;overscroll-behavior:none}
 /* the book: one page per screen width, horizontal snap */
 #book{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
@@ -25,7 +29,7 @@ html,body{margin:0;height:100%;background:#1b1b1b;overscroll-behavior:none}
 .pg{--ratio:1.3333;position:relative;overflow:hidden;width:min(100vw - 24px,(100vh - 24px) / var(--ratio));aspect-ratio:1/var(--ratio)}
 .pg img{display:block;width:100%;height:100%;object-fit:cover}
 .pg video{display:block;width:100%;height:100%;object-fit:cover}
-.pg [data-text]:empty{display:none}
+.pg [data-text]:empty{visibility:hidden} /* keeps its box: grid auto-placement under the photos must not shift */
 /* export mode: one page fills the viewport exactly */
 body.export #book{overflow:hidden}
 body.export .sheet{flex-basis:100vw}

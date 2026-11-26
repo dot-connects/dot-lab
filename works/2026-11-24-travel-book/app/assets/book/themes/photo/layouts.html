@@ -1,32 +1,53 @@
-<!-- theme photo layouts (mockups/r5/photo.html): data-slot = photo index in PageSpec.ids. No text on inside pages. -->
+<!-- theme photo r11 library: data-slot = photo index; text only on covers (title, period) and day openers (day). -->
 
-<template id="photo/c1"><div class="pg c1">
-  <div class="g full"><div><img data-slot="0" data-crop="62% 50%" alt=""></div></div>
-  <div class="scrim"></div>
-  <h3 class="ttl big" data-text="title"></h3>
-  <p class="sub" data-text="period"></p>
-</div></template>
+<template id="photo/c1"><div class="pg c1"><div class="g"><div><img data-slot="0" alt=""></div></div><div class="scrim"></div><h3 class="ttl" data-text="title"></h3><p class="sub" data-text="period"></p></div></template>
 
-<template id="photo/c3"><div class="pg c3">
-  <h3 class="ttl big" data-text="title"></h3>
-  <p class="sub" data-text="period"></p>
-  <div class="g full"><div><img data-slot="0" alt=""></div></div>
-</div></template>
+<template id="photo/c2"><div class="pg c2"><div class="g"><div><img data-slot="0" alt=""></div></div><h3 class="ttl" data-text="title"></h3><p class="sub" data-text="period"></p></div></template>
 
-<template id="photo/op"><div class="pg"><div class="g full"><div><img data-slot="0" alt=""></div></div></div></template>
+<template id="photo/c3"><div class="pg c3"><div class="g"><div><img data-slot="0" alt=""></div></div><h3 class="ttl" data-text="title"></h3><p class="sub" data-text="period"></p></div></template>
 
-<template id="photo/one"><div class="pg"><div class="g full"><div><img data-slot="0" alt=""></div></div></div></template>
+<template id="photo/op"><div class="pg op"><div class="g"><div><img data-slot="0" alt=""></div></div><p class="day" data-text="day"></p></div></template>
 
-<template id="photo/band"><div class="pg"><div class="g band"><div><img data-slot="0" alt=""></div></div></div></template>
+<template id="photo/op2"><div class="pg op2"><div class="g"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div></div><p class="day" data-text="day"></p></div></template>
 
-<template id="photo/two"><div class="pg"><div class="g two"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div></div></div></template>
+<template id="photo/opp"><div class="pg opp"><div class="g"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div></div><p class="day" data-text="day"></p></div></template>
 
-<template id="photo/side"><div class="pg"><div class="g side"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div><div><img data-slot="2" alt=""></div></div></div></template>
+<template id="photo/full"><div class="pg full"><div class="g"><div><img data-slot="0" alt=""></div></div></div></template>
 
-<template id="photo/duo"><div class="pg"><div class="g duo"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div></div></div></template>
+<template id="photo/b3"><div class="pg b3"><div class="g"><div><img data-slot="0" alt=""></div></div></div></template>
 
-<template id="photo/big3"><div class="pg"><div class="g big3"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div><div><img data-slot="2" alt=""></div><div><img data-slot="3" alt=""></div></div></div></template>
+<template id="photo/b3l"><div class="pg b3l"><div class="g"><div><img data-slot="0" alt=""></div></div></div></template>
 
-<template id="photo/six"><div class="pg"><div class="g six"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div><div><img data-slot="2" alt=""></div><div><img data-slot="3" alt=""></div><div><img data-slot="4" alt=""></div><div><img data-slot="5" alt=""></div></div></div></template>
+<template id="photo/low"><div class="pg low"><div class="g"><div><img data-slot="0" alt=""></div></div></div></template>
 
-<template id="photo/vd"><div class="pg"><div class="g full"><div><img data-slot="0" data-frame="0" alt=""></div></div></div></template>
+<template id="photo/plate"><div class="pg plate"><div class="g"><div><img data-slot="0" alt=""></div></div></div></template>
+
+<template id="photo/two"><div class="pg two"><div class="g"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div></div></div></template>
+
+<template id="photo/duo"><div class="pg duo"><div class="g"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div></div></div></template>
+
+<template id="photo/top2"><div class="pg top2"><div class="g"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div><div><img data-slot="2" alt=""></div></div></div></template>
+
+<template id="photo/side"><div class="pg side"><div class="g"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div><div><img data-slot="2" alt=""></div></div></div></template>
+
+<template id="photo/big3"><div class="pg big3"><div class="g"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div><div><img data-slot="2" alt=""></div><div><img data-slot="3" alt=""></div></div></div></template>
+
+<template id="photo/seq3"><div class="pg seq3"><div class="g"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div><div><img data-slot="2" alt=""></div></div></div></template>
+
+<template id="photo/four"><div class="pg four"><div class="g"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div><div><img data-slot="2" alt=""></div><div><img data-slot="3" alt=""></div></div></div></template>
+
+<template id="photo/six"><div class="pg six"><div class="g"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div><div><img data-slot="2" alt=""></div><div><img data-slot="3" alt=""></div><div><img data-slot="4" alt=""></div><div><img data-slot="5" alt=""></div></div></div></template>
+
+<template id="photo/n1"><div class="pg n1 dark"><div class="g"><div><img data-slot="0" alt=""></div></div></div></template>
+
+<template id="photo/n2"><div class="pg n2 dark"><div class="g"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div></div></div></template>
+
+<template id="photo/n4"><div class="pg n4 dark"><div class="g"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div><div><img data-slot="2" alt=""></div><div><img data-slot="3" alt=""></div></div></div></template>
+
+<template id="photo/last"><div class="pg last"><div class="g"><div><img data-slot="0" alt=""></div></div></div></template>
+
+<template id="photo/ix12"><div class="pg ix12"><div class="g"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div><div><img data-slot="2" alt=""></div><div><img data-slot="3" alt=""></div><div><img data-slot="4" alt=""></div><div><img data-slot="5" alt=""></div><div><img data-slot="6" alt=""></div><div><img data-slot="7" alt=""></div><div><img data-slot="8" alt=""></div><div><img data-slot="9" alt=""></div><div><img data-slot="10" alt=""></div><div><img data-slot="11" alt=""></div></div></div></template>
+
+<template id="photo/ix20"><div class="pg ix20"><div class="g"><div><img data-slot="0" alt=""></div><div><img data-slot="1" alt=""></div><div><img data-slot="2" alt=""></div><div><img data-slot="3" alt=""></div><div><img data-slot="4" alt=""></div><div><img data-slot="5" alt=""></div><div><img data-slot="6" alt=""></div><div><img data-slot="7" alt=""></div><div><img data-slot="8" alt=""></div><div><img data-slot="9" alt=""></div><div><img data-slot="10" alt=""></div><div><img data-slot="11" alt=""></div><div><img data-slot="12" alt=""></div><div><img data-slot="13" alt=""></div><div><img data-slot="14" alt=""></div><div><img data-slot="15" alt=""></div><div><img data-slot="16" alt=""></div><div><img data-slot="17" alt=""></div><div><img data-slot="18" alt=""></div><div><img data-slot="19" alt=""></div></div></div></template>
+
+<template id="photo/vd"><div class="pg"><img data-slot="0" data-frame="0" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></div></template>

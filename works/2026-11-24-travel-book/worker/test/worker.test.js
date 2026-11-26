@@ -149,3 +149,53 @@ test("/pick passes must-include ids to the model, never more than 10", async () 
 test("unknown route is 404", async () => {
   assert.equal((await call({ images: imgs(1) }, { path: "/book" })).status, 404);
 });
+
+// /layout: whole-book page plan over the theme's designer layouts
+const CATALOG = [
+  { id: "a/cover", kind: "cover", slots: ["P"], texts: { title: 12, period: 20 }, when: "표지" },
+  { id: "a/pair", kind: "photo", slots: ["L", "V"], texts: { cap: 24 }, when: "짝 두 장" },
+];
+const layoutBody = extra => ({ images: imgs(2), theme: "a", catalog: CATALOG, rules: { pages: [16, 26], min_distinct: 5 },
+  shots: [{ id: "p0", local: "2026-06-12T13:20", place: "협재", w: 3000, h: 4000 },
+    { id: "p1", local: "2026-06-12T14:00", place: "우도", video: true, durMs: 8400, w: 1920, h: 1080 }],
+  opts: { who: "연인", about: "느긋하게 걷기" }, notes: [{ day: "2026-06-12", text: "바람이 셌다" }], ...extra });
+const allText = c => [c.input[0].content, ...c.input[1].content.filter(x => x.type === "input_text").map(x => x.text)].join("\n");
+
+test("/layout prompt: theme guide, catalog line, concept line, labelled images, layout schema", async () => {
+  const r = await call(layoutBody(), { path: "/layout" });
+  assert.equal(r.status, 200);
+  const c = calls[0], t = allText(c);
+  assert.ok(t.includes("여백의 책"));                                    // a.md
+  assert.ok(t.includes("글에서 '메모'"));                                 // _common.md
+  assert.ok(t.includes("- a/pair [photo] 칸 L V · 글 cap≤24자 — 짝 두 장"));
+  assert.ok(t.includes("V=영상(움직이는 장면)"));
+  assert.ok(t.includes("쪽 수 16~26") && t.includes("본문 틀 최소 5가지"));
+  assert.ok(t.includes("여행한 사람이 적은 여행 성격: 누구랑=연인, 느긋하게 걷기"));
+  assert.ok(t.includes("[p0] 2026-06-12T13:20 협재 P 0.75"));
+  assert.ok(t.includes("[p1] 2026-06-12T14:00 우도 L 1.78 영상 8.4초"));
+  assert.ok(!t.includes("지난 답의 문제"));
+  assert.equal(c.text.format.name, "layout");
+  assert.deepEqual(c.text.format.schema.required, ["title", "plan", "pages"]);
+  assert.equal(c.max_output_tokens, 24000);
+});
+
+test("/layout: concept defaults to 없음, retry block carries fix list and the previous answer", async () => {
+  await call(layoutBody({ opts: {}, fix: ["2쪽: 없는 틀 x"], prev: { title: "제주", pages: [] } }), { path: "/layout" });
+  const t = allText(calls[0]);
+  assert.ok(t.includes("누구랑=없음, 없음"));
+  assert.ok(t.includes("## 지난 답의 문제 (모두 고쳐서 책 전체를 다시 답해라)\n- 2쪽: 없는 틀 x\n\n지난 답:\n{\"title\":\"제주\",\"pages\":[]}"));
+});
+
+test("/layout: unknown theme 400, 73 images 413, bad token 401, none call the model", async () => {
+  assert.equal((await call(layoutBody({ theme: "zz" }), { path: "/layout" })).status, 400);
+  assert.equal((await call(layoutBody({ theme: "toString" }), { path: "/layout" })).status, 400);
+  assert.equal((await call(layoutBody({ images: imgs(73) }), { path: "/layout" })).status, 413);
+  assert.equal((await call(layoutBody(), { path: "/layout", token: "nope" })).status, 401);
+  assert.equal(calls.length, 0);
+});
+
+test("/layout shares the /write day counter", async () => {
+  env.WRITE_DAY = "1";
+  assert.equal((await call(layoutBody(), { path: "/layout" })).status, 200);
+  assert.equal((await call({ images: imgs(2) }, { path: "/write" })).status, 503);
+});

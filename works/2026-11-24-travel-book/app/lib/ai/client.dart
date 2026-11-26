@@ -39,9 +39,10 @@ class AiShot {
   final String id, local; // "2026-06-12T13:20"
   final String? place;
   final bool video;
-  final int durMs;
-  const AiShot(this.id, this.local, this.place, {this.video = false, this.durMs = 0});
-  Map<String, dynamic> toJson() => {'id': id, 'local': local, 'place': place ?? '', 'video': video, 'durMs': durMs};
+  final int durMs, w, h;
+  const AiShot(this.id, this.local, this.place, {this.video = false, this.durMs = 0, this.w = 0, this.h = 0});
+  Map<String, dynamic> toJson() =>
+      {'id': id, 'local': local, 'place': place ?? '', 'video': video, 'durMs': durMs, if (w > 0) 'w': w, if (h > 0) 'h': h};
 }
 
 class AiClient {
@@ -61,6 +62,21 @@ class AiClient {
   Future<AiResult> write(List<AiImage> images, List<AiShot> shots, String shape,
           {List<Map<String, String?>> notes = const [], Map<String, Object?> opts = const {}}) =>
       _post('/write', {'images': images, 'shots': shots, 'notes': notes, 'opts': opts, 'shape': shape});
+
+  /// The whole book: order, a designer layout per page, photos into its slots, the texts (mockups/r11/engine).
+  /// [fix]/[prev] = one more try after checkLayout found problems.
+  Future<AiResult> layout(List<AiImage> images, List<AiShot> shots,
+          {required String theme,
+          required List<Map<String, Object>> catalog,
+          required Map<String, Object> rules,
+          List<Map<String, String?>> notes = const [],
+          Map<String, Object?> opts = const {},
+          List<String>? fix,
+          Map<String, dynamic>? prev}) =>
+      _post('/layout', {
+        'images': images, 'shots': shots, 'notes': notes, 'opts': opts, 'theme': theme, 'catalog': catalog, 'rules': rules,
+        if (fix != null) 'fix': fix, if (prev != null) 'prev': prev,
+      });
 
   Future<AiResult> rewrite(List<AiImage> images, Map<String, String> page, String shape, {List<Map<String, String?>> notes = const []}) =>
       _post('/rewrite', {'images': images, 'page': page, 'notes': notes, 'shape': shape});

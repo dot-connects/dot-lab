@@ -1,13 +1,306 @@
 [
- {"id": "photo/c1", "kind": "cover", "slots": ["A"], "texts": ["title", "period"]},
- {"id": "photo/c3", "kind": "cover", "slots": ["L"], "texts": ["title", "period"]},
- {"id": "photo/op", "kind": "chapter", "slots": ["A"], "texts": []},
- {"id": "photo/one", "kind": "photo", "slots": ["P"], "texts": []},
- {"id": "photo/band", "kind": "photo", "slots": ["L"], "texts": []},
- {"id": "photo/two", "kind": "photo", "slots": ["L", "L"], "texts": []},
- {"id": "photo/side", "kind": "photo", "slots": ["P", "A", "A"], "texts": []},
- {"id": "photo/duo", "kind": "photo", "slots": ["P", "P"], "texts": []},
- {"id": "photo/big3", "kind": "photo", "slots": ["L", "A", "A", "A"], "texts": []},
- {"id": "photo/six", "kind": "photo", "slots": ["A", "A", "A", "A", "A", "A"], "texts": []},
- {"id": "photo/vd", "kind": "video", "slots": ["V"], "texts": []}
+ {
+  "id": "photo/c1",
+  "kind": "cover",
+  "slots": [
+   "A"
+  ],
+  "texts": {
+   "title": 8,
+   "period": 18
+  },
+  "when": "표지 기본. 여행을 대표하는 한 장(풍경) 위에 큰 제목. 사진 아래쪽이 어두워도 되는 것"
+ },
+ {
+  "id": "photo/c2",
+  "kind": "cover",
+  "slots": [
+   "A"
+  ],
+  "texts": {
+   "title": 5,
+   "period": 18
+  },
+  "when": "표지. 위 3/4 사진, 아래 종이에 큰 제목 한 줄. 하늘·바다처럼 위가 비지 않은 사진도 됨. 제목 5자 이하"
+ },
+ {
+  "id": "photo/c3",
+  "kind": "cover",
+  "slots": [
+   "L"
+  ],
+  "texts": {
+   "title": 4,
+   "period": 18
+  },
+  "when": "표지. 종이 위 큰 제목, 아래로 가로 사진. 제목이 짧을 때(4자 이하), 조용한 풍경"
+ },
+ {
+  "id": "photo/op",
+  "kind": "chapter",
+  "slots": [
+   "A"
+  ],
+  "texts": {
+   "day": 16
+  },
+  "when": "날 여는 쪽 기본(매일 같은 모양). 그날 첫 이동 컷 한 장(배·차창·플랫폼·길). 아래 종이에 날 줄 '장소, 날짜'"
+ },
+ {
+  "id": "photo/op2",
+  "kind": "chapter",
+  "slots": [
+   "L",
+   "L"
+  ],
+  "texts": {
+   "day": 16
+  },
+  "when": "날 여는 쪽. 이동 컷 + 도착 첫 풍경을 위아래로(예: 배 갑판 → 섬). 같은 날 줄 자리"
+ },
+ {
+  "id": "photo/opp",
+  "kind": "chapter",
+  "slots": [
+   "P",
+   "P"
+  ],
+  "texts": {
+   "day": 16
+  },
+  "when": "날 여는 쪽. 세로 두 장(차창 안 사람 + 창밖, 표 + 플랫폼). 같은 날 줄 자리"
+ },
+ {
+  "id": "photo/full",
+  "kind": "photo",
+  "slots": [
+   "P"
+  ],
+  "texts": {},
+  "when": "꽉 찬 한 장. 그날의 절정 풍경. 날마다 1~2회, 연속 금지. 음식·셀카 금지"
+ },
+ {
+  "id": "photo/b3",
+  "kind": "photo",
+  "slots": [
+   "P"
+  ],
+  "texts": {},
+  "when": "세로 한 장 + 오른쪽 종이 띠. 큰 컷 다음 숨, 장면 시작의 넓은 세로 풍경. 시선·길이 오른쪽으로"
+ },
+ {
+  "id": "photo/b3l",
+  "kind": "photo",
+  "slots": [
+   "P"
+  ],
+  "texts": {},
+  "when": "b3 반대(왼쪽 종이). b3 와 같은 날 번갈아. 시선이 왼쪽인 사진"
+ },
+ {
+  "id": "photo/low",
+  "kind": "photo",
+  "slots": [
+   "A"
+  ],
+  "texts": {},
+  "when": "정사각에 가까운 한 장 + 위 종이. 조용한 풍경, 하늘이 많은 사진, 숨 쉬는 쪽"
+ },
+ {
+  "id": "photo/plate",
+  "kind": "photo",
+  "slots": [
+   "P"
+  ],
+  "texts": {},
+  "when": "얇은 테두리 세로 판. 사람·숙소·창틀이 테두리인 컷(창밖·차창). 블리드하면 안 되는 가까운 컷"
+ },
+ {
+  "id": "photo/two",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "L"
+  ],
+  "texts": {},
+  "when": "가로 두 장 위아래(3:2 그대로). 같은 장면 넓게→가까이, 또는 같은 형태의 짝(수평선 둘)"
+ },
+ {
+  "id": "photo/duo",
+  "kind": "photo",
+  "slots": [
+   "P",
+   "P"
+  ],
+  "texts": {},
+  "when": "세로 두 장 나란히 + 위 종이. 이유 있는 짝(같은 색, 같은 주제, 밖→안). 같은 크기"
+ },
+ {
+  "id": "photo/top2",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "P",
+   "P"
+  ],
+  "texts": {},
+  "when": "위 가로 한 장 + 아래 세로 둘. 장소 한 컷 + 그곳의 사람·먹은 것"
+ },
+ {
+  "id": "photo/side",
+  "kind": "photo",
+  "slots": [
+   "P",
+   "P",
+   "P"
+  ],
+  "texts": {},
+  "when": "큰 세로 + 오른쪽 작은 세로 둘. 사람 한 컷 + 손·음식 디테일, 또는 길 + 표지판"
+ },
+ {
+  "id": "photo/big3",
+  "kind": "photo",
+  "slots": [
+   "A",
+   "P",
+   "P",
+   "P"
+  ],
+  "texts": {},
+  "when": "큰 한 장 + 아래 세로 셋. 시장·식당·가게: 넓게 한 장 + 디테일 셋"
+ },
+ {
+  "id": "photo/seq3",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "L",
+   "L"
+  ],
+  "texts": {},
+  "when": "같은 장면 세 컷 맞붙임(넓게→가까이→디테일, 또는 걸어가며 연속). 가로 띠로 잘림"
+ },
+ {
+  "id": "photo/four",
+  "kind": "photo",
+  "slots": [
+   "P",
+   "P",
+   "P",
+   "P"
+  ],
+  "texts": {},
+  "when": "세로 네 장 격자. 연사·웃음·움직임 연속 컷, 같은 사람의 네 표정. 비슷한 컷은 여기만"
+ },
+ {
+  "id": "photo/six",
+  "kind": "photo",
+  "slots": [
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A"
+  ],
+  "texts": {},
+  "when": "여섯 장 격자. 먹은 것·산 것·작은 것 모음. 하루에 한 번 이하"
+ },
+ {
+  "id": "photo/n1",
+  "kind": "photo",
+  "slots": [
+   "P"
+  ],
+  "texts": {},
+  "when": "밤(검은 바탕) 세로 한 장. 저녁 이후 장면의 첫 쪽, 불빛·야경·밤 식당"
+ },
+ {
+  "id": "photo/n2",
+  "kind": "photo",
+  "slots": [
+   "L",
+   "L"
+  ],
+  "texts": {},
+  "when": "밤(검은 바탕) 가로 두 장. 밤 묶음 둘째 쪽, 밤길·차 안·불꽃"
+ },
+ {
+  "id": "photo/n4",
+  "kind": "photo",
+  "slots": [
+   "P",
+   "P",
+   "P",
+   "P"
+  ],
+  "texts": {},
+  "when": "밤(검은 바탕) 세로 네 장. 밤 술자리·사람 연속. n1·n2 와 이어서 밤 묶음"
+ },
+ {
+  "id": "photo/last",
+  "kind": "end",
+  "slots": [
+   "P"
+  ],
+  "texts": {},
+  "when": "마지막 사진 한 장(오른쪽 아래 모서리에 붙음). 빈 하늘·돌아오는 길 끝·작은 사람. 화려한 컷 금지"
+ },
+ {
+  "id": "photo/ix12",
+  "kind": "end",
+  "slots": [
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A"
+  ],
+  "texts": {},
+  "when": "맨 끝 색인. 실린 사진 12장 이하일 때, 실린 순서 그대로"
+ },
+ {
+  "id": "photo/ix20",
+  "kind": "end",
+  "slots": [
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A",
+   "A"
+  ],
+  "texts": {},
+  "when": "맨 끝 색인. 실린 사진 13~20장일 때, 실린 순서 그대로(대표 20장)"
+ },
+ {
+  "id": "photo/vd",
+  "kind": "video",
+  "slots": [
+   "V"
+  ],
+  "texts": {},
+  "when": "영상 한 편을 쪽 전체로. 움직임이 있는 장면(파도·사람·거리)일 때, 책에 한두 번"
+ }
 ]
