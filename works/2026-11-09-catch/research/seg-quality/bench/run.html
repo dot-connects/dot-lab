@@ -1,0 +1,124 @@
+<!doctype html><meta charset="utf-8"><title>seg bench</title>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+<script type="module">
+import { FilesetResolver, ImageSegmenter, ObjectDetector, InteractiveSegmenter } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+const SKIPE = new URLSearchParams(location.search).has("noesam");
+const NAMES = new URLSearchParams(location.search).get("n").split(",");
+const ANI = [3, 8, 10, 12, 13, 17]; // bird cat cow dog horse sheep (VOC)
+const DET_ANI = ["cat", "dog", "bird", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe"];
+const log = s => { window.__log = (window.__log || []).concat(String(s)); };
+const files = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+const cpu = p => ({ modelAssetPath: p, delegate: "CPU" });
+const seg = await ImageSegmenter.createFromOptions(files, { baseOptions: cpu("models/deeplab_v3.tflite"), runningMode: "IMAGE", outputConfidenceMasks: true, outputCategoryMask: false });
+const det = await ObjectDetector.createFromOptions(files, { baseOptions: cpu("models/efficientdet_lite0.tflite"), runningMode: "IMAGE", scoreThreshold: 0.1, maxResults: 5 });
+const touch = await InteractiveSegmenter.createFromOptions(files, { baseOptions: cpu("models/magic_touch.tflite"), outputConfidenceMasks: true, outputCategoryMask: false });
+ort.env.wasm.numThreads = 1;
+const u2 = await ort.InferenceSession.create("models/u2netp.onnx");
+const enc = await ort.InferenceSession.create("models/esam_enc.onnx");
+const dec = await ort.InferenceSession.create("models/esam_dec.onnx");
+log("esam in " + enc.inputNames + " / " + dec.inputNames + " out " + dec.outputNames);
+
+const load = n => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = "img/" + n + ".png"; });
+const cv = (w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
+function crop(img, b) { const c = cv(b.w, b.h); c.getContext("2d").drawImage(img, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h); return c; }
+function scaled(img, W, H) { const c = cv(W, H); c.getContext("2d").drawImage(img, 0, 0, W, H); return c; }
+// float map (mw x mh) -> PNG data URL resized to (W x H) at offset in a full canvas (FW x FH)
+function png(f, mw, mh, FW, FH, b = { x: 0, y: 0, w: FW, h: FH }) {
+  const s = cv(mw, mh), sx = s.getContext("2d"), id = sx.createImageData(mw, mh);
+  for (let i = 0; i < f.length; i++) { const v = Math.max(0, Math.min(255, Math.round(f[i] * 255))); id.data.set([v, v, v, 255], i * 4); }
+  sx.putImageData(id, 0, 0);
+  const o = cv(FW, FH), ox = o.getContext("2d"); ox.fillStyle = "#000"; ox.fillRect(0, 0, FW, FH);
+  ox.imageSmoothingEnabled = true; ox.drawImage(s, b.x, b.y, b.w, b.h);
+  return o.toDataURL("image/png");
+}
+function dlAnimal(src) {
+  let out;
+  const t0 = performance.now();
+  seg.segment(src, r => {
+    const M = r.confidenceMasks, w = M[0].width, h = M[0].height, a = new Float32Array(w * h), p = M[15].getAsFloat32Array();
+    for (const c of ANI) { const m = M[c].getAsFloat32Array(); for (let i = 0; i < a.length; i++) a[i] += m[i]; }
+    for (let i = 0; i < a.length; i++) a[i] = Math.min(1, a[i]);
+    out = { a, p: Float32Array.from(p), w, h };
+  });
+  out.ms = performance.now() - t0; return out;
+}
+function touchAt(src, x, y) { // x,y normalized in src
+  let out; const t0 = performance.now();
+  touch.segment(src, { keypoint: { x, y } }, r => { const m = r.confidenceMasks[0]; out = { a: Float32Array.from(m.getAsFloat32Array()), w: m.width, h: m.height }; });
+  out.ms = performance.now() - t0; return out;
+}
+function u2net(src) { // src canvas -> 320x320 saliency
+  const t0 = performance.now(); const c = scaled(src, 320, 320), d = c.getContext("2d").getImageData(0, 0, 320, 320).data;
+  const x = new Float32Array(3 * 320 * 320), mean = [0.485, 0.456, 0.406], std = [0.229, 0.224, 0.225];
+  for (let i = 0; i < 320 * 320; i++) for (let k = 0; k < 3; k++) x[k * 320 * 320 + i] = (d[i * 4 + k] / 255 - mean[k]) / std[k];
+  return { x, t0 };
+}
+async function runU2(src) {
+  const { x, t0 } = u2net(src);
+  const r = await u2.run({ [u2.inputNames[0]]: new ort.Tensor("float32", x, [1, 3, 320, 320]) });
+  const o = r[u2.outputNames[0]].data; let mn = Infinity, mx = -Infinity; for (const v of o) { mn = Math.min(mn, v); mx = Math.max(mx, v); }
+  const a = Float32Array.from(o, v => (v - mn) / (mx - mn + 1e-6));
+  return { a, w: 320, h: 320, ms: performance.now() - t0 };
+}
+async function esam(img, b) { // box prompt on the full image
+  const W = img.width, H = img.height, t0 = performance.now();
+  const d = scaled(img, W, H).getContext("2d").getImageData(0, 0, W, H).data, x = new Float32Array(3 * W * H);
+  for (let i = 0; i < W * H; i++) for (let k = 0; k < 3; k++) x[k * W * H + i] = d[i * 4 + k] / 255;
+  const e = await enc.run({ [enc.inputNames[0]]: new ort.Tensor("float32", x, [1, 3, H, W]) });
+  const t1 = performance.now();
+  const feeds = {};
+  feeds[dec.inputNames[0]] = e[enc.outputNames[0]];
+  feeds[dec.inputNames[1]] = new ort.Tensor("float32", Float32Array.from([b.x, b.y, b.x + b.w, b.y + b.h]), [1, 1, 2, 2]);
+  feeds[dec.inputNames[2]] = new ort.Tensor("float32", Float32Array.from([2, 3]), [1, 1, 2]);
+  feeds[dec.inputNames[3]] = new ort.Tensor("int64", BigInt64Array.from([BigInt(H), BigInt(W)]), [2]);
+  const r = await dec.run(feeds);
+  const m = r[dec.outputNames[0]], iou = r[dec.outputNames[1]].data;
+  const dims = m.dims, n = dims[2]; let best = 0; for (let i = 1; i < n; i++) if (iou[i] > iou[best]) best = i;
+  const a = new Float32Array(W * H), off = best * W * H; for (let i = 0; i < W * H; i++) a[i] = 1 / (1 + Math.exp(-m.data[off + i]));
+  return { a, w: W, h: H, ms: performance.now() - t0, encMs: t1 - t0, dims: String(dims), iou: Array.from(iou).map(v => +v.toFixed(3)) };
+}
+function pad(b, W, H, k) { const x0 = Math.max(0, b.x - b.w * k), y0 = Math.max(0, b.y - b.h * k), x1 = Math.min(W, b.x + b.w * (1 + k)), y1 = Math.min(H, b.y + b.h * (1 + k)); return { x: Math.round(x0), y: Math.round(y0), w: Math.round(x1 - x0), h: Math.round(y1 - y0) }; }
+
+window.__res = {};
+for (const n of NAMES) { try {
+  const img = await load(n), W = img.width, H = img.height, R = { W, H, ms: {} };
+  // A: app path - long side 320, DeepLab on the whole frame
+  const s = 320 / Math.max(W, H), small = scaled(img, Math.round(W * s), Math.round(H * s));
+  const A = dlAnimal(small); R.ms.dl_full = A.ms; R.A = png(A.a, A.w, A.h, W, H); R.P = png(A.p, A.w, A.h, W, H);
+  let t0 = performance.now(); const D = det.detect(small).detections; R.ms.det = performance.now() - t0;
+  R.dets = D.map(d => ({ label: d.categories[0].categoryName, score: d.categories[0].score, x: d.boundingBox.originX / s, y: d.boundingBox.originY / s, w: d.boundingBox.width / s, h: d.boundingBox.height / s }));
+  // the box the grab would cut around: best animal detection >= 0.3, else the DeepLab mask's box, else the frame
+  const best = R.dets.filter(d => DET_ANI.includes(d.label) && d.score >= 0.3).sort((a, b) => b.score - a.score)[0];
+  let box = best && { x: best.x, y: best.y, w: best.w, h: best.h }, src = "det";
+  if (!box) { let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1; for (let y = 0; y < A.h; y++) for (let x = 0; x < A.w; x++) if (A.a[y * A.w + x] > 0.3) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    if (x1 >= 0) { box = { x: x0 / A.w * W, y: y0 / A.h * H, w: (x1 - x0 + 1) / A.w * W, h: (y1 - y0 + 1) / A.h * H }; src = "mask"; } else { box = { x: 0, y: 0, w: W, h: H }; src = "frame"; } }
+  R.box = box; R.boxSrc = src;
+  const pb = pad(box, W, H, 0.15), cimg = crop(img, pb); R.crop = pb;
+  // B: DeepLab on the padded box crop
+  log("step B "+n);
+  const B = dlAnimal(cimg); R.ms.dl_crop = B.ms; R.B = png(B.a, B.w, B.h, W, H, pb);
+  // seed: the strongest (3x3-averaged) crop-DeepLab pixel inside the raw box, else the box centre
+  let sx = box.x + box.w / 2, sy = box.y + box.h / 2, bestv = 0.3;
+  for (let y = 1; y < B.h - 1; y++) for (let x = 1; x < B.w - 1; x++) {
+    const fx = pb.x + (x + 0.5) / B.w * pb.w, fy = pb.y + (y + 0.5) / B.h * pb.h;
+    if (fx < box.x || fx > box.x + box.w || fy < box.y || fy > box.y + box.h) continue;
+    let v = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) v += B.a[(y + dy) * B.w + x + dx];
+    // prefer pixels near the box centre on ties: small centre penalty
+    v = v / 9 - 0.15 * Math.hypot((fx - (box.x + box.w / 2)) / box.w, (fy - (box.y + box.h / 2)) / box.h);
+    if (v > bestv) { bestv = v; sx = fx; sy = fy; }
+  }
+  R.seed = [sx, sy]; R.centre = [box.x + box.w / 2, box.y + box.h / 2];
+  // C: magic touch on the crop, seeded at the box centre and at the DeepLab seed
+  log("step C1 "+n);
+  const C1 = touchAt(cimg, (R.centre[0] - pb.x) / pb.w, (R.centre[1] - pb.y) / pb.h); R.ms.touch_crop = C1.ms; R.C1 = png(C1.a, C1.w, C1.h, W, H, pb);
+  const C2 = touchAt(cimg, (sx - pb.x) / pb.w, (sy - pb.y) / pb.h); R.C2 = png(C2.a, C2.w, C2.h, W, H, pb);
+  const C3 = touchAt(img, sx / W, sy / H); R.ms.touch_full = C3.ms; R.C3 = png(C3.a, C3.w, C3.h, W, H);
+  // E: u2netp on the crop, EfficientSAM-Ti with the box
+  log("step U "+n);
+  const U = await runU2(cimg); R.ms.u2netp = U.ms; R.U = png(U.a, U.w, U.h, W, H, pb);
+  log("step E "+n);
+  const E = SKIPE ? { a: new Float32Array(W*H), w: W, h: H, ms: 0, encMs: 0 } : await esam(img, pb); R.ms.esam = E.ms; R.ms.esam_enc = E.encMs; R.esamInfo = { dims: E.dims, iou: E.iou }; R.E = png(E.a, E.w, E.h, W, H);
+  window.__res[n] = R; log("done " + n + " " + JSON.stringify(R.ms));
+} catch (e) { log("FAIL " + n + " " + (e && e.stack || e)); } }
+window.__done = true;
+</script>
