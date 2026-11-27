@@ -49,7 +49,8 @@ fun App(openSeq: Int = 0, openTo: String = "pet") {
     val sink = remember { DexSink(ctx.applicationContext) }
     val critters = remember { Critters(ctx.applicationContext) }
     BackHandler(enabled = screen != Screen.CATCH) {
-        screen = if (screen == Screen.DETAIL) Screen.DEX else Screen.CATCH
+        // the pet settings open from the dex (or the pet's cloud): back lands in the dex, like the detail (operator 11-27)
+        screen = if (screen == Screen.DETAIL || screen == Screen.PET) Screen.DEX else Screen.CATCH
     }
     when (screen) {
         Screen.CATCH -> {
@@ -62,7 +63,7 @@ fun App(openSeq: Int = 0, openTo: String = "pet") {
             onBack = { screen = Screen.CATCH },
         )
         Screen.DETAIL -> DetailScreen(entryId ?: "", onPet = { screen = Screen.PET }) { screen = Screen.DEX }
-        Screen.PET -> PetScreen { screen = Screen.CATCH }
+        Screen.PET -> PetScreen { screen = Screen.DEX }
     }
 }
 

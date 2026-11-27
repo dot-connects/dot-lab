@@ -109,7 +109,7 @@ fun PetScreen(onBack: () -> Unit) {
 
     if (picking) { AppPicker(onDone = { picking = false }); return }
     BookPage {
-        Row { InkPill("‹ 뽑기", onClick = onBack) }
+        Row { InkPill("‹ 도감", onClick = onBack) }
         Heading("펫", modifier = Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { dev = true }) })
 
         Panel {
