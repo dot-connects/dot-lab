@@ -4,11 +4,24 @@ import 'package:flutter/services.dart';
 
 const _ch = MethodChannel('kr.dot.tripbook/making');
 
-Future<void> makingStart(String title) => _ch.invokeMethod('start', {'title': title}).catchError((_) {});
+// one service for every job (a picking and a write can overlap now that the picking can be left): count them and stop
+// the service only when the last one ends
+var _jobs = 0;
+Future<void> makingStart(String title) {
+  _jobs++;
+  return _ch.invokeMethod('start', {'title': title}).catchError((_) {});
+}
+
 /// [head]: the notification's title ("책이 다 됐어요" unless the picking finished: "사진을 다 골랐어요").
-Future<void> makingDone(String title, String book, {String? head}) =>
-    _ch.invokeMethod('done', {'title': title, 'book': book, 'head': ?head}).catchError((_) {});
-Future<void> makingStop() => _ch.invokeMethod('stop').catchError((_) {});
+Future<void> makingDone(String title, String book, {String? head}) {
+  _jobs = _jobs > 0 ? _jobs - 1 : 0;
+  return _ch.invokeMethod('done', {'title': title, 'book': book, 'head': ?head, 'stop': _jobs == 0}).catchError((_) {});
+}
+
+Future<void> makingStop() {
+  _jobs = _jobs > 0 ? _jobs - 1 : 0;
+  return _jobs == 0 ? _ch.invokeMethod('stop').catchError((_) {}) : Future.value();
+}
 
 /// The book the app was opened for from a "다 됐어요" notification (once), or null.
 Future<String?> takeLaunchBook() async {

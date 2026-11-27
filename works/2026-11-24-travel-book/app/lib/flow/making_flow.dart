@@ -85,13 +85,20 @@ class _MakingFlowState extends State<MakingFlow> {
 
   /// Leaving the picking: back to the shelf; the pick goes on (a foreground notification keeps the app alive) and
   /// "사진을 다 골랐어요" opens the review.
-  void _leavePick() => Navigator.of(context).popUntil((r) => r.isFirst);
+  void _leavePick() {
+    _left = true;
+    Navigator.of(context).popUntil((r) => r.isFirst);
+  }
+
+  bool _left = false; // [나가 있기]: tell them when it is done (closing with ✕ does not ask for that)
 
   Future<void> _pick() async {
     final d = widget.draft!;
     unawaited(mc.keepScreenOn(true).catchError((_) {}));
     unawaited(makingStart('사진 고르는 중'));
-    final r = await app.pipe.pick(
+    final PickResult r;
+    try {
+      r = await app.pipe.pick(
       from: d.start!,
       to: d.end!,
       shots: widget.shots,
@@ -104,13 +111,24 @@ class _MakingFlowState extends State<MakingFlow> {
       onProgress: (p) => mounted ? setState(() => _p = p) : null,
       lab: kLab ? await labDir(await getTemporaryDirectory()) : null,
     );
-    final away = !mounted || WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed;
+    } catch (_) {
+      // nothing was saved: the notification and the screen go, and the person starts the picking again
+      unawaited(makingStop());
+      unawaited(mc.keepScreenOn(false).catchError((_) {}));
+      if (mounted) {
+        toast(context, '사진을 고르다 멈췄어요. 다시 한 번 해 주세요.');
+        Navigator.of(context).pop();
+      }
+      return;
+    }
+    final away = _left || (mounted && WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed);
     if (away) {
-      unawaited(makingDone('${r.book.picks.length}장을 골랐어요. 눌러서 확인해요', r.book.id, head: '사진을 다 골랐어요'));
-      app.shelfChanged.value++;
+      final line = r.ai == AiState.ok ? '${r.book.picks.length}장을 골랐어요. 눌러서 확인해요' : 'AI 대신 폰이 ${r.book.picks.length}장을 골랐어요. 눌러서 확인해요';
+      unawaited(makingDone(line, r.book.id, head: '사진을 다 골랐어요'));
     } else {
       unawaited(makingStop());
     }
+    if (!mounted) app.shelfChanged.value++; // closed or left: the shelf shows the picked book
     if (!mounted) return;
     _book = r.book;
     if (r.ai != AiState.ok) {

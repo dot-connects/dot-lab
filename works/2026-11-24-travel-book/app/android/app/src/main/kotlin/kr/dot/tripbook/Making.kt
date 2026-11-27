@@ -66,7 +66,7 @@ object Making {
                 result.success(null)
             }
             "done" -> {
-                c.stopService(Intent(c, MakingService::class.java))
+                if (call.argument<Boolean>("stop") != false) c.stopService(Intent(c, MakingService::class.java))
                 ensureChannel(c)
                 val n = Notification.Builder(c, CHANNEL)
                     .setSmallIcon(R.drawable.ic_stat_book)

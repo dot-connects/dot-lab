@@ -76,7 +76,8 @@ export function bookContent(body, pick = true) {
   if (pick && Number.isInteger(body.target) && body.target > 0) content.push(txt(`책에 넣을 사진 수: 약 ${Math.min(body.target, 60)}장 (영상 포함)`));
   // the first look's "main scenes": what it saw (a phrase per batch, with how many) and the share the phone allows
   const hl = body.highlights;
-  if (pick && hl && Array.isArray(hl.lines) && hl.lines.length && Number.isInteger(hl.n) && Number.isInteger(hl.m)) {
+  if (pick && hl && Array.isArray(hl.lines) && hl.lines.length && Number.isInteger(hl.n) && Number.isInteger(hl.m) &&
+    hl.n > 0 && hl.m > 0 && hl.n <= hl.m) {
     const lines = hl.lines.slice(0, 12).map(l => `"${clean(l?.top, 24)}" ${Math.max(0, Math.min(999, Math.floor(+l?.n) || 0))}장`).join(" · ");
     content.push(txt(`이 여행의 주인공 장면(먼저 훑어본 결과): ${lines}. 책에 주인공 장면 약 ${Math.min(hl.n, 60)}장, 많아도 ${Math.min(hl.m, 60)}장.`));
   }

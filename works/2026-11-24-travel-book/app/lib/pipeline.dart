@@ -164,6 +164,24 @@ class Pipeline {
       this.poll = const Duration(seconds: 5)})
       : newId = newId ?? (() => DateTime.now().millisecondsSinceEpoch.toString());
 
+  /// The phone's previews, never throwing: a broken clip or file is just missing (11-28 review: one bad GoPro clip
+  /// stopped the whole picking with the "making" notification left on).
+  Future<Uint8List?> _jpeg(String id, int long, {int quality = 80}) async {
+    try {
+      return await src.jpeg(id, long, quality: quality);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<Uint8List>> _frames(String id) async {
+    try {
+      return await src.videoFrames(id);
+    } catch (_) {
+      return const [];
+    }
+  }
+
   Future<String?> _place(double lat, double lng) async {
     final k = '${lat.toStringAsFixed(2)},${lng.toStringAsFixed(2)}';
     if (_places.containsKey(k)) return _places[k];
@@ -216,7 +234,7 @@ class Pipeline {
     Future<void>? measuring;
     for (var at = 0; at < measuredIdx.length; at += _chunk) {
       final part = measuredIdx.sublist(at, math.min(at + _chunk, measuredIdx.length));
-      final thumbs = await Future.wait([for (final i in part) src.jpeg(all[i].id, 256, quality: 70)]);
+      final thumbs = await Future.wait([for (final i in part) _jpeg(all[i].id, 256, quality: 70)]);
       if (lab != null) {
         await Future.wait([
           for (final (k, i) in part.indexed)
@@ -323,7 +341,7 @@ class Pipeline {
     Future<void> look1(List<Candidate> batch) async {
       final ims = <AiImage>[], ids = <String>[];
       for (final c in batch) {
-        final j = await src.jpeg(c.id, 256, quality: 70);
+        final j = await _jpeg(c.id, 256, quality: 70);
         if (j == null) continue;
         ims.add(AiImage(c.id, j));
         ids.add(c.id);
@@ -367,7 +385,10 @@ class Pipeline {
     // videos for the final look: the main scenes first, then the best, one per clip moment before any second; at most
     // [maxFinalVideos] (4 of them main scenes); without tags, evenly over the trip
     List<Candidate> chooseClips() {
-      if (!wideVids.any((c) => tags.containsKey(c.id))) return capEvenly(wideVids, maxFinalVideos).take(maxFinalVideos).toList();
+      // nothing tagged (or no 3-60 s clips at all): evenly over the trip, any length, as before
+      if (!wideVids.any((c) => tags.containsKey(c.id))) {
+        return capEvenly(wideVids.isEmpty ? vids : wideVids, maxFinalVideos).take(maxFinalVideos).toList();
+      }
       final ok = wideVids.where((c) => (tags[c.id]?.score ?? 0) > 1).toList()
         ..sort((a, b) {
           final ta = tags[a.id] ?? const Tag('기타', 0, 3, false), tb = tags[b.id] ?? const Tag('기타', 0, 3, false);
@@ -395,33 +416,34 @@ class Pipeline {
     final mustVids = mustC.where((c) => c.shot.isVideo).length;
     final room = math.max(0, maxAiImages - (sentVids.length + mustVids) * sceneAt.length - refImages.length);
     final fin = finalists(wide, tags, momentOf, momentSize, series, math.min(room, (target * 2.6).round()), must: must, people: opts.people);
-    // the main scenes' share, told to the final look as "about N, at most M" (photos and videos together)
-    final share = highlightShare(tags.values.where((t) => t.hl == 2).length, tags.length);
-    final highlights = share == 0 || tops.isEmpty
-        ? null
-        : <String, Object>{
-            'lines': [for (final (t, n) in tops) {'top': t, 'n': n}],
-            'n': (target * share).round(),
-            'm': target ~/ 3,
-          };
     final ranked = [...fin]..sort((a, b) {
         final d = (tags[b.id]?.score ?? 3) - (tags[a.id]?.score ?? 3);
         return d != 0 ? d : b.sharp.compareTo(a.sharp);
       });
     final sent = {...fin, ...sentVids, ...mustC}.toList()..sort((a, b) => a.local.compareTo(b.local));
     final sentIds = {for (final c in sent) c.id};
+    // the main scenes' share, told to the final look as "about N, at most M" (photos and videos together)
+    final share = highlightShare(tags.values.where((t) => t.hl == 2).length, tags.length);
+    final highlights = share == 0 || tops.isEmpty
+        ? null
+        : <String, Object>{
+            'lines': [for (final (t, n) in tops) {'top': t, 'n': n}],
+            // never more than the marked ones that actually go to the final look
+            'n': math.min((target * share).round(), sent.where((c) => tags[c.id]?.hl == 2).length),
+            'm': target ~/ 3,
+          };
     p = p.copyWith(sent: sent.length, sentIds: [for (final c in sent) if (!c.shot.isVideo) c.id], found: [...found]);
     onProgress?.call(p);
 
     final images = <AiImage>[];
     for (final c in sent) {
       if (c.shot.isVideo) {
-        final fs = await src.videoFrames(c.id);
+        final fs = await _frames(c.id);
         for (var i = 0; i < fs.length && i < sceneAt.length; i++) {
           images.add(AiImage(c.id, fs[i], atMs: (c.shot.durationMs * sceneAt[i]).round()));
         }
       } else {
-        final j = await src.jpeg(c.id, finalPx);
+        final j = await _jpeg(c.id, finalPx);
         if (j != null) images.add(AiImage(c.id, j));
       }
     }
@@ -437,7 +459,7 @@ class Pipeline {
         busy: momentSize[momentOf[c.id]] ?? 0,
         series: series[c.id] ?? 0,
         hl: tags[c.id]?.hl ?? 0);
-    assert(images.length + refImages.length <= maxAiImages, 'final look over its image cap');
+    assert(images.length <= maxAiImages, 'final look over its image cap');
     final r = await ai.pick(images, [for (final c in sent) shot(c)],
         notes: noteList, opts: opts.toJson(), mustInclude: [for (final c in mustC) c.id], target: target, highlights: highlights);
     // no answer: the recipe's own order is the book (best first), as many as the length asks for
@@ -627,10 +649,10 @@ class Pipeline {
       final out = <AiImage>[];
       for (final c in picked) {
         if (c.shot.isVideo) {
-          final fs = await src.videoFrames(c.id); // one scene per video
+          final fs = await _frames(c.id); // one scene per video
           if (fs.isNotEmpty) out.add(AiImage(c.id, fs[fs.length > 1 ? 1 : 0]));
         } else {
-          final j = await src.jpeg(c.id, 512);
+          final j = await _jpeg(c.id, 512);
           if (j != null) out.add(AiImage(c.id, j));
         }
         onStage?.call(WriteStage.previews, out.length, picked.length);
@@ -757,7 +779,7 @@ class Pipeline {
       if (c == null) continue;
       final f = File('${dir.path}/img/${fileId(id)}.jpg');
       if (!await f.exists()) {
-        final bytes = c.shot.isVideo ? (await src.videoFrames(id)).firstOrNull : await src.jpeg(id, long, quality: 90);
+        final bytes = c.shot.isVideo ? (await _frames(id)).firstOrNull : await _jpeg(id, long, quality: 90);
         if (bytes != null) {
           await f.parent.create(recursive: true);
           await f.writeAsBytes(bytes, flush: true);
@@ -783,7 +805,7 @@ class Pipeline {
     final c = spec.ids.isEmpty ? null : _pool(b)[spec.ids.first];
     if (c == null) return null;
     final shape = shapeOf(b.theme);
-    final j = c.shot.isVideo ? (await src.videoFrames(c.id)).firstOrNull : await src.jpeg(c.id, 512);
+    final j = c.shot.isVideo ? (await _frames(c.id)).firstOrNull : await _jpeg(c.id, 512);
     final r = await ai.rewrite([if (j != null) AiImage(c.id, j)],
         {'local': _localIso(c.local), 'place': c.place ?? '', 'caption': spec.text[_captionKey(spec)] ?? ''}, shape,
         notes: _notes(notes));
