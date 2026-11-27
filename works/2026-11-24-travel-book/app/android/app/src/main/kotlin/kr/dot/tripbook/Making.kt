@@ -70,7 +70,7 @@ object Making {
                 ensureChannel(c)
                 val n = Notification.Builder(c, CHANNEL)
                     .setSmallIcon(R.drawable.ic_stat_book)
-                    .setContentTitle("책이 다 됐어요")
+                    .setContentTitle(call.argument<String>("head") ?: "책이 다 됐어요")
                     .setContentText(call.argument<String>("title") ?: "")
                     .setContentIntent(openIntent(c, call.argument<String>("book")))
                     .setAutoCancel(true)

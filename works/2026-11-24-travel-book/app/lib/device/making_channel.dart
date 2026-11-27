@@ -5,7 +5,9 @@ import 'package:flutter/services.dart';
 const _ch = MethodChannel('kr.dot.tripbook/making');
 
 Future<void> makingStart(String title) => _ch.invokeMethod('start', {'title': title}).catchError((_) {});
-Future<void> makingDone(String title, String book) => _ch.invokeMethod('done', {'title': title, 'book': book}).catchError((_) {});
+/// [head]: the notification's title ("책이 다 됐어요" unless the picking finished: "사진을 다 골랐어요").
+Future<void> makingDone(String title, String book, {String? head}) =>
+    _ch.invokeMethod('done', {'title': title, 'book': book, 'head': ?head}).catchError((_) {});
 Future<void> makingStop() => _ch.invokeMethod('stop').catchError((_) {});
 
 /// The book the app was opened for from a "다 됐어요" notification (once), or null.

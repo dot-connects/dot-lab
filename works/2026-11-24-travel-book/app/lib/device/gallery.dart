@@ -71,21 +71,31 @@ Future<List<Album>> scanTrip(DateTime from, DateTime to,
       if (n > 0) found.putIfAbsent(p.id, () => []).addAll(await p.getAssetListRange(start: 0, end: n));
     }
   }
+  // position + camera clock per photo: 32 at a time (one by one took 12 s for 2,282 shots on the operator's phone)
+  Future<Shot> read(AssetEntity a) async {
+    final ll = a.type == AssetType.image ? await a.latlngAsync() : null;
+    final ok = ll != null && (ll.latitude != 0 || ll.longitude != 0);
+    var s = _shot(a, lat: ok ? ll.latitude : null, lng: ok ? ll.longitude : null);
+    if (exif != null && a.type == AssetType.image) {
+      final e = await exif(a);
+      s = Shot(id: s.id, utc: s.utc, wall: e.wall, exifOffset: e.offset, isVideo: s.isVideo, durationMs: s.durationMs,
+          lat: s.lat, lng: s.lng, relPath: s.relPath, w: s.w, h: s.h);
+    }
+    return s;
+  }
+
+  final shotOf = <String, Shot>{};
+  final pending = {for (final l in found.values) for (final a in l) a.id: a}.values.toList();
+  for (var k = 0; k < pending.length; k += 32) {
+    final part = pending.sublist(k, k + 32 > pending.length ? pending.length : k + 32);
+    for (final s in await Future.wait(part.map(read))) {
+      shotOf[s.id] = s;
+    }
+  }
   final out = <Album>[];
   for (final path in all) {
     final total = await path.assetCountAsync;
-    final shots = <Shot>[];
-    for (final a in found[path.id] ?? const <AssetEntity>[]) {
-      final ll = a.type == AssetType.image ? await a.latlngAsync() : null;
-      final ok = ll != null && (ll.latitude != 0 || ll.longitude != 0);
-      var s = _shot(a, lat: ok ? ll.latitude : null, lng: ok ? ll.longitude : null);
-      if (exif != null && a.type == AssetType.image) {
-        final e = await exif(a);
-        s = Shot(id: s.id, utc: s.utc, wall: e.wall, exifOffset: e.offset, isVideo: s.isVideo, durationMs: s.durationMs,
-            lat: s.lat, lng: s.lng, relPath: s.relPath, w: s.w, h: s.h);
-      }
-      shots.add(s);
-    }
+    final shots = [for (final a in found[path.id] ?? const <AssetEntity>[]) shotOf[a.id]!];
     final photos = shots.where((s) => !s.isVideo).toList();
     final inRange = [
       for (final s in shots)

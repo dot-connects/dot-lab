@@ -82,8 +82,8 @@ class _RootState extends State<_Root> {
   }
 
   void _openId(String id) {
-    final b = _books.where((x) => x.id == id).firstOrNull;
-    if (b != null && mounted) _go(BookScreen(app: app, book: b, failed: b.written ? null : AiState.failed));
+    final s = _books.where((x) => x.id == id).firstOrNull;
+    if (s != null && mounted) _open(shelfOf(s, app.booksDir)); // a picked book (from "사진을 다 골랐어요") opens at its review
   }
 
   /// Books whose AI layout job was running when the app closed: wait for the same job in the background (the server

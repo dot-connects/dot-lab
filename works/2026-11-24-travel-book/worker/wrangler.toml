@@ -21,6 +21,10 @@ SCOUT_MODEL = "gpt-5.4-mini"
 SCOUT_DAY = "200"
 
 # finishes queued /layout jobs, times out stuck ones, prunes rows older than 24 h
+# logs kept a few days in the dashboard (counts and statuses only, never text): why a pick or a layout failed
+[observability]
+enabled = true
+
 [triggers]
 crons = ["* * * * *"]
 

@@ -83,9 +83,14 @@ class _MakingFlowState extends State<MakingFlow> {
     super.dispose();
   }
 
+  /// Leaving the picking: back to the shelf; the pick goes on (a foreground notification keeps the app alive) and
+  /// "사진을 다 골랐어요" opens the review.
+  void _leavePick() => Navigator.of(context).popUntil((r) => r.isFirst);
+
   Future<void> _pick() async {
     final d = widget.draft!;
     unawaited(mc.keepScreenOn(true).catchError((_) {}));
+    unawaited(makingStart('사진 고르는 중'));
     final r = await app.pipe.pick(
       from: d.start!,
       to: d.end!,
@@ -99,6 +104,13 @@ class _MakingFlowState extends State<MakingFlow> {
       onProgress: (p) => mounted ? setState(() => _p = p) : null,
       lab: kLab ? await labDir(await getTemporaryDirectory()) : null,
     );
+    final away = !mounted || WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed;
+    if (away) {
+      unawaited(makingDone('${r.book.picks.length}장을 골랐어요. 눌러서 확인해요', r.book.id, head: '사진을 다 골랐어요'));
+      app.shelfChanged.value++;
+    } else {
+      unawaited(makingStop());
+    }
     if (!mounted) return;
     _book = r.book;
     if (r.ai != AiState.ok) {
@@ -108,7 +120,7 @@ class _MakingFlowState extends State<MakingFlow> {
       setState(() {
         _notice = r.ai == AiState.off
             ? '이번 달 AI 사용량을 다 써서 폰이 직접 골랐어요. 글은 다음 달에 넣을 수 있어요.'
-            : '인터넷이 연결되지 않아 폰이 직접 골랐어요. 책을 만들 때 다시 연결해 볼게요.';
+            : 'AI가 이번엔 답을 끝내지 못해서(인터넷이나 서버) 폰이 직접 골랐어요. 책을 만들 때 AI가 다시 봐요.';
         _phase = _Phase.review;
       });
       return;
@@ -332,6 +344,7 @@ class _MakingFlowState extends State<MakingFlow> {
           picked: p?.pickedIds == null ? null : {for (final id in p!.pickedIds!) 'gallery:$id'},
           must: p?.must ?? 0,
           onClose: nav.pop,
+          onLeave: _leavePick,
         );
       case _Phase.review:
         final b = _book!;

@@ -81,7 +81,7 @@ class _NewBookFlowState extends State<NewBookFlow> {
 
   Future<void> _next(DateTime s, DateTime e) async {
     final sw = Stopwatch()..start();
-    final albums = await busy(context, () => app.src.scan(s, e));
+    final albums = await busy(context, () => app.src.scan(s, e), label: '${rangeShort(s, e)} 사진을\n앨범별로 찾고 있어요');
     if (kLab) {
       // a new trip: the previous lab files go, this scan's time is the first number of the new set
       final d = await labDir(await getTemporaryDirectory());
@@ -336,6 +336,8 @@ class _ExtrasState extends State<_Extras> {
         onMake: start,
         onMore: () => nav.push(MaterialPageRoute<void>(
           builder: (_) => BookShapeScreen(
+            moreOnly: true,
+            action: '이대로 사진 고르기',
             draft: d,
             recommended: d.opts.theme ?? rec,
             reason: '고른 앨범에 맞춰',

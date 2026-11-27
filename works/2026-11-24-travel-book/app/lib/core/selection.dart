@@ -162,9 +162,14 @@ class Tag {
   final String kind; // 풍경 같이 한명 음식 명소 활동 동물 신기 디테일 이동 실내 기타
   final int people, score; // score 1..5
   final bool eyes; // eyes closed / face hidden
-  const Tag(this.kind, this.people, this.score, this.eyes);
-  Map<String, Object> toJson() => {'k': kind, 'p': people, 's': score, 'e': eyes};
+  final int hl; // this trip's main scene: 2 = what sets the trip apart, 1 = its run-up / surroundings, 0 = any trip
+  const Tag(this.kind, this.people, this.score, this.eyes, [this.hl = 0]);
+  Map<String, Object> toJson() => {'k': kind, 'p': people, 's': score, 'e': eyes, 'h': hl};
 }
+
+/// The main scenes' share of the finalists: 1.35x their natural share, between 15% and 30%; none when the look
+/// marked none (Fable 11-28, docs/review-2026-11-28-fable-highlights.md). The three numbers are the knobs.
+double highlightShare(int marked, int tagged) => marked == 0 || tagged == 0 ? 0 : (1.35 * marked / tagged).clamp(.15, .30);
 
 const scoutKinds = {'풍경', '같이', '한명', '음식', '명소', '활동', '동물', '신기', '디테일', '이동', '실내', '기타'};
 
@@ -179,12 +184,18 @@ List<Candidate> finalists(List<Candidate> xs, Map<String, Tag> tags, Map<String,
     int count, {Set<String> must = const {}, String people = 'mix'}) {
   if (xs.length <= count) return [...xs];
   Tag t(Candidate c) => tags[c.id] ?? const Tag('기타', 0, 3, false);
-  double value(Candidate c) => t(c).score + .35 * math.log(1 + (momentSize[momentOf[c.id]] ?? 1)) / math.ln10;
+  double value(Candidate c) => t(c).score + .5 * t(c).hl + .35 * math.log(1 + (momentSize[momentOf[c.id]] ?? 1)) / math.ln10;
   final ok = [for (final c in xs) if (must.contains(c.id) || (t(c).score > 1 && !t(c).eyes)) c]..sort((a, b) => value(b).compareTo(value(a)));
   final out = <Candidate>[], seen = <String>{};
   final perKind = <String, int>{};
+  // main scenes: their seats below, and never much past them later on (the final look is told "at most M")
+  final mainCap = (count * highlightShare(xs.where((c) => t(c).hl == 2).length, xs.where((c) => tags.containsKey(c.id)).length) * 1.3).round();
+  var mains = 0;
   bool add(Candidate c) {
-    if (out.length >= count || !seen.add(c.id)) return false;
+    if (out.length >= count || seen.contains(c.id)) return false;
+    if (t(c).hl == 2 && mains >= mainCap && !must.contains(c.id)) return false;
+    seen.add(c.id);
+    if (t(c).hl == 2) mains++;
     out.add(c);
     perKind[t(c).kind] = (perKind[t(c).kind] ?? 0) + 1;
     return true;
@@ -193,13 +204,29 @@ List<Candidate> finalists(List<Candidate> xs, Map<String, Tag> tags, Map<String,
   for (final c in xs) {
     if (must.contains(c.id)) add(c);
   }
-  // every moment once (the busiest first if there are more moments than room)
+  // the trip's main scenes first: their share of the room, spread over moments (sqrt) and time inside each
+  final main = ok.where((c) => t(c).hl == 2).toList();
+  final share = highlightShare(main.length, xs.where((c) => tags.containsKey(c.id)).length);
+  if (share > 0) {
+    final byMoment = <int, List<Candidate>>{};
+    for (final c in main..sort((a, b) => a.local.compareTo(b.local))) {
+      byMoment.putIfAbsent(momentOf[c.id] ?? -1, () => []).add(c);
+    }
+    final keys = byMoment.keys.toList();
+    final room = slots([for (final k in keys) momentSize[k] ?? 1], [for (final k in keys) byMoment[k]!.length], (count * share).round());
+    for (final (i, k) in keys.indexed) {
+      for (final c in spread(byMoment[k]!, room[i])) {
+        add(c);
+      }
+    }
+  }
+  // every moment once, the best-valued moments first (many moments of a trip hold 1-3 shots)
   final best = <int, Candidate>{};
   for (final c in ok) {
     best.putIfAbsent(momentOf[c.id] ?? -1, () => c);
   }
-  final ms = best.keys.toList()..sort((a, b) => (momentSize[b] ?? 0).compareTo(momentSize[a] ?? 0));
-  for (final m in ms.take((count * .6).round())) {
+  final ms = best.keys.toList()..sort((a, b) => value(best[b]!).compareTo(value(best[a]!)));
+  for (final m in ms.take((count * .45).round())) {
     add(best[m]!);
   }
   // the recipe's minimum per kind (a book of 32 photos is ~80 finalists: 같이 12, 한명 10, 음식 6, …)
@@ -239,18 +266,21 @@ List<Candidate> finalists(List<Candidate> xs, Map<String, Tag> tags, Map<String,
   return out..sort((a, b) => a.local.compareTo(b.local));
 }
 
-/// /scout's answer for one batch: tags by photo id ([ids] = the batch in the order sent; n = the index).
-/// Unknown kinds, out-of-range numbers and indexes outside the batch are dropped or clamped (untrusted input).
-Map<String, Tag> parseScout(Map<String, dynamic>? body, List<String> ids) {
+/// /scout's answer for one batch: tags by photo id ([ids] = the batch in the order sent; n = the index) and the batch's
+/// phrase for its main scenes. Unknown kinds, out-of-range numbers and indexes outside the batch are dropped or
+/// clamped (untrusted input).
+({Map<String, Tag> tags, String top}) parseScout(Map<String, dynamic>? body, List<String> ids) {
   final out = <String, Tag>{};
   for (final t in (body?['tags'] as List? ?? const [])) {
     if (t is! Map) continue;
     final n = t['n'], k = t['k'];
     if (n is! int || n < 0 || n >= ids.length || k is! String || !scoutKinds.contains(k)) continue;
     final p = t['p'], s = t['s'];
-    out[ids[n]] = Tag(k, p is num ? p.round().clamp(0, 9) : 0, s is num ? s.round().clamp(1, 5) : 3, t['e'] == true);
+    final h = t['h'];
+    out[ids[n]] = Tag(k, p is num ? p.round().clamp(0, 9) : 0, s is num ? s.round().clamp(1, 5) : 3, t['e'] == true, h is num ? h.round().clamp(0, 2) : 0);
   }
-  return out;
+  final top = body?['top'];
+  return (tags: out, top: top is String ? top.trim().substring(0, math.min(24, top.trim().length)) : '');
 }
 
 /// 2295 -> "2,295"

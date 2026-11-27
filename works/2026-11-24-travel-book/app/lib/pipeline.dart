@@ -52,6 +52,8 @@ const maxAiImages = 128;
 const finalPx = 384;
 /// The first look: at most this many small previews, [scoutBatch] per request, all requests at once.
 const maxScout = 480, scoutBatch = 80;
+/// Videos: up to [maxScoutVideos] clips get a poster look; [maxFinalVideos] go to the final look (4 scenes each).
+const maxScoutVideos = 80, maxFinalVideos = 6;
 const _chunk = 48;
 const sceneAt = [.15, .40, .65, .90];
 
@@ -308,7 +310,16 @@ class Pipeline {
 
     // the first, wide look: small previews in batches at once; a small model tags each one
     final tags = <String, Tag>{};
+    final tops = <(String, int)>[]; // each batch's phrase for its main scenes, with how many it marked
     var scouted = 0;
+    // videos are looked at too (11-28: the diving was in 175 GoPro clips the look never saw): 3-60 s clips spread over
+    // their own moments, one poster frame each, as batches of their own
+    final clips = vids.where((c) => c.shot.durationMs >= 3000 && c.shot.durationMs <= 60000).toList();
+    final clipMoments = momentsBy(clips, (c) => c.local, posOf);
+    final clipRoom = slots([for (final m in clipMoments) m.length], [for (final m in clipMoments) m.length], maxScoutVideos);
+    final wideVids = [for (final (i, m) in clipMoments.indexed) ...spread(m, clipRoom[i])];
+    final clipMomentOf = {for (final (i, m) in clipMoments.indexed) for (final c in m) c.id: i};
+    if (wideVids.isNotEmpty) p = p.copyWith(scoutTotal: wide.length + wideVids.length);
     Future<void> look1(List<Candidate> batch) async {
       final ims = <AiImage>[], ids = <String>[];
       for (final c in batch) {
@@ -318,14 +329,22 @@ class Pipeline {
         ids.add(c.id);
       }
       if (ims.isNotEmpty) {
-        final r = await ai.scout(ims, [for (final c in batch) _aiShot(c, scene: momentOf[c.id] ?? -1)], opts: opts.toJson());
-        if (r is AiOk) tags.addAll(parseScout(r.body, ids));
+        final r = await ai.scout(ims, [for (final c in batch) _aiShot(c, scene: momentOf[c.id] ?? clipMomentOf[c.id] ?? -1)], opts: opts.toJson());
+        if (r is AiOk) {
+          final got = parseScout(r.body, ids);
+          tags.addAll(got.tags);
+          final marked = got.tags.values.where((t) => t.hl == 2).length;
+          if (got.top.isNotEmpty && marked > 0) tops.add((got.top, marked));
+        }
       }
       scouted += batch.length;
       onProgress?.call(p = p.copyWith(scouted: scouted));
     }
 
-    await Future.wait([for (var k = 0; k < wide.length; k += scoutBatch) look1(wide.sublist(k, math.min(k + scoutBatch, wide.length)))]);
+    await Future.wait([
+      for (var k = 0; k < wide.length; k += scoutBatch) look1(wide.sublist(k, math.min(k + scoutBatch, wide.length))),
+      for (var k = 0; k < wideVids.length; k += scoutBatch) look1(wideVids.sublist(k, math.min(k + scoutBatch, wideVids.length))),
+    ]);
     lap('scout');
     if (tags.isNotEmpty) {
       int n(String k) => tags.values.where((t) => t.kind == k).length;
@@ -336,16 +355,55 @@ class Pipeline {
         if (n('동물') + n('신기') > 0) '동물·신기한 장면 ${n('동물') + n('신기')}장',
       ];
       if (bits.isNotEmpty) found.add(bits.join(' · '));
+      final mains = tags.values.where((t) => t.hl == 2).length;
+      if (mains > 0 && tops.isNotEmpty) {
+        final best = tops.reduce((a, b) => b.$2 > a.$2 ? b : a);
+        found.add('이 여행의 주인공 장면 · ${best.$1} 외 $mains장');
+      }
     }
 
     // the finalists by the recipe, then the final look at a larger size
     final target = lengthTarget[opts.length] ?? 32;
-    final sentVids = capEvenly(vids, maxPickVideos);
+    // videos for the final look: the main scenes first, then the best, one per clip moment before any second; at most
+    // [maxFinalVideos] (4 of them main scenes); without tags, evenly over the trip
+    List<Candidate> chooseClips() {
+      if (!wideVids.any((c) => tags.containsKey(c.id))) return capEvenly(wideVids, maxFinalVideos).take(maxFinalVideos).toList();
+      final ok = wideVids.where((c) => (tags[c.id]?.score ?? 0) > 1).toList()
+        ..sort((a, b) {
+          final ta = tags[a.id] ?? const Tag('기타', 0, 3, false), tb = tags[b.id] ?? const Tag('기타', 0, 3, false);
+          return tb.hl != ta.hl ? tb.hl.compareTo(ta.hl) : tb.score.compareTo(ta.score);
+        });
+      final out = <Candidate>[], used = <int>{};
+      var mainN = 0;
+      for (final pass in [0, 1]) {
+        for (final c in ok) {
+          if (out.length >= maxFinalVideos || out.contains(c)) continue;
+          final m = clipMomentOf[c.id] ?? -1, main = tags[c.id]?.hl == 2;
+          if (pass == 0 && used.contains(m)) continue;
+          if (main && mainN >= 4) continue;
+          out.add(c);
+          used.add(m);
+          if (main) mainN++;
+        }
+      }
+      return out;
+    }
+
+    final sentVids = chooseClips();
     final refImages = [for (final n in notes) if (n.image != null) n.image!];
     // must videos come on top of the chosen ones: their scenes count against the same images
     final mustVids = mustC.where((c) => c.shot.isVideo).length;
     final room = math.max(0, maxAiImages - (sentVids.length + mustVids) * sceneAt.length - refImages.length);
     final fin = finalists(wide, tags, momentOf, momentSize, series, math.min(room, (target * 2.6).round()), must: must, people: opts.people);
+    // the main scenes' share, told to the final look as "about N, at most M" (photos and videos together)
+    final share = highlightShare(tags.values.where((t) => t.hl == 2).length, tags.length);
+    final highlights = share == 0 || tops.isEmpty
+        ? null
+        : <String, Object>{
+            'lines': [for (final (t, n) in tops) {'top': t, 'n': n}],
+            'n': (target * share).round(),
+            'm': target ~/ 3,
+          };
     final ranked = [...fin]..sort((a, b) {
         final d = (tags[b.id]?.score ?? 3) - (tags[a.id]?.score ?? 3);
         return d != 0 ? d : b.sharp.compareTo(a.sharp);
@@ -374,13 +432,22 @@ class Pipeline {
     final recommended = recommendTheme(byDay(sent), hasDiaryNotes: noteList.isNotEmpty);
     lap('previews');
     AiShot shot(Candidate c) => _aiShot(c,
-        tag: tags[c.id]?.kind ?? '', people: tags[c.id]?.people ?? 0, busy: momentSize[momentOf[c.id]] ?? 0, series: series[c.id] ?? 0);
+        tag: tags[c.id]?.kind ?? '',
+        people: tags[c.id]?.people ?? 0,
+        busy: momentSize[momentOf[c.id]] ?? 0,
+        series: series[c.id] ?? 0,
+        hl: tags[c.id]?.hl ?? 0);
     assert(images.length + refImages.length <= maxAiImages, 'final look over its image cap');
     final r = await ai.pick(images, [for (final c in sent) shot(c)],
-        notes: noteList, opts: opts.toJson(), mustInclude: [for (final c in mustC) c.id], target: target);
+        notes: noteList, opts: opts.toJson(), mustInclude: [for (final c in mustC) c.id], target: target, highlights: highlights);
     // no answer: the recipe's own order is the book (best first), as many as the length asks for
-    BookPlan fallback() => fallbackPlan({...mustC, ...ranked, ...sentVids}.toList(), opts,
-        theme: recommended, must: sentIds.intersection(must), ranked: true, limit: target);
+    // no answer: the recipe once more at the book's own size (main scenes and kinds kept), then its best first
+    BookPlan fallback() {
+      final book = finalists(fin, tags, momentOf, momentSize, series, target, must: must, people: opts.people);
+      final order = [...book]..sort((a, b) => ranked.indexOf(a).compareTo(ranked.indexOf(b)));
+      return fallbackPlan({...mustC, ...order, ...sentVids.take(maxPickVideos)}.toList(), opts,
+          theme: recommended, must: sentIds.intersection(must), ranked: true, limit: target);
+    }
     final plan = r is AiOk
         ? checkPick(r.body, sent, opts, recommended: recommended, must: sentIds.intersection(must), fallback: fallback)
         : fallback();
@@ -412,12 +479,16 @@ class Pipeline {
         'to': ymd(to),
         'opts': opts.toJson(),
         'ai': stateOf(r).name,
+        if (r is AiFailed) 'aiError': r.why,
         'ms': times,
         'counts': {
           'all': all.length, 'measured': measuredIdx.length, 'blurDark': blurDark, 'similar': similar, 'capture': capture,
           'moments': moments.length, 'series': nSeries, 'shortlist': wide.length, 'tagged': tags.length, 'sent': sent.length, 'picked': picks.length,
         },
         'groups': [for (final (k, ids) in plan.groups) {'kind': k, 'ids': ids}],
+        'tops': [for (final (t, n) in tops) {'top': t, 'n': n}],
+        'highlights': highlights,
+        'wideVideos': [for (final c in wideVids) c.id],
         'covers': plan.covers,
         'shots': [
           for (final c in cands)
@@ -752,9 +823,18 @@ class Pipeline {
       p.text.entries.where((e) => e.value.isNotEmpty && !const {'title', 'period', 'stamp', 'colophon', 'dayline', 'day', 'date'}.contains(e.key)).firstOrNull?.key ??
       'caption0';
 
-  AiShot _aiShot(Candidate c, {String tag = '', int people = 0, int busy = 0, int series = 0, int scene = -1}) => AiShot(
+  AiShot _aiShot(Candidate c, {String tag = '', int people = 0, int busy = 0, int series = 0, int scene = -1, int hl = 0}) => AiShot(
       c.id, _localIso(c.local), c.place,
-      video: c.shot.isVideo, durMs: c.shot.durationMs, w: c.shot.w, h: c.shot.h, tag: tag, people: people, busy: busy, series: series, scene: scene);
+      video: c.shot.isVideo,
+      durMs: c.shot.durationMs,
+      w: c.shot.w,
+      h: c.shot.h,
+      tag: tag,
+      people: people,
+      busy: busy,
+      series: series,
+      scene: scene,
+      hl: hl);
 
   List<Map<String, String?>> _notes(List<NoteInput> ns) =>
       [for (final p in trimForAi([for (final n in ns) ...n.pieces])) {'day': p.day, 'text': p.text}];

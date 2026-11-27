@@ -70,7 +70,8 @@ BookBanner quotaBanner({required VoidCallback onRetry, required VoidCallback onC
 /// /write failed (offline): the picks are kept, only the text is retried.
 BookBanner offlineBanner(int picked, {required VoidCallback onRetry, required VoidCallback onNoText}) => BookBanner(
       '글을 못 썼어요',
-      '인터넷이 끊겼어요. 고른 $picked장은 그대로라서 글만 다시 쓰면 돼요.',
+      // operator 11-28: most of these were the AI running out of room, not the network - say what we know
+      'AI가 이번엔 답을 끝내지 못했어요(인터넷이나 서버). 고른 $picked장은 그대로라서 다시 시도하면 돼요.',
       primary: '다시 시도',
       secondary: '글 없이 두기',
       onPrimary: onRetry,

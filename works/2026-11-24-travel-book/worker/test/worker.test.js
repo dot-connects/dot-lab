@@ -86,11 +86,11 @@ test("a good answer: JSON from the text block, the month records the real cost",
 });
 
 test("real cost above the reservation is still recorded past the ceiling", async () => {
-  const reserve = reserveMills(2, 50, 16000);
+  const reserve = reserveMills(2, 50, 32000);
   env.MONTH_CENTS = String(Math.ceil(reserve / 10));   // room for one reservation only
-  env.fetchModel = fakeFetch({ reply: ok({}, { input_tokens: 10, output_tokens: 30000 }) });   // 300 mills > reserve
+  env.fetchModel = fakeFetch({ reply: ok({}, { input_tokens: 10, output_tokens: 60000 }) });   // 900 mills > reserve
   await call({ images: imgs(2) });
-  assert.equal(month(), realMills({ input_tokens: 10, output_tokens: 30000 }));
+  assert.equal(month(), realMills({ input_tokens: 10, output_tokens: 60000 }));
   assert.ok(month() > Number(env.MONTH_CENTS) * 10);
 });
 
@@ -112,7 +112,7 @@ test("rejected by the model API (HTTP error): upstream error, the reservation is
 test("network cut: billing unknown, the reservation stays", async () => {
   env.fetchModel = fakeFetch({ fail: new Error("socket") });
   await call({ images: imgs(2) });
-  assert.equal(month(), reserveMills(2, JSON.stringify({}).length, 16000));
+  assert.equal(month(), reserveMills(2, JSON.stringify({}).length, 32000));
 });
 
 test("logs carry counts only, never captions or notes", async () => {
@@ -190,7 +190,7 @@ test("/layout prompt: theme guide, catalog line, concept line, labelled images, 
   assert.ok(!t.includes("지난 답의 문제"));
   assert.equal(c.text.format.name, "layout");
   assert.deepEqual(c.text.format.schema.required, ["title", "plan", "pages"]);
-  assert.equal(c.max_output_tokens, 24000);
+  assert.equal(c.max_output_tokens, 40000);
 });
 
 test("/layout: concept defaults to 없음, retry block carries fix list and the previous answer", async () => {
@@ -313,4 +313,14 @@ test("/scout: the small model at low effort, numbered previews, its own limiter,
   assert.equal(month(), realMills(usage, true));
   assert.ok(realMills(usage, true) < realMills(usage));
   assert.equal((await call({ images: imgs(101) }, { path: "/scout" })).status, 413);
+});
+
+test("/pick: main-scene marks and the 'about N, at most M' line reach the model", async () => {
+  env.fetchModel = fakeFetch({ reply: ok({ picks: [] }) });
+  await call({ images: imgs(2), shots: [{ id: "p0", local: "2026-05-03T10:00", place: "바다", hl: 2 }], target: 30,
+    highlights: { lines: [{ top: "물속 거북이", n: 9 }], n: 8, m: 10 } });
+  const text = calls[0].input[1].content.filter(c => c.type === "input_text").map(c => c.text).join("\n");
+  assert.ok(text.includes("주인공 장면"));
+  assert.ok(text.includes('"물속 거북이" 9장'));
+  assert.ok(text.includes("약 8장, 많아도 10장"));
 });

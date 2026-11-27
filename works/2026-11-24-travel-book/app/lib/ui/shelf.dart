@@ -91,26 +91,36 @@ class _ShelfState extends State<Shelf> {
     );
   }
 
-  Widget _mode() => Container(
-        padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(color: C.tint, borderRadius: BorderRadius.circular(16)),
-        child: Row(children: [
-          for (final (v, l) in [(ShelfView.display, '진열'), (ShelfView.timeline, '연표')])
-            GestureDetector(
-              onTap: () => widget.onViewChanged(v),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: widget.view == v
-                    ? BoxDecoration(
-                        color: C.paper,
-                        borderRadius: BorderRadius.circular(13),
-                        boxShadow: const [BoxShadow(color: Color(0x1A000000), blurRadius: 3, offset: Offset(0, 1))],
-                      )
-                    : null,
-                child: Text(l, style: ui(11.5, w: FontWeight.w600, color: widget.view == v ? C.ink : C.ink2)),
-              ),
+  // operator 11-28: one tap anywhere on the switch flips it (no aiming at the other half), with a bigger target
+  Widget _mode() => Semantics(
+        button: true,
+        label: widget.view == ShelfView.display ? '연표로 보기' : '진열로 보기',
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => widget.onViewChanged(widget.view == ShelfView.display ? ShelfView.timeline : ShelfView.display),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6), // taller hit area than the pill itself
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(color: C.tint, borderRadius: BorderRadius.circular(18)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                for (final (v, l) in [(ShelfView.display, '진열'), (ShelfView.timeline, '연표')])
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    decoration: widget.view == v
+                        ? BoxDecoration(
+                            color: C.paper,
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: const [BoxShadow(color: Color(0x1A000000), blurRadius: 3, offset: Offset(0, 1))],
+                          )
+                        : BoxDecoration(borderRadius: BorderRadius.circular(15)),
+                    child: Text(l, style: ui(12.5, w: FontWeight.w600, color: widget.view == v ? C.ink : C.ink2)),
+                  ),
+              ]),
             ),
-        ]),
+          ),
+        ),
       );
 
   Widget _fab(String label) => GestureDetector(

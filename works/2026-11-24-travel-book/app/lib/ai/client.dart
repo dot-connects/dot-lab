@@ -44,7 +44,7 @@ class AiShot {
   // what the phone and the first look found (/scout, /pick): kind tag, people, shots in its moment, pose series,
   // the moment's number; /layout: the page group ("연속 1", "음식 1")
   final String tag, group;
-  final int people, busy, series, scene;
+  final int people, busy, series, scene, hl; // hl: the first look's "main scene" mark 0..2
   const AiShot(this.id, this.local, this.place,
       {this.video = false,
       this.durMs = 0,
@@ -57,12 +57,13 @@ class AiShot {
       this.people = 0,
       this.busy = 0,
       this.series = 0,
-      this.scene = -1});
+      this.scene = -1,
+      this.hl = 0});
   Map<String, dynamic> toJson() => {
         'id': id, 'local': local, 'place': place ?? '', 'video': video, 'durMs': durMs, if (w > 0) 'w': w, if (h > 0) 'h': h,
         if (kind.isNotEmpty) 'kind': kind, if (what.isNotEmpty) 'what': what,
         if (tag.isNotEmpty) 'tag': tag, if (group.isNotEmpty) 'group': group, if (people > 0) 'people': people,
-        if (busy > 0) 'busy': busy, if (series > 0) 'series': series, if (scene >= 0) 'scene': scene,
+        if (busy > 0) 'busy': busy, if (series > 0) 'series': series, if (scene >= 0) 'scene': scene, if (hl > 0) 'hl': hl,
       };
 }
 
@@ -77,8 +78,15 @@ class AiClient {
   bool get configured => url.isNotEmpty && token.isNotEmpty;
 
   Future<AiResult> pick(List<AiImage> images, List<AiShot> shots,
-          {List<Map<String, String?>> notes = const [], Map<String, Object?> opts = const {}, List<String> mustInclude = const [], int target = 0}) =>
-      _post('/pick', {'images': images, 'shots': shots, 'notes': notes, 'opts': opts, 'mustInclude': mustInclude, if (target > 0) 'target': target});
+          {List<Map<String, String?>> notes = const [],
+          Map<String, Object?> opts = const {},
+          List<String> mustInclude = const [],
+          int target = 0,
+          Map<String, Object>? highlights}) =>
+      _post('/pick', {
+        'images': images, 'shots': shots, 'notes': notes, 'opts': opts, 'mustInclude': mustInclude, if (target > 0) 'target': target,
+        'highlights': ?highlights,
+      });
 
   /// The first, wide look: up to 100 small previews tagged by a small model ({tags: [{n, k, p, s, e}]}, n = index).
   Future<AiResult> scout(List<AiImage> images, List<AiShot> shots, {Map<String, Object?> opts = const {}}) =>

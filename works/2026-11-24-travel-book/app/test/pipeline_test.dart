@@ -84,7 +84,11 @@ class FakeAi implements AiClient {
 
   @override
   Future<AiResult> pick(List<AiImage> images, List<AiShot> shots,
-      {List<Map<String, String?>> notes = const [], Map<String, Object?> opts = const {}, List<String> mustInclude = const [], int target = 0}) async {
+      {List<Map<String, String?>> notes = const [],
+      Map<String, Object?> opts = const {},
+      List<String> mustInclude = const [],
+      int target = 0,
+      Map<String, Object>? highlights}) async {
     picked.add(images);
     if (onPick != null) return onPick!(images);
     final ids = {for (final i in images) if (!i.id.startsWith('ref')) i.id}.toList();
@@ -267,7 +271,7 @@ void main() {
     expect(imgs.where((i) => i.atMs != null).length, 8);
     expect(imgs.length, lessThanOrEqualTo(maxAiImages));
     expect(imgs.map((i) => i.id), contains('p5'));
-    expect(ai.scouted.expand((b) => b).length, 90); // the first look saw every photo of this small trip
+    expect(ai.scouted.expand((b) => b).length, 92); // the first look saw every photo and both clips of this small trip
   });
 
   test('pick with the AI off: a fallback book (no text), still saved', () async {

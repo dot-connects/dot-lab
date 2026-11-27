@@ -62,7 +62,8 @@ bool isScreenshot(Shot s) {
   return p.contains('screenshot') || p.contains('스크린샷') || p.contains('screen recording') || p.contains('screenrecord');
 }
 
-bool isBad(Candidate c) => c.sharp < kSharpMin || c.luma < 28 || c.luma > 245;
+/// Dark alone is no reason (11-28: night beach, a moonlit road, maybe an aurora): only dark AND nearly featureless.
+bool isBad(Candidate c) => c.sharp < kSharpMin || (c.luma < 28 && c.sharp < 20) || c.luma > 245;
 
 /// Frames <= 4 s apart that look alike (dHash distance <= 10) form one burst; its sharpest frame stays.
 List<Candidate> dedupeBursts(List<Candidate> xs) {

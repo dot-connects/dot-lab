@@ -29,7 +29,13 @@ class BookShapeScreen extends StatefulWidget {
   final int photos, days, videos;
   final String placesHint; // "협재 · 우도 · 성산 …"
   final VoidCallback onBack, onMake;
+  // opened from 어떤 책으로 만들까요? [더 보기]: theme, length and text are already on that screen, so only the other
+  // options show, open; [action] names what the button starts (operator 11-28: it said 책 만들기 before the picking)
+  final bool moreOnly;
+  final String action;
   const BookShapeScreen({
+    this.moreOnly = false,
+    this.action = '이대로 책 만들기',
     super.key,
     required this.draft,
     required this.recommended,
@@ -79,13 +85,25 @@ class _BookShapeScreenState extends State<BookShapeScreen> {
     return NbScaffold(
       onBack: widget.onBack,
       right: GestureDetector(
-        onTap: _changed ? () => _set(() => widget.draft.opts = BookOptions()) : null,
-        child: topLabel('추천으로 되돌리기', bold: _changed),
+        onTap: widget.moreOnly
+            ? (_moreChanged > 0
+                ? () => _set(() {
+                      final d = BookOptions()
+                        ..theme = o.theme
+                        ..length = o.length
+                        ..textAmount = o.textAmount;
+                      widget.draft.opts = d;
+                    })
+                : null)
+            : (_changed ? () => _set(() => widget.draft.opts = BookOptions()) : null),
+        child: topLabel('추천으로 되돌리기', bold: widget.moreOnly ? _moreChanged > 0 : _changed),
       ),
-      title: '책 모양 고르기',
+      title: widget.moreOnly ? '더 고르기' : '책 모양 고르기',
       titleSmall: '(안 바꿔도 돼요)',
       fade: _more,
-      body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      body: widget.moreOnly
+          ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _moreOptions())
+          : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         const OptLabel('테마', note: '표지는 예시예요', top: 0),
         GridView.count(
           crossAxisCount: 3,
@@ -130,7 +148,7 @@ class _BookShapeScreenState extends State<BookShapeScreen> {
         ),
         if (_more) ..._moreOptions(),
       ]),
-      foot: [Btn('이대로 책 만들기', onTap: widget.onMake)],
+      foot: [Btn(widget.action, onTap: widget.onMake)],
     );
   }
 

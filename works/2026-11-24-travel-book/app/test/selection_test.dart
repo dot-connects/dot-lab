@@ -89,4 +89,29 @@ void main() {
     expect(out.length, 3);
     expect(out.map((x) => x.id), contains('s11'));
   });
+
+  test('main scenes: a bit more room (capped at 30%), spread, and none when the look marked none', () {
+    final xs = <Candidate>[], tags = <String, Tag>{}, momentOf = <String, int>{};
+    for (var i = 0; i < 60; i++) {
+      final x = c('n$i', i * 60);
+      xs.add(x);
+      tags[x.id] = const Tag('풍경', 0, 4, false); // plenty of good ordinary views
+      momentOf[x.id] = i ~/ 6;
+    }
+    for (var i = 0; i < 20; i++) {
+      final x = c('h$i', 4000 + i * 20); // the trip's main scene: all in one moment, scored lower than the views
+      xs.add(x);
+      tags[x.id] = const Tag('활동', 0, 3, false, 2);
+      momentOf[x.id] = 99;
+    }
+    final sizes = {for (var m = 0; m < 10; m++) m: 6, 99: 20};
+    final out = finalists(xs, tags, momentOf, sizes, const {}, 20);
+    final mains = out.where((x) => x.id.startsWith('h')).length;
+    expect(mains, inInclusiveRange(5, 8)); // 1.35 x 25% -> 30% cap = 6 seats, plus little else
+    // they come first even though the ordinary views score higher: with no room for more, the views go
+    expect(finalists(xs, tags, momentOf, sizes, const {}, 6).where((x) => x.id.startsWith('h')).length, greaterThanOrEqualTo(2));
+    expect(highlightShare(0, 80), 0);
+    expect(highlightShare(2, 100), .15);
+    expect(highlightShare(60, 100), .30);
+  });
 }

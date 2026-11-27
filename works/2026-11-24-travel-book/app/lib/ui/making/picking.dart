@@ -1,6 +1,7 @@
 // D4 1/2 사진을 고르고 있어요 — mockup r21 C "모자이크" (operator 11-27). Everything on it is real: the trip's own photos fill
 // a mosaic as the phone looks at them (measured / toMeasure), the ones sent to the AI then gather into a grid under a
 // light sweep while it chooses, and the picked ones stay, outlined. No timer steps ahead of the numbers.
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
@@ -19,7 +20,9 @@ class PickingScreen extends StatefulWidget {
   final Set<String>? picked; // null while the AI has not answered
   final int must;
   final VoidCallback onClose;
+  final VoidCallback? onLeave; // back to the shelf, the picking goes on
   const PickingScreen({
+    this.onLeave,
     super.key,
     required this.sample,
     required this.inRange,
@@ -44,6 +47,10 @@ enum _Phase { looking, scouting, choosing, done }
 
 class _PickingScreenState extends State<PickingScreen> with SingleTickerProviderStateMixin {
   late final _sweep = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
+  // the final look: a ring moving from finalist to finalist (where the AI's eye is, roughly), never standing still
+  Timer? _hop;
+  int _at = 0;
+  final _rnd = math.Random(7);
 
   _Phase get _phase => widget.picked != null
       ? _Phase.done
@@ -58,9 +65,19 @@ class _PickingScreenState extends State<PickingScreen> with SingleTickerProvider
   }
 
   void _syncSweep() {
-    final on = (_phase == _Phase.choosing || _phase == _Phase.scouting) && !MediaQuery.disableAnimationsOf(context);
+    final still = MediaQuery.disableAnimationsOf(context);
+    final on = (_phase == _Phase.choosing || _phase == _Phase.scouting) && !still;
     if (on && !_sweep.isAnimating) _sweep.repeat();
     if (!on && _sweep.isAnimating) _sweep.stop();
+    final hop = _phase == _Phase.choosing && !still;
+    if (hop && _hop == null) {
+      _hop = Timer.periodic(const Duration(milliseconds: 650), (_) {
+        if (mounted && widget.sent.isNotEmpty) setState(() => _at = _rnd.nextInt(widget.sent.length));
+      });
+    } else if (!hop) {
+      _hop?.cancel();
+      _hop = null;
+    }
   }
 
   @override
@@ -71,6 +88,7 @@ class _PickingScreenState extends State<PickingScreen> with SingleTickerProvider
 
   @override
   void dispose() {
+    _hop?.cancel();
     _sweep.dispose();
     super.dispose();
   }
@@ -108,6 +126,9 @@ class _PickingScreenState extends State<PickingScreen> with SingleTickerProvider
       onBack: w.onClose,
       right: topLabel('1 / 2'),
       title: '사진을 고르고 있어요',
+      foot: [
+        if (w.onLeave != null && p != _Phase.done) Btn('나가 있기 · 다 고르면 알려 드릴게요', ghost: true, onTap: w.onLeave),
+      ],
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         TweenAnimationBuilder<double>(
           tween: Tween(end: _count.toDouble()),
@@ -234,6 +255,24 @@ class _PickingScreenState extends State<PickingScreen> with SingleTickerProvider
       child: ClipRect(
         child: Stack(children: [
           ...tiles,
+          if (p == _Phase.choosing && w.sent.isNotEmpty)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 420),
+              curve: Curves.easeInOutCubic,
+              left: (_at % sc) * width / sc - 3,
+              top: (_at ~/ sc) * width / sc - 3,
+              width: width / sc + 3,
+              height: width / sc + 3,
+              child: IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: C.ink, width: 2.5),
+                    borderRadius: BorderRadius.circular(5),
+                    boxShadow: const [BoxShadow(color: Color(0x40281A0A), blurRadius: 8)],
+                  ),
+                ),
+              ),
+            ),
           if (p == _Phase.choosing || p == _Phase.scouting)
             Positioned.fill(
               child: IgnorePointer(

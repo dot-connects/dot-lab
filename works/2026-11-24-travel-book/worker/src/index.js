@@ -13,13 +13,14 @@ export { MemoryCounts, D1Counts };
 
 // per route: image cap, output budget (reasoning included), day counter key + var + default
 const ROUTES = {
-  "/pick": { images: 130, tokens: () => 16000, day: ["dp", "DAY_BOOKS", 20] },
+  // 11-28: a long book's pick (44 + reasons) ran out at 16000 -> {error: model}, shown as "offline"; low effort + more room
+  "/pick": { images: 130, tokens: () => 32000, day: ["dp", "DAY_BOOKS", 20] },
   // the first, wide look (operator 11-27): up to 480 small previews per book in 5-6 parallel batches, a small model tags them
   "/scout": { images: 100, tokens: () => 9000, day: ["ds", "SCOUT_DAY", 200] },
   "/write": { images: 48, tokens: shape => (shape === "short" ? 8000 : 16000), day: ["dw", "WRITE_DAY", 60] },
   "/rewrite": { images: 4, tokens: () => 1000, day: ["dr", "REWRITE_DAY", 200] },
   // the whole-book page plan; shares the /write day counter (it replaces /write for book making)
-  "/layout": { images: 72, tokens: () => 24000, day: ["dw", "WRITE_DAY", 60] },
+  "/layout": { images: 72, tokens: () => 40000, day: ["dw", "WRITE_DAY", 60] },
 };
 const MAX_CATALOG = 80, MAX_PREV = 100_000;
 const SHAPES = ["short", "diary", "mag"];
@@ -63,7 +64,8 @@ export function bookContent(body, pick = true) {
     const video = s.video ? `영상 ${Math.round((s.durMs || 0) / 100) / 10}초` + (im.atMs != null ? `, 장면 ${im.atMs}ms` : "") : "";
     // what the phone and the first look found: kind tag, people, how busy the scene was, which pose series
     const seen = [s.tag ? `꼬리표 ${clean(s.tag, 4)}` : "", s.people ? `사람 ${clean(String(s.people), 2)}` : "",
-      s.busy ? `이 장면 ${clean(String(s.busy), 6)}장` : "", s.series ? `연속${clean(String(s.series), 4)}` : ""].filter(Boolean).join(" · ");
+      s.busy ? `이 장면 ${clean(String(s.busy), 6)}장` : "", s.series ? `연속${clean(String(s.series), 4)}` : "",
+      s.hl === 2 ? "주인공 장면" : ""].filter(Boolean).join(" · ");
     const label = [`[${clean(im.id, 64)}]`, clean(s.local, 20), clean(s.place, 40), video, seen].filter(Boolean).join(" ");
     content.push(txt(label), jpeg(im.b64));
   }
@@ -72,6 +74,12 @@ export function bookContent(body, pick = true) {
   const must = (body.mustInclude || []).filter(x => typeof x === "string").slice(0, 10);
   if (pick && must.length) content.push(txt(`꼭 넣을 사진: ${must.map(x => clean(x, 64)).join(", ")}`));
   if (pick && Number.isInteger(body.target) && body.target > 0) content.push(txt(`책에 넣을 사진 수: 약 ${Math.min(body.target, 60)}장 (영상 포함)`));
+  // the first look's "main scenes": what it saw (a phrase per batch, with how many) and the share the phone allows
+  const hl = body.highlights;
+  if (pick && hl && Array.isArray(hl.lines) && hl.lines.length && Number.isInteger(hl.n) && Number.isInteger(hl.m)) {
+    const lines = hl.lines.slice(0, 12).map(l => `"${clean(l?.top, 24)}" ${Math.max(0, Math.min(999, Math.floor(+l?.n) || 0))}장`).join(" · ");
+    content.push(txt(`이 여행의 주인공 장면(먼저 훑어본 결과): ${lines}. 책에 주인공 장면 약 ${Math.min(hl.n, 60)}장, 많아도 ${Math.min(hl.m, 60)}장.`));
+  }
   content.push(txt(
     `메모:\n${notes || "(없음)"}\n\n옵션: 말투=${clean(o.tone, 20) || "auto"}, 글의 양=${clean(o.textAmount, 20) || "caption_essay"}, ` +
     `사람 사진=${clean(o.people, 20) || "mix"}, 길이=${clean(o.length, 20) || "normal"}
@@ -86,7 +94,8 @@ export function scoutContent(body) {
   const content = [];
   for (const [n, im] of body.images.entries()) {
     const s = shots.get(im.id) || {};
-    content.push(txt([`[${n}]`, clean(s.local, 20), clean(s.place, 40), s.scene != null ? `장면 ${clean(String(s.scene), 6)}` : ""].filter(Boolean).join(" ")), jpeg(im.b64));
+    content.push(txt([`[${n}]`, clean(s.local, 20), clean(s.place, 40), s.scene != null ? `장면 ${clean(String(s.scene), 6)}` : "",
+      s.video ? `영상 ${Math.round((s.durMs || 0) / 1000)}초` : ""].filter(Boolean).join(" ")), jpeg(im.b64));
   }
   const o = body.opts || {};
   content.push(txt(`여행 성격: 누구랑=${clean(o.who, 40) || "없음"}, ${clean(o.about, 200) || "없음"}. 답은 스키마 JSON 만.`));
@@ -283,7 +292,7 @@ export async function handle(req, env, ctx, counts) {
   const model = kind === "layout" ? (TEST_MODELS.includes(test.model) ? test.model : env.LAYOUT_MODEL || env.MODEL || "gpt-5.4")
     : kind === "scout" ? env.SCOUT_MODEL || "gpt-5.4-mini" : env.MODEL || "gpt-5.4";
   const effort = kind === "layout" ? (["low", "medium", "high"].includes(test.effort) ? test.effort : env.LAYOUT_EFFORT || "medium")
-    : kind === "scout" ? "low" : "medium";
+    : kind === "scout" || kind === "pick" ? "low" : "medium";
   const mini = model.endsWith("-mini");
   const payload = {
     model, max_output_tokens: maxTokens, reasoning: { effort }, store: false,
