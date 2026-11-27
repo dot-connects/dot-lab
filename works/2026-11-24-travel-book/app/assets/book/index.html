@@ -16,6 +16,15 @@
 @font-face{font-family:"Spoqa Han Sans Neo";font-weight:400;src:url(fonts/SpoqaHanSansNeo-Regular.woff)}
 @font-face{font-family:"Spoqa Han Sans Neo";font-weight:500;src:url(fonts/SpoqaHanSansNeo-Medium.woff)}
 @font-face{font-family:"Spoqa Han Sans Neo";font-weight:700;src:url(fonts/SpoqaHanSansNeo-Bold.woff)}
+/* 다듬기 fonts (KS X 1001 subsets): the handwriting ones run small, size-adjust brings them to the others' size */
+@font-face{font-family:"Gowun Batang";font-weight:400;src:url(fonts/GowunBatang-Regular.woff2)}
+@font-face{font-family:"Gowun Batang";font-weight:700;src:url(fonts/GowunBatang-Bold.woff2)}
+@font-face{font-family:"Gaegu";font-weight:400;src:url(fonts/Gaegu-Regular.woff2);size-adjust:112%}
+@font-face{font-family:"Gaegu";font-weight:700;src:url(fonts/Gaegu-Bold.woff2);size-adjust:112%}
+@font-face{font-family:"Nanum Pen Script";src:url(fonts/NanumPenScript-Regular.woff2);size-adjust:128%}
+@font-face{font-family:"Gowun Dodum";src:url(fonts/GowunDodum-Regular.woff2)}
+@font-face{font-family:"Hahmlet";font-weight:100 900;src:url(fonts/Hahmlet.woff2)}
+@font-face{font-family:"Do Hyeon";src:url(fonts/DoHyeon-Regular.woff2)}
 html,body{margin:0;height:100%;background:#1b1b1b;overscroll-behavior:none}
 /* the book: one page per screen width, horizontal snap */
 #book{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
@@ -31,6 +40,12 @@ body.spread .sheet.two{gap:0}
 body.spread .sheet.two .pg{width:min((100vw - 32px) / 2,(100vh - 24px) / var(--ratio))}
 body.spread .pg.left{box-shadow:inset -14px 0 18px -14px rgba(0,0,0,.28)}
 body.spread .pg.right{box-shadow:inset 14px 0 18px -14px rgba(0,0,0,.22)}
+/* 다듬기: words typed in place, the selected photo outlined (drag moves what shows) */
+.pg .editing{outline:1.5px dashed currentColor;outline-offset:3px;caret-color:currentColor;-webkit-user-select:text;user-select:text}
+.pg .editing:focus{outline-style:solid}
+.pg .selslot{touch-action:none;cursor:grab}
+.pg .selslot::after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 0 3px #fff,inset 0 0 0 6px #2f5bff;pointer-events:none;z-index:2}
+.pg img.selslot{outline:4px solid #2f5bff;outline-offset:-4px}
 /* export mode: one page fills the viewport exactly */
 body.export #book{overflow:hidden}
 body.export .sheet{flex-basis:100vw}

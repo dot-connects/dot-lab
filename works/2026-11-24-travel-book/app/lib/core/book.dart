@@ -18,7 +18,9 @@ class Book {
   Map<String, WriteResult> texts; // text shape -> what /write produced
   int rewrites;
   String? cover; // photo id on the cover
-  String? coverColor;
+  String? coverColor; // 다듬기: "#rrggbb" behind the cover's words; null = the theme's own paper
+  String? font; // 다듬기: a CSS family from themeFonts; null = the theme's own
+  String textSize; // 다듬기: s|m|l for captions and body text
   List<PageSpec> pages;
   List<PageSpec> original;
   List<String> spare;
@@ -41,6 +43,8 @@ class Book {
     this.rewrites = 0,
     this.cover,
     this.coverColor,
+    this.font,
+    this.textSize = 'm',
     this.pages = const [],
     this.original = const [],
     this.spare = const [],
@@ -55,7 +59,7 @@ class Book {
         'theme': theme, 'pool': [for (final c in pool) c.toJson()], 'picks': [for (final p in picks) p.toJson()],
         'clips': [for (final c in clips) c.toJson()], 'pickLines': pickLines, 'must': mustInclude.toList(),
         'texts': {for (final e in texts.entries) e.key: e.value.toJson()}, 'rewrites': rewrites, 'cover': cover,
-        'coverColor': coverColor, 'pages': [for (final p in pages) p.toJson()],
+          'coverColor': coverColor, 'font': font, 'size': textSize, 'pages': [for (final p in pages) p.toJson()],
         'original': [for (final p in original) p.toJson()], 'spare': spare, 'job': job,
       };
 
@@ -78,6 +82,8 @@ class Book {
         rewrites: j['rewrites'] as int,
         cover: j['cover'] as String?,
         coverColor: j['coverColor'] as String?,
+        font: j['font'] as String?,
+        textSize: j['size'] as String? ?? 'm',
         pages: [for (final p in j['pages'] as List) PageSpec.fromJson(p as Map<String, dynamic>)],
         original: [for (final p in j['original'] as List) PageSpec.fromJson(p as Map<String, dynamic>)],
         spare: (j['spare'] as List).cast<String>(),

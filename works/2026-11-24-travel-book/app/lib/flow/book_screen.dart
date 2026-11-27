@@ -12,6 +12,7 @@ import '../ui/new_book/draft.dart' show PhotoRef;
 import '../ui/tokens.dart';
 import '../ui/widgets.dart';
 import 'app.dart';
+import 'edit_flow.dart';
 import 'export_flow.dart';
 
 String whenOf(DateTime t) => '${t.month}.${t.day} ${weekdays[t.weekday - 1]} ${two(t.hour)}:${two(t.minute)}';
@@ -114,7 +115,10 @@ class _BookScreenState extends State<BookScreen> {
     return BookView(
       title: b.title,
       onBack: Navigator.of(context).pop,
-      onEdit: () {}, // 다듬기: M2
+      onEdit: () async {
+        final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(builder: (_) => EditFlow(app: app, book: b)));
+        if (saved == true && mounted) setState(() => _version++);
+      },
       onExport: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ExportFlow(app: app, book: b))),
       tip: _failed != null
           ? null

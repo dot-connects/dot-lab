@@ -14,6 +14,7 @@ import 'book/store.dart';
 import 'core/book.dart';
 import 'core/book_layout.dart';
 import 'core/chapters.dart';
+import 'core/edit.dart' show textScale;
 import 'core/models.dart';
 import 'core/paginate.dart';
 import 'core/plan_check.dart';
@@ -426,6 +427,12 @@ class Pipeline {
     }
   }
 
+  /// The theme's page designs (다듬기 swaps cover / closes up a page with them).
+  Future<List<LayoutDef>> layouts(String theme) => _layouts(theme);
+
+  /// 다듬기 put new photos on pages: their files must sit in the book's folder before the WebView shows them.
+  Future<void> copyMedia(Book b, Set<String> ids) => _copyMedia(b, ids);
+
   Future<List<LayoutDef>> _layouts(String theme) async {
     String raw;
     try {
@@ -556,6 +563,7 @@ Map<String, Object?> bookJs(Book b, {String base = '/books'}) {
     'format': b.opts.format,
     'toneMatch': b.opts.toneMatch,
     'pages': [for (final p in b.pages) p.toJson()],
+    'style': {'font': b.font, 'size': textScale[b.textSize] ?? 1.0, 'cover': b.coverColor},
     'media': {
       for (final id in ids)
         id: {

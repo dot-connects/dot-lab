@@ -89,6 +89,16 @@ flutter:
     - family: InterTight
       fonts:
         - asset: assets/book/fonts/InterTightwght.ttf
+    # 다듬기 font cards: the book fonts cut down to the few letters a card shows (the book itself uses the woff2s)
+    - family: SUIT
+      fonts:
+        - asset: assets/book/fonts/SUIT-Bold.otf
+    - {family: GowunBatang, fonts: [{asset: assets/fonts/preview/GowunBatang-Regular.ttf}]}
+    - {family: Gaegu, fonts: [{asset: assets/fonts/preview/Gaegu-Regular.ttf}]}
+    - {family: NanumPenScript, fonts: [{asset: assets/fonts/preview/NanumPenScript-Regular.ttf}]}
+    - {family: GowunDodum, fonts: [{asset: assets/fonts/preview/GowunDodum-Regular.ttf}]}
+    - {family: Hahmlet, fonts: [{asset: assets/fonts/preview/Hahmlet.ttf}]}
+    - {family: DoHyeon, fonts: [{asset: assets/fonts/preview/DoHyeon-Regular.ttf}]}
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
