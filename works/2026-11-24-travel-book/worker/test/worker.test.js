@@ -168,7 +168,7 @@ const CATALOG = [
   { id: "a/cover", kind: "cover", slots: ["P"], texts: { title: 12, period: 20 }, when: "표지" },
   { id: "a/pair", kind: "photo", slots: ["L", "V"], texts: { cap: 24 }, when: "짝 두 장" },
 ];
-const layoutBody = extra => ({ job: "job-12345678", images: imgs(2), theme: "a", catalog: CATALOG, rules: { pages: [16, 26], min_distinct: 5 },
+const layoutBody = extra => ({ job: "jAAAABBBBCCCCDDDDEEEEFF1", images: imgs(2), theme: "a", catalog: CATALOG, rules: { pages: [16, 26], min_distinct: 5 },
   shots: [{ id: "p0", local: "2026-06-12T13:20", place: "협재", w: 3000, h: 4000 },
     { id: "p1", local: "2026-06-12T14:00", place: "우도", video: true, durMs: 8400, w: 1920, h: 1080 }],
   opts: { who: "연인", about: "느긋하게 걷기" }, notes: [{ day: "2026-06-12", text: "바람이 셌다" }], ...extra });
@@ -177,7 +177,7 @@ const allText = c => [c.input[0].content, ...c.input[1].content.filter(x => x.ty
 test("/layout prompt: theme guide, catalog line, concept line, labelled images, layout schema", async () => {
   const r = await call(layoutBody(), { path: "/layout" });
   assert.equal(r.status, 200);
-  await runJob(env, counts, "job-12345678");   // the queue consumer makes the call
+  await runJob(env, counts, "jAAAABBBBCCCCDDDDEEEEFF1");   // the queue consumer makes the call
   const c = calls[0], t = allText(c);
   assert.ok(t.includes("여백의 책"));                                    // a.md
   assert.ok(t.includes("글에서 '메모'"));                                 // _common.md
@@ -195,7 +195,7 @@ test("/layout prompt: theme guide, catalog line, concept line, labelled images, 
 
 test("/layout: concept defaults to 없음, retry block carries fix list and the previous answer", async () => {
   await call(layoutBody({ opts: {}, fix: ["2쪽: 없는 틀 x"], prev: { title: "제주", pages: [] } }), { path: "/layout" });
-  await runJob(env, counts, "job-12345678");
+  await runJob(env, counts, "jAAAABBBBCCCCDDDDEEEEFF1");
   const t = allText(calls[0]);
   assert.ok(t.includes("누구랑=없음, 없음"));
   assert.ok(t.includes("## 지난 답의 문제 (모두 고쳐서 책 전체를 다시 답해라)\n- 2쪽: 없는 틀 x\n\n지난 답:\n{\"title\":\"제주\",\"pages\":[]}"));
@@ -218,17 +218,17 @@ test("/layout shares the /write day counter", async () => {
 // /layout queued jobs + /result polling
 const PLAN = { title: "제주", plan: "p", pages: [] };
 const USAGE = { input_tokens: 30000, output_tokens: 9000 };
-const result = (job = "job-12345678", token) => call({ job }, { path: "/result", token });
-const work = () => runJob(env, counts, "job-12345678");
+const result = (job = "jAAAABBBBCCCCDDDDEEEEFF1", token) => call({ job }, { path: "/result", token });
+const work = () => runJob(env, counts, "jAAAABBBBCCCCDDDDEEEEFF1");
 
 test("/layout: queued at once (KV + queue, no model call yet); the same job never queues twice", async () => {
   const r = await call(layoutBody(), { path: "/layout" });
-  assert.deepEqual(r.body, { job: "job-12345678", status: "pending" });
+  assert.deepEqual(r.body, { job: "jAAAABBBBCCCCDDDDEEEEFF1", status: "pending" });
   assert.equal(calls.length, 0);
-  assert.deepEqual(queued, [{ job: "job-12345678" }]);
-  assert.ok(kv.has("job-12345678"));
+  assert.deepEqual(queued, [{ job: "jAAAABBBBCCCCDDDDEEEEFF1" }]);
+  assert.ok(kv.has("jAAAABBBBCCCCDDDDEEEEFF1"));
   assert.ok(month() > 0);   // reserved
-  assert.deepEqual((await call(layoutBody(), { path: "/layout" })).body, { job: "job-12345678", status: "pending" });
+  assert.deepEqual((await call(layoutBody(), { path: "/layout" })).body, { job: "jAAAABBBBCCCCDDDDEEEEFF1", status: "pending" });
   assert.equal(queued.length, 1);
   assert.equal(db.prepare("SELECT count(*) c FROM jobs").get().c, 1);
 });
@@ -242,7 +242,7 @@ test("consumer: one normal model call, plan stored, money settled once, request 
   assert.equal(calls[0].background, undefined);
   assert.deepEqual((await result()).body, PLAN);
   assert.equal(month(), realMills(USAGE));
-  assert.equal(kv.has("job-12345678"), false);
+  assert.equal(kv.has("jAAAABBBBCCCCDDDDEEEEFF1"), false);
   await work();   // a redelivered message does nothing
   assert.equal(calls.length, 1);
   assert.deepEqual((await call(layoutBody(), { path: "/layout" })).body, PLAN);
@@ -254,7 +254,7 @@ test("consumer: model error -> {error}; upstream HTTP error refunds; unknown job
   await work();
   assert.deepEqual((await result()).body, { error: "model" });
   assert.equal(month(), realMills({ input_tokens: 1000, output_tokens: 0 }));
-  assert.deepEqual((await result("job-nothere")).body, { error: "none" });
+  assert.deepEqual((await result("jZZZZYYYYXXXXWWWWVVVVUU1")).body, { error: "none" });
   assert.equal((await result("bad")).status, 400);
 });
 
@@ -263,17 +263,17 @@ test("/result skips the IP limiter; a bad token is 401", async () => {
   env.LIMIT = { limit: async () => { limited++; return { success: false }; } };
   assert.deepEqual((await result()).body, { error: "none" });
   assert.equal(limited, 0);
-  assert.equal((await result("job-12345678", "nope")).status, 401);
+  assert.equal((await result("jAAAABBBBCCCCDDDDEEEEFF1", "nope")).status, 401);
 });
 
 test("cron: times out a job stuck 30 min (reservation kept), deletes day-old rows", async () => {
   const now = Date.now();
   const ins = db.prepare("INSERT INTO jobs (job, resp, month, reserved, status, body, created) VALUES (?, ?, ?, ?, ?, ?, ?)");
-  ins.run("job-old-queued", null, "m|x", 50, "queued", null, now - 31 * 60_000);
-  ins.run("job-day-old", null, "m|x", 50, "done", "{}", now - 25 * 3600_000);
+  ins.run("jOOOOLLLLDDDDQQQQUUUUEE1", null, "m|x", 50, "queued", null, now - 31 * 60_000);
+  ins.run("jDDDDAAAAYYYYOOOOLLLLDD1", null, "m|x", 50, "done", "{}", now - 25 * 3600_000);
   await cron(env, counts, now);
-  assert.deepEqual((await result("job-old-queued")).body, { error: "timeout" });
-  assert.deepEqual((await result("job-day-old")).body, { error: "none" });
+  assert.deepEqual((await result("jOOOOLLLLDDDDQQQQUUUUEE1")).body, { error: "timeout" });
+  assert.deepEqual((await result("jDDDDAAAAYYYYOOOOLLLLDD1")).body, { error: "none" });
 });
 
 test("a request without a job still gets the old streamed answer", async () => {

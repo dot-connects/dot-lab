@@ -26,7 +26,7 @@ const IN_MILLS = 0.0025, OUT_MILLS = 0.015;
 const IMG_TOKENS = 400;            // a 512 px preview at detail "low" is well under this; rounded up for the reservation
 const KEEPALIVE_MS = 10_000;
 const OPENAI_URL = "https://api.openai.com/v1/responses";
-const JOB = /^[A-Za-z0-9-]{8,64}$/;
+const JOB = /^[A-Za-z0-9_-]{23,64}$/;   // the app sends 128 random bits: the name is the only key to a result
 const JOB_MAX_MS = 30 * 60_000, JOB_KEEP_MS = 24 * 3600_000;
 
 const num = (v, d) => (v === undefined || v === "" ? d : +v);   // "0" is a real limit (the off switch)
