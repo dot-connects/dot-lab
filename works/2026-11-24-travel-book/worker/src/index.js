@@ -28,6 +28,7 @@ const IMG_TOKENS = 400;            // a 512 px preview at detail "low" is well u
 const KEEPALIVE_MS = 10_000;
 const OPENAI_URL = "https://api.openai.com/v1/responses";
 const JOB = /^[A-Za-z0-9_-]{23,64}$/;   // the app sends 128 random bits: the name is the only key to a result
+const MADE_CAP = 200;
 const DEVICE = /^[0-9a-f]{8,32}$/, BOOK = /^[A-Za-z0-9_-]{1,64}$/;   // ANDROID_ID is 16 hex
 const JOB_MAX_MS = 30 * 60_000, JOB_KEEP_MS = 24 * 3600_000;
 
@@ -309,10 +310,14 @@ export async function handle(req, env, ctx, counts) {
 export async function madeCount(db, device, books) {
   const dev = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`tripbook|${device}`)))]
     .map(x => x.toString(16).padStart(2, "0")).join("");
+  const count = async () => (await db.prepare("SELECT COUNT(*) AS n FROM made WHERE dev = ?1").bind(dev).first()).n;
+  // ponytail: rows per phone capped at MADE_CAP (a person makes a handful of books); a flood of made-up device ids
+  // still adds rows (the app token ships in the APK) — add an IP limiter of its own if the table ever grows oddly
+  if (await count() >= MADE_CAP) return MADE_CAP;
   for (const book of books) {
     await db.prepare("INSERT OR IGNORE INTO made (dev, book, created) VALUES (?1, ?2, ?3)").bind(dev, book, Date.now()).run();
   }
-  return (await db.prepare("SELECT COUNT(*) AS n FROM made WHERE dev = ?1").bind(dev).first()).n;
+  return count();
 }
 
 export default {
