@@ -48,6 +48,19 @@ body.spread .pg.blank{background:#ece6dc}
 body.photoedit .pg [data-slot]{touch-action:none}
 .pg .selslot::after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 0 3px #fff,inset 0 0 0 6px #2f5bff;pointer-events:none;z-index:2}
 .pg img.selslot{outline:4px solid #2f5bff;outline-offset:-4px}
+/* 네 컷 (every theme): a photo-booth strip on the page's paper; a 3-photo series leaves the 4th cell as the booth's blank */
+.pg.fourcut{display:flex;align-items:center;justify-content:center;background:var(--paper,#f4f1ea)}
+.pg.fourcut .strip{position:relative;height:90%;aspect-ratio:1/3.05;background:#141414;padding:3.2% 3.2% 0;display:flex;flex-direction:column;gap:2.2%;transform:rotate(-1.6deg);box-shadow:0 1.2cqw 3cqw rgba(0,0,0,.28)}
+/* themes place .ph / p absolutely: the strip resets that for its own cells */
+.pg.fourcut .strip .ph{position:relative!important;inset:auto!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;width:auto!important;height:auto!important;margin:0!important;flex:1 1 0;min-height:0;overflow:hidden;background:#2a2a2a;border:0!important;box-shadow:none!important;transform:none!important;padding:0!important}
+.pg.fourcut .strip .ph img{display:block;position:static!important;width:100%!important;height:100%!important;object-fit:cover}
+.pg.fourcut .ph:has(img:not([src])),.pg.fourcut .ph:has(img[src=""]){background:#2a2a2a}
+.pg.fourcut .strip .fc-cap{position:static!important;margin:0!important;flex:0 0 9%;display:flex;align-items:center;justify-content:center;color:#f2efe8;font:600 3.2cqw/1 var(--f,"Pretendard",sans-serif);letter-spacing:.08em}
+/* 다닌 길 (every theme): the trip's line and numbered stops, no map tiles */
+.pg.route{display:flex;flex-direction:column;background:var(--paper,#f4f1ea);color:var(--ink,#2b2621);padding:9cqw 8cqw 8cqw;box-sizing:border-box}
+.pg.route .rt-title{position:static!important;margin:0 0 2cqw;font:700 6cqw/1.2 var(--f,"Pretendard",sans-serif)}
+.pg.route svg{flex:1;width:100%;min-height:0;overflow:visible}
+.pg.route .rt-cap{position:static!important;margin:2cqw 0 0;font:400 3.4cqw/1.5 var(--f,"Pretendard",sans-serif);opacity:.75}
 /* export mode: one page fills the viewport exactly */
 body.export #book{overflow:hidden}
 body.export .sheet{flex-basis:100vw}

@@ -35,7 +35,7 @@ class _Pipe extends Pipeline {
   var writes = 0;
   _Pipe(BookStore store) : super(src: FakeSource(), ai: FakeAi(), store: store, layoutsJson: (_) async => '{}');
   @override
-  Future<AiState> write(Book b, {List<NoteInput> notes = const []}) {
+  Future<AiState> write(Book b, {List<NoteInput> notes = const [], void Function(WriteStage, int, int)? onStage}) {
     writes++;
     return done.future;
   }

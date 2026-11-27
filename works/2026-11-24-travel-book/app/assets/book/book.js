@@ -8,6 +8,7 @@
   const RATIO = { phone: 4 / 3, a5: 1.4142, square: 1 };
   const bridge = (name, data) => window.flutter_inappwebview?.callHandler(name, data);
   let current = null;
+  let reader = false, pressed = false; // reader: the book view (taps turn pages); pressed: a long press just fired
 
   async function loadTheme(theme) {
     document.getElementById("theme").href = `themes/${theme}/theme.css`;
@@ -30,9 +31,28 @@
     else el.style.removeProperty("object-view-box");
   }
 
+  /** 다닌 길: book.route = {pts: [[x, y]], stops: [{x, y, n, label}]} in 0..100 units -> a line, numbered dots, names. */
+  function drawRoute(svg, r) {
+    const ns = "http://www.w3.org/2000/svg", el = (t, a) => { const e = document.createElementNS(ns, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
+    svg.replaceChildren();
+    if (!r || !r.pts || r.pts.length < 2) return;
+    svg.append(el("polyline", { points: r.pts.map(p => p.join(",")).join(" "), fill: "none", stroke: "currentColor", "stroke-width": 0.7,
+      "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-dasharray": "1.6 1.4", opacity: 0.55 }));
+    for (const s of r.stops || []) {
+      svg.append(el("circle", { cx: s.x, cy: s.y, r: 2.6, fill: "currentColor" }));
+      const num = el("text", { x: s.x, y: s.y + 0.95, "text-anchor": "middle", "font-size": 2.8, "font-weight": 700, fill: "var(--paper, #f4f1ea)" });
+      num.textContent = s.n;
+      const name = el("text", { x: s.x + (s.x > 70 ? -4 : 4), y: s.y + 1, "text-anchor": s.x > 70 ? "end" : "start", "font-size": 3.3, fill: "currentColor" });
+      name.textContent = s.label;
+      svg.append(num, name);
+    }
+  }
+
   function fill(pg, spec, book, n) {
     pg.style.setProperty("--ratio", RATIO[book.format] || RATIO.phone);
     pg.dataset.page = n;
+    const route = pg.querySelector("svg[data-route]");
+    if (route) drawRoute(route, book.route);
     for (const img of pg.querySelectorAll("img[data-slot]")) {
       const i = +img.dataset.slot, id = spec.ids[i], m = book.media[id] || {};
       const frame = img.dataset.frame;
@@ -174,6 +194,27 @@
     return p ? +p.dataset.page : 0;
   }
 
+  /** The reader: which page(s) are on screen ("표지", "3", "3–4") of how many. */
+  function tellPage(root) {
+    const sheets = root.querySelectorAll(".sheet");
+    const sh = sheets[Math.round(root.scrollLeft / Math.max(1, root.clientWidth))];
+    if (!sh) return;
+    const ns = [...sh.querySelectorAll(".pg[data-page]")].map(p => +p.dataset.page);
+    const label = ns.length === 0 ? "" : ns[0] === 0 ? "표지" : ns.length > 1 ? `${ns[0]}–${ns[ns.length - 1]}` : `${ns[0]}`;
+    bridge("page", { label, total: current ? current.pages.length - 1 : 0, at: [...sheets].indexOf(sh) });
+  }
+
+  // the reader: a tap on the left or right quarter turns the page, one in the middle shows or hides the bars
+  document.addEventListener("click", e => {
+    if (!reader || edit) return;
+    if (pressed) { pressed = false; return; }
+    const root = document.getElementById("book"), x = e.clientX / innerWidth;
+    const go = d => root.scrollTo({ left: (Math.round(root.scrollLeft / root.clientWidth) + d) * root.clientWidth, behavior: "smooth" });
+    if (x < 0.25) go(-1);
+    else if (x > 0.75) go(1);
+    else bridge("tapMiddle", {});
+  });
+
   window.renderBook = async function (book, opts = {}) {
     // the old pages stop taking edits now: their events would land on a page that is about to change
     if (window.editMode) window.editMode(null);
@@ -207,7 +248,7 @@
       sheet.append(pg);
       seen.observe(pg);
       let timer = null;
-      pg.addEventListener("pointerdown", () => { timer = setTimeout(() => bridge("longPress", { page: n }), 550); });
+      pg.addEventListener("pointerdown", () => { pressed = false; timer = setTimeout(() => { pressed = true; bridge("longPress", { page: n }); }, 550); });
       for (const ev of ["pointerup", "pointercancel", "pointerleave"]) pg.addEventListener(ev, () => clearTimeout(timer));
     });
     if (spread) { const b0 = root.querySelector(".pg.blank"), p0 = root.querySelector(".pg[data-page]"); if (b0 && p0) b0.style.setProperty("--ratio", p0.style.getPropertyValue("--ratio")); }
@@ -231,6 +272,12 @@
     root.style.cssText = "";
     if (sh) root.scrollLeft = [...root.children].indexOf(sh) * root.clientWidth;
     edit = null;
+    reader = !!opts.reader && !opts.exportMode;
+    if (reader) {
+      let t = null;
+      root.addEventListener("scroll", () => { clearTimeout(t); t = setTimeout(() => tellPage(root), 140); });
+      tellPage(root);
+    }
     bridge("rendered", { pages: book.pages.length, coverPaper: pgs[0] ? paperShows(pgs[0]) : false });
   };
 

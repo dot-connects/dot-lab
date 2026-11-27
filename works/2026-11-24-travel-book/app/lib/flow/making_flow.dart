@@ -19,6 +19,7 @@ import '../ui/making/picks_review.dart';
 import '../ui/making/swap_sheet.dart';
 import '../ui/making/writing.dart';
 import '../ui/new_book/book_shape.dart';
+import '../ui/new_book/dates.dart' show rangeShort;
 import '../ui/new_book/draft.dart';
 import '../ui/tokens.dart';
 import '../ui/widgets.dart';
@@ -135,8 +136,10 @@ class _MakingFlowState extends State<MakingFlow> {
   Future<AiState> _run(Book b, List<NoteInput> notes) async {
     app.making.add(b.id);
     unawaited(makingStart(b.title)); // leaving the app keeps it going; "다 됐어요" if they are away at the end
-    final r = await app.pipe.write(b, notes: notes);
+    final stage = app.stages.putIfAbsent(b.id, () => ValueNotifier(null));
+    final r = await app.pipe.write(b, notes: notes, onStage: (s, d, t) => stage.value = (s, d, t));
     app.making.remove(b.id);
+    app.stages.remove(b.id);
     if (r != AiState.ok) await app.pipe.finish(b); // pages without text; [다시 시도] on the book
     // away = out of the app, or back on the shelf: either way they were told "다 되면 알려 드릴게요"
     final away = !mounted || WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed;
@@ -362,6 +365,10 @@ class _MakingFlowState extends State<MakingFlow> {
         void leave() => nav.popUntil((r) => r.isFirst); // the book keeps being made (app.writes)
         return WritingScreen(
           photos: [for (final c in cs) 'gallery:${c.id}'],
+          cover: b.cover == null ? null : 'gallery:${b.cover}',
+          period: rangeShort(b.from, b.to),
+          lines: [for (final e in (b.pickLines.entries.toList()..sort((x, y) => x.key.compareTo(y.key)))) (DateTime.parse(e.key), e.value)],
+          stage: app.stages.putIfAbsent(b.id, () => ValueNotifier(null)),
           theme: b.theme,
           title: _place(cs),
           line: '${themeNames[b.theme] ?? ''} · ${lengthNames[o.length] ?? ''} ${lengthPages[o.length] ?? 24}쪽 · 2~3분',

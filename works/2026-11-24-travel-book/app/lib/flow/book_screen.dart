@@ -30,6 +30,8 @@ class BookScreen extends StatefulWidget {
 
 class _BookScreenState extends State<BookScreen> {
   late AiState? _failed = widget.failed;
+  bool _chrome = true, _turned = false; // the reader's bars; hidden once after the first turn
+  String? _page; // "3 / 24"
   late String? _tip = widget.tip;
   int _version = 0;
   Book get b => widget.book;
@@ -130,11 +132,31 @@ class _BookScreenState extends State<BookScreen> {
         AiState.failed => offlineBanner(picked, onRetry: _retry, onNoText: () => setState(() => _failed = null)),
         _ => null,
       },
+      chrome: _chrome,
+      pageLabel: _page,
       spread: _spread(context),
       onSpread: () => setState(() => app.prefs
         ..spread = !_spread(context)
         ..save()),
-      page: BookWebView(book: bookJs(b), booksDir: app.booksDir, version: _version, onLongPress: _longPress, spread: _spread(context)),
+      page: BookWebView(
+        book: bookJs(b),
+        booksDir: app.booksDir,
+        version: _version,
+        onLongPress: _longPress,
+        spread: _spread(context),
+        onTapMiddle: () => setState(() => _chrome = !_chrome),
+        onPage: (label, total) {
+          if (!mounted) return;
+          setState(() {
+            // turning off the cover hides the bars once (an e-reader's habit); the middle tap brings them back
+            if (_page != null && label != '표지' && !_turned) {
+              _turned = true;
+              _chrome = false;
+            }
+            _page = label == '표지' ? '표지 · $total쪽' : '$label / $total';
+          });
+        },
+      ),
     );
   }
 }

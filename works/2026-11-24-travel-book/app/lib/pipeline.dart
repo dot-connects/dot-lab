@@ -20,6 +20,7 @@ import 'core/paginate.dart';
 import 'core/plan_check.dart';
 import 'core/prefilter.dart';
 import 'core/refdocs.dart';
+import 'core/route.dart';
 import 'core/scenes.dart';
 import 'core/selection.dart';
 import 'core/text_shape.dart';
@@ -119,6 +120,10 @@ class PickProgress {
 }
 
 enum AiState { ok, off, failed }
+
+/// Where a book being made is, for the making screen (real steps, no timer): previews made (done/total), the AI editor
+/// at work (its second pass when the first had problems), the files copied in.
+enum WriteStage { previews, editor, fixing, files }
 
 AiState stateOf(AiResult r) => switch (r) { AiOk() => AiState.ok, AiOff() => AiState.off, AiFailed() => AiState.failed };
 
@@ -516,10 +521,10 @@ class Pipeline {
   /// after a restart only waits for the same job (no second model call, no second charge).
   /// One more job when checkLayout finds problems; whatever comes back is repaired into a usable book.
   /// A failure leaves the book at "picked" with its picks untouched: [다시 시도] calls this again (no new /pick).
-  Future<AiState> write(Book b, {List<NoteInput> notes = const []}) async {
+  Future<AiState> write(Book b, {List<NoteInput> notes = const [], void Function(WriteStage stage, int done, int total)? onStage}) async {
     final pool = _pool(b);
     final picked = [for (final p in b.picks) pool[p.id]].whereType<Candidate>().toList();
-    final defs = await _layouts(b.theme);
+    final defs = offered(await _layouts(b.theme), b);
     final theme = layoutRules.containsKey(b.theme) ? b.theme : 'a';
     final rules = layoutRules[theme]!;
     final byId = {for (final c in picked) c.id: c};
@@ -557,7 +562,9 @@ class Pipeline {
           final j = await src.jpeg(c.id, 512);
           if (j != null) out.add(AiImage(c.id, j));
         }
+        onStage?.call(WriteStage.previews, out.length, picked.length);
       }
+      onStage?.call(WriteStage.editor, 0, 0);
       return images = out;
     }
 
@@ -572,6 +579,7 @@ class Pipeline {
     final errs = checkLayout(body, defs, byId, rules, order: order, kinds: kinds);
     if (errs.isNotEmpty) {
       b.job = null; // the retry is a new job
+      onStage?.call(WriteStage.fixing, 0, 0);
       final r2 = await run(fix: errs.take(20).toList(), prev: body);
       if (r2 is AiOk && checkLayout(r2.body, defs, byId, rules, order: order, kinds: kinds).length < errs.length) body = r2.body;
     }
@@ -584,6 +592,7 @@ class Pipeline {
       ..original = out.pages
       ..spare = [for (final p in b.picks) if (!used.contains(p.id)) p.id]
       ..stage = 'written';
+    onStage?.call(WriteStage.files, 0, used.length);
     await _copyMedia(b, used);
     b.job = null;
     await store.save(b);
@@ -780,6 +789,17 @@ Future<List<({double sharp, double luma, int dhash})>> _measureAll(List<Uint8Lis
 }
 
 /// What book.js renders: {id, theme, format, pages, media:{id:{src, video?}}}; files are served under /books/.
+/// The layouts this book may use: 네 컷 only with a pose series of 3+ picked photos, 다닌 길 only with a route.
+List<LayoutDef> offered(List<LayoutDef> defs, Book b) {
+  final picked = {for (final p in b.picks) p.id};
+  final series = b.groups.any((g) => g.$1 == '연속' && g.$2.where(picked.contains).length >= 3);
+  final route = routeOf(b.pool) != null;
+  return [
+    for (final d in defs)
+      if ((!d.id.endsWith('/fourcut') || series) && (!d.id.endsWith('/route') || route)) d,
+  ];
+}
+
 Map<String, Object?> bookJs(Book b, {String base = '/books'}) {
   final pool = {for (final c in b.pool) c.id: c};
   final ids = {for (final p in b.pages) ...p.ids};
@@ -790,6 +810,7 @@ Map<String, Object?> bookJs(Book b, {String base = '/books'}) {
     'toneMatch': b.opts.toneMatch,
     'pages': [for (final p in b.pages) p.toJson()],
     'style': {'font': b.font, 'size': textScale[b.textSize] ?? 1.0, 'cover': b.coverColor},
+    if (b.pages.any((p) => p.layout.endsWith('/route'))) 'route': routeOf(b.pool),
     'media': {
       for (final id in ids)
         id: {

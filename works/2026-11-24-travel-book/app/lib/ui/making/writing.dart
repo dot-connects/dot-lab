@@ -1,30 +1,35 @@
-// D4 2/2 책을 만들고 있어요 (AI call 2), mockup r12 C1 + a little more: four steps on a time estimate (about 2 min,
-// the last one stays until the book is done), six pages of the chosen theme dropping in one by one with a lift and
-// a settle, a shimmer over the page being made, then a slow reshuffle so the screen never looks frozen.
+// D4 2/2 책을 만들고 있어요 (operator 11-27 + Fable review: the old four steps were on a timer). Everything here is real:
+// the cover the book will have (its cover photo, the place, the dates), the day lines /pick already wrote typed in one
+// by one, the step the pipeline is actually on with the time it has taken, and the picked photos passing by.
 import 'dart:async';
-import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:material_ui/material_ui.dart';
 
+import '../../pipeline.dart' show WriteStage;
 import '../tokens.dart';
 import '../widgets.dart';
 import 'choose_theme.dart';
 
-const _tick = Duration(milliseconds: 2500);
-const _stepAt = [0, 20, 50, 85]; // seconds: when each step starts (of about 120)
-const _kinds = [0, 1, 2, 1, 2, 1];
-
 class WritingScreen extends StatefulWidget {
   final List<String> photos; // picked photo paths, in time order
+  final String? cover; // the cover photo path
+  final String period; // "6.12 – 6.14"
+  final List<(DateTime, String)> lines; // /pick's line per day
+  final ValueListenable<(WriteStage, int, int)?> stage;
   final String theme; // id
   final String title; // the place on the cover page
   final String line; // "여백의 책 · 보통 24쪽 · 2~3분"
   final int picked;
-  final bool words; // false = 사진만: no caption step
+  final bool words; // false = 사진만
   final VoidCallback onLeave; // back to the shelf; the book keeps being made
   const WritingScreen({
     super.key,
     required this.photos,
+    this.cover,
+    this.period = '',
+    this.lines = const [],
+    required this.stage,
     required this.theme,
     required this.title,
     required this.line,
@@ -36,169 +41,183 @@ class WritingScreen extends StatefulWidget {
   State<WritingScreen> createState() => _WritingScreenState();
 }
 
-class _WritingScreenState extends State<WritingScreen> {
+class _WritingScreenState extends State<WritingScreen> with SingleTickerProviderStateMixin {
   late final Timer _t;
-  final _rnd = math.Random();
-  int _ticks = 0, _in = 0, _making = 0;
-  final _slot = [0, 1, 2, 3, 4, 5]; // tile i sits at _slot[i]
-  Set<int> _last = {};
+  final _clock = Stopwatch()..start();
+  int _shown = 0; // day lines typed so far
+  late final _breath = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600));
 
   @override
   void initState() {
     super.initState();
-    _in = 1;
-    _t = Timer.periodic(_tick, (_) => setState(_step));
+    _t = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        if (_clock.elapsed.inSeconds % 2 == 0 && _shown < widget.lines.length) _shown++;
+      });
+    });
   }
 
-  void _step() {
-    _ticks++;
-    if (_in < _kinds.length) {
-      _making = _in++;
-      return;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _breath.stop();
+      _shown = widget.lines.length;
+    } else if (!_breath.isAnimating) {
+      _breath.repeat(reverse: true);
     }
-    // all six are down: swap two of them, and make the moved one "the one being made" — never the same two twice in a
-    // row, which would just put them back
-    int a, b;
-    do {
-      a = _rnd.nextInt(6);
-      b = (a + 1 + _rnd.nextInt(5)) % 6;
-    } while ({a, b}.containsAll(_last) && _last.length == 2);
-    _last = {a, b};
-    final x = _slot[a];
-    _slot[a] = _slot[b];
-    _slot[b] = x;
-    _making = a;
   }
 
   @override
   void dispose() {
     _t.cancel();
+    _breath.dispose();
     super.dispose();
   }
 
-  int get _now {
-    final sec = _ticks * _tick.inMilliseconds ~/ 1000;
-    return _stepAt.lastIndexWhere((s) => sec >= s);
+  String _status((WriteStage, int, int)? s) {
+    final e = _clock.elapsed, mmss = '${e.inMinutes}:${two(e.inSeconds % 60)}';
+    return switch (s) {
+      null => '고른 사진 ${fmtInt(widget.picked)}장을 책으로 옮길 준비 중',
+      (WriteStage.previews, final d, final t) => 'AI 편집자에게 보낼 사진 정리 중 · $d / $t',
+      (WriteStage.editor, _, _) => '${widget.words ? 'AI 편집자가 쪽을 짜고 글을 쓰는 중' : 'AI 편집자가 쪽을 짜는 중'} · $mmss',
+      (WriteStage.fixing, _, _) => '어색한 쪽을 한 번 더 다듬는 중 · $mmss',
+      (WriteStage.files, _, final t) => '사진 $t장을 책에 붙이는 중',
+    };
   }
 
   @override
   Widget build(BuildContext context) {
     final still = MediaQuery.disableAnimationsOf(context);
-    final mq = MediaQuery.of(context);
-    final steps = [
-      '사진 ${fmtInt(widget.picked)}장을 날짜와 장면으로 나누는 중',
-      '장면마다 쪽 모양 고르는 중',
-      widget.words ? '캡션과 짧은 글 쓰는 중' : '사진 크기와 순서 맞추는 중',
-      '빠진 곳·겹친 곳 검사하는 중',
-    ];
+    final w = widget;
     return NbScaffold(
       back: '✕',
-      onBack: widget.onLeave,
+      onBack: w.onLeave,
       right: topLabel('2 / 2'),
       title: '책을 만들고 있어요',
-      lead: widget.line,
-      body: LayoutBuilder(builder: (context, box) {
-        const gap = 8.0;
-        final avail = mq.size.height - mq.padding.vertical - 350; // bar, title, steps, foot
-        final tw = math.min((box.maxWidth - 2 * gap) / 3, (avail - gap) / 2 * .75);
-        final th = tw * 4 / 3, left0 = (box.maxWidth - 3 * tw - 2 * gap) / 2;
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          SizedBox(
-            height: th * 2 + gap + 6,
-            child: Stack(clipBehavior: Clip.none, children: [
-              for (var i = 0; i < _kinds.length; i++)
-                AnimatedPositioned(
-                  key: ValueKey(i),
-                  duration: still ? Duration.zero : const Duration(milliseconds: 1100),
-                  curve: Curves.easeInOutCubic,
-                  left: left0 + (_slot[i] % 3) * (tw + gap),
-                  top: (_slot[i] ~/ 3) * (th + gap),
-                  child: _Drop(
-                    on: i < _in,
-                    still: still,
-                    tilt: (i.isEven ? -1 : 1) * .012,
-                    child: Stack(children: [
-                      PagePreview(
-                          theme: widget.theme, title: widget.title, kind: _kinds[i], photos: previewPhotos(widget.photos, widget.theme, i, _kinds[i]), w: tw),
-                      if (i == _making && !still) Positioned.fill(child: _Shimmer(key: ValueKey('s$_ticks'))),
-                    ]),
-                  ),
+      lead: w.line,
+      body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Center(child: _coverCard(still)),
+        const SizedBox(height: 22),
+        if (w.lines.isNotEmpty) ...[
+          const OptLabel('날마다 한 줄', top: 0),
+          for (final (i, (day, text)) in w.lines.indexed)
+            AnimatedOpacity(
+              opacity: i < _shown ? 1 : 0,
+              duration: still ? Duration.zero : const Duration(milliseconds: 500),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 7),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  SizedBox(width: 62, child: Text('${day.month}월 ${day.day}일', style: nm(12.5, color: C.ink2))),
+                  Expanded(child: _Typed(text, on: i < _shown, still: still)),
+                ]),
+              ),
+            ),
+          const SizedBox(height: 14),
+        ],
+        ValueListenableBuilder<(WriteStage, int, int)?>(
+          valueListenable: w.stage,
+          builder: (_, s, _) {
+            final known = s != null && s.$3 > 0;
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Text(_status(s), style: ui(13, w: FontWeight.w600)),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  minHeight: 3,
+                  color: C.ink,
+                  backgroundColor: C.line,
+                  value: still ? .5 : (known ? s.$2 / s.$3 : null),
                 ),
-            ]),
-          ),
-          const SizedBox(height: 12),
-          for (final (k, s) in steps.indexed) _stepRow(s, k < _now ? StepMark.done : (k == _now ? StepMark.now : StepMark.wait), still),
-        ]);
-      }),
-      foot: [Btn('나가 있기 · 다 되면 알려 드릴게요', ghost: true, onTap: widget.onLeave)],
+              ),
+            ]);
+          },
+        ),
+        const SizedBox(height: 18),
+        if (w.photos.isNotEmpty) _Film(photos: w.photos, still: still),
+      ]),
+      foot: [Btn('나가 있기 · 다 되면 알려 드릴게요', ghost: true, onTap: w.onLeave)],
     );
   }
 
-  Widget _stepRow(String s, StepMark m, bool still) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(children: [
-          SizedBox(
-            width: 14,
-            height: 14,
-            child: switch (m) {
-              StepMark.done => Container(
-                  decoration: const BoxDecoration(color: C.ink, shape: BoxShape.circle),
-                  child: const Icon(Icons.check_rounded, size: 10, color: C.paper),
-                ),
-              StepMark.now => CircularProgressIndicator(strokeWidth: 1.6, color: C.ink, value: still ? .75 : null),
-              StepMark.wait => Container(decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: C.line, width: 1.5))),
-            },
+  /// The cover as it will be: the cover photo, the place and the dates; it breathes a little while the book is made.
+  Widget _coverCard(bool still) {
+    final w = widget, photo = w.cover ?? (w.photos.isEmpty ? null : w.photos.first);
+    const cw = 168.0, ch = 224.0;
+    return AnimatedBuilder(
+      animation: _breath,
+      builder: (_, child) => Transform.scale(scale: 1 + .012 * _breath.value, child: child),
+      child: Container(
+        width: cw,
+        height: ch,
+        decoration: BoxDecoration(
+          color: themePaper[w.theme] ?? C.paper,
+          borderRadius: const BorderRadius.horizontal(left: Radius.circular(3), right: Radius.circular(6)),
+          boxShadow: const [BoxShadow(color: Color(0x40281A0A), blurRadius: 22, offset: Offset(0, 10))],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(fit: StackFit.expand, children: [
+          if (photo != null) Photo(photo, w: cw, h: ch),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, stops: [.45, 1], colors: [Color(0x00000000), Color(0x8C000000)]),
+            ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(s,
-                style: ui(12.5, h: 1.35, color: m == StepMark.wait ? C.ink2 : C.ink, w: m == StepMark.now ? FontWeight.w700 : FontWeight.w400)),
+          // the spine's fold
+          const Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 10,
+            child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(colors: [Color(0x40000000), Color(0x00000000)]))),
+          ),
+          Positioned(
+            left: 16,
+            right: 12,
+            bottom: 14,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text(w.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: ui(19, w: FontWeight.w800, color: Colors.white, h: 1.15)),
+              if (w.period.isNotEmpty) Text(w.period, style: nm(11, color: const Color(0xE6FFFFFF))),
+            ]),
           ),
         ]),
-      );
+      ),
+    );
+  }
 }
 
-/// A page dropping onto the desk: falls in tilted, lifts its shadow on the way, overshoots a little and settles.
-class _Drop extends StatelessWidget {
+/// A day line typing itself out once it is shown.
+class _Typed extends StatelessWidget {
+  final String text;
   final bool on, still;
-  final double tilt; // resting angle (rad)
-  final Widget child;
-  const _Drop({required this.on, required this.still, required this.tilt, required this.child});
+  const _Typed(this.text, {required this.on, required this.still});
   @override
   Widget build(BuildContext context) => TweenAnimationBuilder<double>(
         tween: Tween(end: on ? 1 : 0),
-        duration: still ? Duration.zero : const Duration(milliseconds: 900),
-        builder: (_, t, c) {
-          final back = 1 - Curves.easeOutBack.transform(t), lift = math.sin(math.pi * t.clamp(0, 1));
-          return Opacity(
-            opacity: (t * 2).clamp(0, 1),
-            child: Transform.translate(
-              offset: Offset(0, back * -26),
-              child: Transform.rotate(
-                angle: tilt + back * -.09,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(boxShadow: [
-                    BoxShadow(color: const Color(0x38281A0A), blurRadius: 6 + 16 * lift, offset: Offset(0, 2 + 8 * lift)),
-                  ]),
-                  child: c,
-                ),
-              ),
-            ),
-          );
-        },
-        child: child,
+        duration: still ? Duration.zero : Duration(milliseconds: 60 * text.length),
+        builder: (_, v, _) => Text(text.substring(0, (text.length * v).round()), style: ui(13, color: C.ink, h: 1.4)),
       );
 }
 
-/// A soft light sweeping across the page being made.
-class _Shimmer extends StatefulWidget {
-  const _Shimmer({super.key});
+/// The picked photos passing slowly under the cover: what goes into the book.
+class _Film extends StatefulWidget {
+  final List<String> photos;
+  final bool still;
+  const _Film({required this.photos, required this.still});
   @override
-  State<_Shimmer> createState() => _ShimmerState();
+  State<_Film> createState() => _FilmState();
 }
 
-class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))..repeat();
+class _FilmState extends State<_Film> with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(vsync: this, duration: Duration(seconds: 4 * widget.photos.length.clamp(6, 40)));
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.still) _c.repeat();
+  }
+
   @override
   void dispose() {
     _c.dispose();
@@ -206,21 +225,21 @@ class _ShimmerState extends State<_Shimmer> with SingleTickerProviderStateMixin 
   }
 
   @override
-  Widget build(BuildContext context) => IgnorePointer(
+  Widget build(BuildContext context) {
+    const s = 54.0, gap = 6.0;
+    final n = widget.photos.length, run = n * (s + gap);
+    return SizedBox(
+      height: s,
+      child: ClipRect(
         child: AnimatedBuilder(
           animation: _c,
-          builder: (_, _) {
-            final x = -2.2 + 4.4 * _c.value;
-            return DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment(x - .7, -1),
-                  end: Alignment(x + .7, 1),
-                  colors: const [Color(0x00FFFFFF), Color(0x66FFFFFF), Color(0x00FFFFFF)],
-                ),
-              ),
-            );
-          },
+          builder: (_, _) => Stack(clipBehavior: Clip.none, children: [
+            for (var k = 0; k < 2; k++)
+              for (final (i, p) in widget.photos.indexed)
+                Positioned(left: k * run + i * (s + gap) - _c.value * run, top: 0, child: Photo(p, w: s, h: s, r: 4)),
+          ]),
         ),
-      );
+      ),
+    );
+  }
 }

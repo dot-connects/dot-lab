@@ -2,10 +2,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:tripbook/ui/making/choose_theme.dart';
+import 'package:tripbook/pipeline.dart' show WriteStage;
 import 'package:tripbook/ui/making/writing.dart';
 import 'package:tripbook/ui/new_book/draft.dart';
 import 'package:tripbook/ui/sample.dart';
-import 'package:tripbook/ui/tokens.dart' show appTheme, kw;
+import 'package:tripbook/ui/tokens.dart' show kw;
 
 import 'harness.dart';
 
@@ -109,8 +110,13 @@ void main() {
     });
   }
 
+  final stage = ValueNotifier<(WriteStage, int, int)?>(null);
   Widget writing({VoidCallback? onLeave, bool words = true}) => WritingScreen(
         photos: _photos,
+        cover: _photos.first,
+        period: '6.12 – 6.14',
+        lines: [(DateTime(2026, 6, 12), '바다를 따라 걷는 첫날'), (DateTime(2026, 6, 13), '섬 하나를 한 바퀴')],
+        stage: stage,
         theme: 'a',
         title: '협재 해변',
         line: '여백의 책 · 보통 24쪽 · 2~3분',
@@ -119,62 +125,40 @@ void main() {
         onLeave: onLeave ?? no,
       );
 
-  testWidgets('writing: steps follow the clock, the last one never claims done; leaving calls back', (t) async {
+  testWidgets('writing: the status is the pipeline\'s real step, the day lines are /pick\'s; leaving calls back', (t) async {
     still(t);
+    stage.value = null;
     var left = 0;
     await pump(t, writing(onLeave: () => left++));
     expect(find.text('책을 만들고 있어요'), findsOneWidget);
-    expect(find.text('사진 38장을 날짜와 장면으로 나누는 중'), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.byIcon(Icons.check_rounded), findsNothing);
-    await t.pump(const Duration(seconds: 30));
-    expect(find.byIcon(Icons.check_rounded), findsOneWidget); // step 1 done, step 2 now
-    await t.pump(const Duration(minutes: 10));
-    expect(find.byIcon(Icons.check_rounded), findsNWidgets(3));
-    expect(find.byType(CircularProgressIndicator), findsOneWidget); // still on the check step
+    expect(find.text('협재 해변'), findsOneWidget); // the cover as it will be
+    expect(find.text('바다를 따라 걷는 첫날'), findsOneWidget);
+    expect(find.text('고른 사진 38장을 책으로 옮길 준비 중'), findsOneWidget);
+    stage.value = (WriteStage.previews, 12, 38);
+    await t.pump();
+    expect(find.text('AI 편집자에게 보낼 사진 정리 중 · 12 / 38'), findsOneWidget);
+    stage.value = (WriteStage.editor, 0, 0);
+    await t.pump();
+    expect(find.textContaining('AI 편집자가 쪽을 짜고 글을 쓰는 중'), findsOneWidget);
+    stage.value = (WriteStage.files, 0, 31);
+    await t.pump();
+    expect(find.text('사진 31장을 책에 붙이는 중'), findsOneWidget);
     await t.tap(find.text('나가 있기 · 다 되면 알려 드릴게요'));
     expect(left, 1);
   });
 
-  testWidgets('writing: 사진만 has no caption step', (t) async {
+  testWidgets('writing: 사진만 says it only lays out pages', (t) async {
     still(t);
+    stage.value = (WriteStage.editor, 0, 0);
     await pump(t, writing(words: false));
-    expect(find.text('캡션과 짧은 글 쓰는 중'), findsNothing);
-    expect(find.text('사진 크기와 순서 맞추는 중'), findsOneWidget);
-  });
-
-  testWidgets('writing: pages drop in, then keep moving', (t) async {
-    t.view.physicalSize = const Size(360, 740) * 2;
-    t.view.devicePixelRatio = 2;
-    addTearDown(t.view.reset);
-    await t.pumpWidget(RepaintBoundary(key: shotKey, child: MaterialApp(debugShowCheckedModeBanner: false, theme: appTheme(), home: writing())));
-    (double?, double?) at(int i) {
-      final p = t.widget<AnimatedPositioned>(find.byType(AnimatedPositioned).at(i));
-      return (p.left, p.top);
-    }
-
-    for (var i = 0; i < 4; i++) {
-      await t.pump(const Duration(milliseconds: 2500));
-    }
-    await t.pump(const Duration(milliseconds: 350)); // the 5th page mid-drop, shimmer on it
-    await shot(t, 'r12-c1-drop', settle: false);
-    for (var i = 0; i < 3; i++) {
-      await t.pump(const Duration(milliseconds: 2500));
-    }
-    await t.pump(const Duration(seconds: 2));
-    final before = [for (var i = 0; i < 6; i++) at(i)];
-    await t.pump(const Duration(milliseconds: 2500));
-    await t.pump(const Duration(seconds: 2));
-    final after = [for (var i = 0; i < 6; i++) at(i)];
-    expect(after.toSet(), before.toSet()); // same six places
-    expect(after, isNot(before)); // but two pages swapped
+    expect(find.textContaining('AI 편집자가 쪽을 짜는 중'), findsOneWidget);
+    expect(find.textContaining('글을 쓰는'), findsNothing);
   });
 
   for (final (sz, n) in _sizes) {
     testWidgets('writing at $n', (t) async {
       still(t);
       await pump(t, writing(), null, sz);
-      await t.pump(const Duration(seconds: 40));
       await shot(t, 'r12-c1-$n');
       expect(find.text('나가 있기 · 다 되면 알려 드릴게요'), findsOneWidget);
     });

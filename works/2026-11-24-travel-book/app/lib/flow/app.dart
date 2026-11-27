@@ -14,6 +14,7 @@ class App {
   bool limited = false; // photo access "일부만 허용"
   final making = <String>{}; // books whose AI layout job this process is waiting for (never twice)
   final writes = <String, Future<AiState>>{}; // a book being made from the making screen; outlives that screen
+  final stages = <String, ValueNotifier<(WriteStage, int, int)?>>{}; // where each of those is (the making screen shows it)
   final shelfChanged = ValueNotifier(0); // bumped when a book finishes away from its screen: the shelf reloads
   App({required this.prefs, required this.store, required this.pipe, required this.src});
   String get booksDir => store.root.path;

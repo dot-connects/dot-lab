@@ -29,7 +29,11 @@ class BookView extends StatelessWidget {
   final BookBanner? banner;
   final bool spread; // two pages per screen
   final VoidCallback? onSpread; // toggles one page / two pages
+  final bool chrome; // the bars are showing (a tap in the middle of the book toggles them)
+  final String? pageLabel; // "3 / 24", shown with the bars
   const BookView({
+    this.chrome = true,
+    this.pageLabel,
     this.spread = false,
     this.onSpread,
     super.key,
@@ -62,9 +66,20 @@ class BookView extends StatelessWidget {
     return Scaffold(
       backgroundColor: bookBg,
       body: SafeArea(
-        child: Column(children: [
-          SizedBox(
+        child: Stack(children: [
+          Positioned.fill(child: page),
+          // the bar floats over the book (like an e-reader) and slides away while reading
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            child: AnimatedSlide(
+            offset: chrome ? Offset.zero : const Offset(0, -1.2),
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            child: Container(
             height: 44,
+            decoration: const BoxDecoration(color: bookBg, boxShadow: [BoxShadow(color: Color(0x1A3C2814), blurRadius: 8, offset: Offset(0, 2))]),
             child: Padding(
               padding: const EdgeInsets.only(left: 6, right: 12),
               child: Row(children: [
@@ -95,14 +110,32 @@ class BookView extends StatelessWidget {
               ]),
             ),
           ),
-          Expanded(
-            child: Stack(children: [
-              Positioned.fill(child: page),
+          ),
+          ),
+          if (pageLabel != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 14,
+              child: IgnorePointer(
+                child: AnimatedOpacity(
+                  opacity: chrome ? 1 : 0,
+                  duration: const Duration(milliseconds: 220),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(color: C.ink.withValues(alpha: .78), borderRadius: BorderRadius.circular(14)),
+                      child: Text(pageLabel!, style: nm(12.5, color: C.paper, w: FontWeight.w600)),
+                    ),
+                  ),
+                ),
+              ),
+            ),
               if (b != null)
                 Positioned(
                   left: 14,
                   right: 14,
-                  top: 8,
+                  top: 52,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
                     decoration: BoxDecoration(color: C.ink, borderRadius: BorderRadius.circular(14)),
@@ -140,8 +173,6 @@ class BookView extends StatelessWidget {
                     ]),
                   ),
                 ),
-            ]),
-          ),
         ]),
       ),
     );

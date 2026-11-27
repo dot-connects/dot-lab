@@ -67,8 +67,17 @@ class BookWebView extends StatefulWidget {
   final int version; // bump to re-render after an edit
   final ValueChanged<int> onLongPress; // page index
   final bool spread; // two pages side by side (an open book) instead of one
+  final VoidCallback? onTapMiddle; // a tap in the middle third: show / hide the bars
+  final void Function(String label, int total)? onPage; // the page(s) on screen: "표지", "3", "3–4"
   const BookWebView(
-      {super.key, required this.book, required this.booksDir, this.version = 0, required this.onLongPress, this.spread = false});
+      {super.key,
+      required this.book,
+      required this.booksDir,
+      this.version = 0,
+      required this.onLongPress,
+      this.spread = false,
+      this.onTapMiddle,
+      this.onPage});
   @override
   State<BookWebView> createState() => _BookWebViewState();
 }
@@ -81,7 +90,7 @@ class _BookWebViewState extends State<BookWebView> with WidgetsBindingObserver, 
 
   Future<void> _render() async {
     if (_c == null || !_loaded) return;
-    await _c!.evaluateJavascript(source: 'window.renderBook(${jsonEncode(widget.book)}, {spread: ${widget.spread}})');
+    await _c!.evaluateJavascript(source: 'window.renderBook(${jsonEncode(widget.book)}, {spread: ${widget.spread}, reader: true})');
   }
 
   @override
@@ -101,6 +110,15 @@ class _BookWebViewState extends State<BookWebView> with WidgetsBindingObserver, 
             callback: (args) {
               final page = args.isNotEmpty && args.first is Map ? (args.first as Map)['page'] : null;
               if (page is int) widget.onLongPress(page);
+            },
+          );
+          c.addJavaScriptHandler(handlerName: 'tapMiddle', callback: (_) => widget.onTapMiddle?.call());
+          c.addJavaScriptHandler(
+            handlerName: 'page',
+            callback: (args) {
+              final m = args.isNotEmpty && args.first is Map ? args.first as Map : const {};
+              final label = m['label'], total = m['total'];
+              if (label is String && total is int) widget.onPage?.call(label, total);
             },
           );
         },
