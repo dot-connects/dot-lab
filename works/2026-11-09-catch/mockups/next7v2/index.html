@@ -1,0 +1,651 @@
+<meta charset="utf-8">
+<title>리얼뽑기 펠트 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+:root{
+  --ink:#3b2e22; --thread:#6e5640; --cream:#fbf3e2; --paper:#fffaf0; --sun:#f6c744; --sky:#b9dcf2; --grass:#a9cf78;
+  --pink:#f3b6c2; --red:#cf4a3c; --muted:#7a6a58; --page:#efe6d4;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page) url(img/felt.png) 0 0/220px;background-blend-mode:soft-light;color:var(--ink);
+  font:16px/1.6 "Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 72px}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:30px}
+.jua,h1,h2{font-family:Jua,"Gowun Dodum",sans-serif;font-weight:400;letter-spacing:-.01em;text-wrap:balance}
+h1{font-size:clamp(30px,6vw,48px);line-height:1.12;margin:0}
+h1 em{font-style:normal;display:inline-block;padding:0 .3em;border-radius:14px;background:var(--sun) url(img/felt.png) 0 0/160px;background-blend-mode:soft-light;box-shadow:0 3px 0 #6e564055}
+.lead{margin:10px 0 0;color:var(--muted);max-width:62ch}
+.toc{display:flex;flex-wrap:wrap;gap:8px}
+.toc a{text-decoration:none;color:var(--ink)}
+
+/* felt kit (page and screens share it) */
+.felt{background-color:var(--c,var(--cream));background-image:url(img/felt.png);background-size:150px;background-blend-mode:soft-light;
+  border-radius:var(--r,18px);position:relative;box-shadow:inset 0 0 0 1px #6e56401a,0 2px 0 #6e564033,0 10px 18px -8px #4a321c66}
+.stitch::after{content:"";position:absolute;inset:5px;border:1.6px dashed #6e564088;border-radius:calc(var(--r,18px) - 5px);pointer-events:none}
+.chip{--r:999px;display:inline-flex;align-items:center;gap:6px;font-family:Jua;font-size:15px;padding:5px 14px;color:var(--ink);border:0;cursor:pointer}
+.chip.stitch::after{inset:3px}
+.fbtn{--r:999px;--c:var(--sun);display:flex;align-items:center;justify-content:center;gap:8px;width:100%;font-family:Jua;font-size:18px;color:var(--ink);
+  border:0;padding:13px 16px;cursor:pointer;transition:transform .08s}
+.fbtn:active{transform:translateY(2px)}
+.fbtn.sub{--c:var(--paper);font-size:16px}
+.flink{background:none;border:0;font:14px "Gowun Dodum",sans-serif;color:var(--muted);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+/* sections */
+.item{--c:var(--paper);--r:30px;padding:26px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:26px;align-items:start}
+.item.stitch::after{inset:8px;border-width:2px}
+@media (max-width:820px){.item{grid-template-columns:minmax(0,1fr)}}
+.item h2{margin:0;font-size:27px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.no{--c:var(--sun);--r:999px;width:40px;height:40px;display:inline-grid;place-items:center;font-family:Jua;font-size:21px}
+.tag{font-size:12px;border:1.5px solid var(--muted);color:var(--muted);border-radius:999px;padding:0 9px;font-family:"Gowun Dodum"}
+.what{margin:10px 0 0;max-width:58ch}
+.facts{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted);max-width:58ch}
+.facts li::before{content:"✂ ";color:var(--thread)}
+.size{display:inline-block;margin-top:14px;font-family:Jua;font-size:14px;padding:3px 12px;--c:#e9e0c9;--r:10px}
+.stage{display:flex;flex-wrap:wrap;gap:22px;justify-content:center;min-width:0}
+.cap{font-size:13px;color:var(--muted);text-align:center;margin:8px 0 0}
+.ctl{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:10px;max-width:330px}
+.ctl .chip{font-size:14px;padding:4px 12px}
+.ctl .chip[aria-pressed="true"]{--c:var(--sun)}
+
+/* device: screens are built in 360x780 dp and shown at 0.86 */
+.dev{--z:.86;width:calc(378px * var(--z));height:calc(798px * var(--z));padding:calc(9px * var(--z));border-radius:calc(50px * var(--z));
+  background:linear-gradient(145deg,#4a3d33,#221a15);box-shadow:0 14px 30px -12px #2a1c1088;flex:none}
+.scr{width:360px;height:780px;transform:scale(var(--z));transform-origin:0 0;border-radius:42px;overflow:hidden;position:relative;background:#ddd;
+  font-family:"Gowun Dodum",sans-serif;color:var(--ink);user-select:none;-webkit-user-select:none;touch-action:none}
+.sb{position:absolute;top:12px;left:26px;right:26px;display:flex;justify-content:space-between;font:600 14px system-ui,sans-serif;z-index:50;pointer-events:none}
+.punch{position:absolute;top:12px;left:50%;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:#111;z-index:51}
+@media (max-width:420px){.dev{--z:.78}}
+
+/* S1 claw */
+#claw{background:#cfe6f5 url(img/bg-claw.jpg) center/cover}
+.rail{position:absolute;top:40px;left:-10px;right:-10px;height:16px;border-radius:8px;z-index:5;
+  background:linear-gradient(#e7c79a,#c99a62 55%,#a87a47);box-shadow:0 3px 6px #5a3a1a55, inset 0 1px 0 #fff6}
+.rail::after{content:"";position:absolute;inset:6px 14px auto;height:2px;background:repeating-linear-gradient(90deg,#7a5530 0 6px,transparent 6px 14px);opacity:.5}
+.top{position:absolute;top:66px;left:14px;right:14px;display:flex;justify-content:space-between;z-index:30}
+.clawbox{position:absolute;top:48px;left:0;width:96px;z-index:20;will-change:transform}
+.clawbox .str{position:absolute;left:50%;top:0;width:3px;margin-left:-1.5px;background:linear-gradient(90deg,#d8c7a5,#fffaf0,#cdb995);height:40px}
+.clawbox img.c{position:absolute;left:0;width:96px;top:40px;transform-origin:50% 30%;transition:transform .25s}
+.clawbox.shut img.c{transform:scaleX(.84)}
+.crit{position:absolute;left:0;top:0;width:84px;height:84px;z-index:10;will-change:transform;transform-origin:0 0}
+.crit img{width:100%;height:100%;object-fit:contain;display:block}
+.crit::after{content:"";position:absolute;left:18%;right:18%;bottom:2px;height:10px;border-radius:50%;background:#2d3b1555;filter:blur(3px);z-index:-1}
+.capwrap{position:absolute;width:96px;height:96px;z-index:25;display:none}
+.capwrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.capwrap .in{inset:16%;width:68%;height:68%}
+.gobtn{position:absolute;right:18px;bottom:30px;width:104px;z-index:30;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;background:none;border:0;padding:0}
+.gobtn img{width:104px;filter:drop-shadow(0 8px 8px #3a2a1555);transition:transform .08s}
+.gobtn:active img{transform:scale(.94) translateY(3px)}
+.gobtn .lbl{--r:10px;font-family:Jua;font-size:14px;padding:1px 12px;margin-top:-6px}
+.hint{position:absolute;left:16px;bottom:44px;font-family:Jua;font-size:14px;padding:6px 13px;z-index:30;--c:#fffaf0e6}
+.toast{position:absolute;left:50%;top:150px;transform:translateX(-50%) scale(.8);opacity:0;z-index:60;font-family:Jua;font-size:20px;padding:10px 20px;white-space:nowrap;transition:.25s;--r:16px}
+.toast.on{opacity:1;transform:translateX(-50%) scale(1)}
+.camoff{width:16px;height:16px}
+
+/* S2 new card */
+#newc{background:url(img/bg-claw.jpg) center/cover}
+#newc::before{content:"";position:absolute;inset:-20px;background:inherit;filter:blur(7px) brightness(.9) saturate(1.05)}
+.burst{position:absolute;left:50%;top:205px;width:330px;height:330px;margin:-165px 0 0 -165px;border-radius:50%;
+  background:repeating-conic-gradient(#fff6 0 7deg,#fff0 7deg 22deg);-webkit-mask:radial-gradient(#000 25%,#0000 68%);mask:radial-gradient(#000 25%,#0000 68%);animation:spin 18s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.newt{position:absolute;top:54px;width:100%;text-align:center;font-family:Jua;font-size:34px;color:#fffaf0;text-shadow:0 3px 0 #b5762e,0 6px 12px #0003;z-index:5}
+.capo{position:absolute;left:50%;top:150px;width:170px;margin-left:-85px;z-index:3;filter:drop-shadow(0 10px 10px #0003)}
+.hero{position:absolute;left:50%;top:104px;width:140px;margin-left:-82px;z-index:4;animation:rise .8s cubic-bezier(.3,1.5,.5,1) both}
+@keyframes rise{from{transform:translateY(70px) scale(.5);opacity:0}}
+.dex{position:absolute;left:16px;right:16px;top:330px;padding:16px 18px 14px;z-index:6;font-size:13.5px}
+.dex .hd{display:flex;justify-content:space-between;font-family:Jua;color:#b5662a;font-size:14px}
+.dex dl{display:grid;grid-template-columns:56px minmax(0,1fr);gap:6px 10px;margin:10px 0 0}
+.dex dt{color:var(--muted)} .dex dd{margin:0}
+.dex .nm{font-family:Jua;font-size:26px;line-height:1.1}
+.tags{display:flex;flex-wrap:wrap;gap:5px}
+.tags span{font-size:12px;padding:1px 9px;border-radius:999px;border:1.5px solid #6e564055;color:var(--muted)}
+.tags span.on{--c:var(--sun);color:var(--ink);border-color:transparent;font-family:Jua;font-size:13px;background:var(--sun) url(img/felt.png) 0 0/120px;background-blend-mode:soft-light;box-shadow:0 2px 0 #6e564044}
+.sets{display:flex;flex-direction:column;gap:5px}
+.sets div{display:flex;align-items:center;gap:8px}
+.sets b{flex:1;font-weight:400}
+.bar{width:86px;height:9px;border-radius:5px;background:#6e56401f;overflow:hidden;box-shadow:inset 0 1px 2px #0002}
+.bar i{display:block;height:100%;border-radius:5px;background:repeating-linear-gradient(90deg,#8fbf5e 0 6px,#7cae4c 6px 7px)}
+.newbtns{position:absolute;left:18px;right:18px;bottom:30px;z-index:6;display:flex;flex-direction:column;gap:8px;align-items:center}
+
+/* S3 dex grid */
+#dexg{background:linear-gradient(var(--sky) 0 25%,var(--grass) 25%)}
+#dexg::before{content:"";position:absolute;inset:0;background:url(img/felt.png) 0 0/180px;mix-blend-mode:soft-light;opacity:.9}
+.dhead{position:absolute;top:44px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:center;z-index:2}
+.dtitle{position:absolute;top:92px;left:18px;right:18px;display:flex;align-items:end;justify-content:space-between;z-index:2}
+.dtitle h3{margin:0;font-family:Jua;font-weight:400;font-size:38px;line-height:1;color:var(--ink);text-shadow:0 2px 0 #fffaf0}
+.prog{display:flex;align-items:center;gap:8px;font-family:Jua;font-size:17px;padding:4px 14px 4px 6px}
+.prog img{width:28px}
+.grid{position:absolute;top:150px;left:14px;right:14px;bottom:0;display:grid;grid-template-columns:repeat(3,1fr);gap:11px;align-content:start;z-index:2;padding-bottom:20px}
+.cell{--r:16px;padding:8px 6px 9px;text-align:center;font-family:Jua;font-size:15px;line-height:1.1}
+.cell img{width:100%;aspect-ratio:1;object-fit:contain;display:block;border-radius:10px}
+.cell img.ph{object-fit:cover;background:#f1e7d6}
+.cell small{display:block;font:11px "Gowun Dodum";color:var(--muted);margin-top:2px}
+.cell .real{position:absolute;top:8px;left:8px;font:10px Jua;background:#cf4a3c;color:#fff;border-radius:6px;padding:0 5px;z-index:2}
+.cell.q{--c:#efe6d2}
+.cell.q img{filter:grayscale(.5) brightness(.96);opacity:.75;padding:10px}
+.cell.q .qq{position:absolute;inset:0;display:grid;place-items:center;font-size:30px;color:#6e5640aa;padding-bottom:20px}
+
+/* S4 detail + ad */
+#det{background:linear-gradient(var(--sky) 0 33%,var(--grass) 33%)}
+#det::before{content:"";position:absolute;inset:0;background:url(img/felt.png) 0 0/180px;mix-blend-mode:soft-light;opacity:.9}
+#det>*{z-index:2}
+.dtop{position:absolute;top:44px;left:16px;right:16px;display:flex;justify-content:space-between}
+.who{position:absolute;top:92px;left:18px;right:18px;display:flex;gap:14px;align-items:center}
+.who .pic{--r:20px;width:86px;height:86px;padding:6px}
+.who .pic img{width:100%;height:100%;object-fit:cover;border-radius:14px}
+.who h3{margin:0;font-family:Jua;font-weight:400;font-size:32px;line-height:1}
+.who p{margin:4px 0 0;font-size:12.5px;color:var(--muted)}
+.make{position:absolute;top:206px;left:14px;right:14px;padding:16px 14px 14px}
+.make h4{margin:0 0 10px;font:21px Jua;font-weight:400}
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pick button{--r:16px;padding:7px 7px 9px;border:0;cursor:pointer;font:15px Jua;color:var(--ink);display:flex;flex-direction:column;gap:6px}
+.pick button img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:11px}
+.pick button[aria-pressed="true"]{--c:#fff1c2;box-shadow:0 0 0 3px var(--sun),0 2px 0 #6e564033,0 10px 18px -8px #4a321c66}
+.left{display:flex;align-items:center;justify-content:center;gap:6px;margin:12px 0 10px;font-size:13px;color:var(--muted)}
+.dots{display:flex;gap:3px}
+.dots i{width:10px;height:13px;border-radius:5px;background:#6e564026;box-shadow:inset 0 0 0 1px #6e564033}
+.dots i.on{background:linear-gradient(var(--pink) 50%,#fff 50%);box-shadow:inset 0 0 0 1px #6e564066}
+.adnote{font-size:12px;color:var(--muted);text-align:center;margin-top:8px}
+.delete{position:absolute;bottom:28px;left:0;right:0;text-align:center}
+.delete .flink{color:#b0473b}
+.adsheet{position:absolute;inset:0;z-index:70;background:#1d150fe6;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#fffaf0;font-family:Jua;font-size:18px}
+.adsheet.on{display:flex}
+.adsheet .tv{width:250px;height:150px;border-radius:16px;background:linear-gradient(135deg,#6d8fb5,#a88dc2);display:grid;place-items:center;font-size:15px;color:#fff;opacity:.85}
+.adbar{width:220px;height:12px;border-radius:6px;background:#ffffff22;overflow:hidden}
+.adbar i{display:block;height:100%;width:0;background:var(--sun) url(img/felt.png) 0 0/80px;background-blend-mode:soft-light}
+.got{position:absolute;left:18px;right:18px;bottom:96px;z-index:65;padding:12px 16px;font-family:Jua;font-size:16px;text-align:center;opacity:0;transform:translateY(10px);transition:.25s;--c:#fffaf0}
+.got.on{opacity:1;transform:none}
+
+/* S5 making */
+#mk{background:#3a2814 url(img/bg-make.jpg) center/cover}
+.mkhead{position:absolute;top:58px;width:100%;text-align:center;color:#fff6e4;z-index:5}
+.mkhead h3{margin:0;font:34px Jua;font-weight:400;text-shadow:0 3px 10px #0007}
+.mkhead p{margin:4px 0 0;font-size:14px;opacity:.9}
+.mkdots{display:flex;gap:8px;justify-content:center;margin-top:14px}
+.mkdots img{width:24px;opacity:.3;transition:opacity .3s,transform .3s}
+.mkdots img.on{opacity:1;transform:translateY(-2px)}
+.pol{position:absolute;left:50%;top:180px;width:118px;margin-left:-59px;padding:7px 7px 22px;background:#fffdf7;border-radius:4px;box-shadow:0 10px 20px #0006;transform:rotate(-5deg);z-index:6}
+.pol img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
+.tufts{position:absolute;inset:0;z-index:7;pointer-events:none}
+.tuft{position:absolute;border-radius:50%;filter:blur(1.4px);opacity:0}
+.glow{position:absolute;left:50%;top:560px;width:300px;height:180px;margin:-90px 0 0 -150px;border-radius:50%;background:radial-gradient(#fff3c0,#ffd27a55 45%,#0000 70%);opacity:.35;z-index:4;transition:opacity 1s;mix-blend-mode:screen}
+.born{position:absolute;left:50%;top:420px;width:150px;margin-left:-75px;z-index:8;opacity:0;transform:translateY(40px) scale(.4);transition:transform .7s cubic-bezier(.3,1.6,.5,1),opacity .4s;filter:drop-shadow(0 10px 8px #0005)}
+.born.on{opacity:1;transform:none}
+.mkbtn{position:absolute;left:22px;right:22px;bottom:34px;z-index:9;opacity:0;transition:opacity .4s}
+.mkbtn.on{opacity:1}
+
+/* S6 weather */
+#wx{background:#8aa0b8 url(img/wall.jpg) center/cover}
+.clock{position:absolute;top:84px;width:100%;text-align:center;color:#fff;font:300 64px/1 system-ui,sans-serif;text-shadow:0 2px 10px #0003}
+.date{position:absolute;top:156px;width:100%;text-align:center;color:#fff;font:14px system-ui,sans-serif;opacity:.9}
+.apps{position:absolute;left:26px;right:26px;bottom:110px;display:grid;grid-template-columns:repeat(4,1fr);gap:20px 0;justify-items:center}
+.apps i{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;color:#fff;font:600 13px system-ui;box-shadow:0 3px 8px #0002}
+.dock{position:absolute;left:18px;right:18px;bottom:22px;height:70px;border-radius:24px;background:#ffffff38;backdrop-filter:blur(8px)}
+.zone{position:absolute;left:130px;top:280px;width:210px;height:240px;z-index:10}
+.zone.show{outline:2px dashed #fffb;outline-offset:2px;border-radius:12px;background:#ffffff14}
+.zone .zl{position:absolute;bottom:-24px;left:0;right:0;text-align:center;font:12px "Gowun Dodum";color:#fff;display:none;text-shadow:0 1px 3px #000a}
+.zone.show .zl{display:block}
+.wpet{position:absolute;left:66px;top:120px;width:112px;height:112px}
+.wpet img.p{width:100%;height:100%;object-fit:contain}
+.wpet.hop{animation:hop .8s ease-in-out infinite}
+@keyframes hop{0%,100%{transform:translateY(0)}45%{transform:translateY(-22px)}}
+.wpet.sway{animation:sway 2.4s ease-in-out infinite}
+@keyframes sway{50%{transform:translateX(3px) rotate(1deg)}}
+.prop{position:absolute;pointer-events:none;transition:opacity .3s}
+.p-umb{width:104px;left:2px;top:-62px;transform-origin:50% 100%;animation:umb 2.6s ease-in-out infinite}
+@keyframes umb{50%{transform:rotate(-5deg)}}
+.p-scarf{width:70px;left:22px;top:62px}
+.p-mask{width:56px;left:28px;top:42px}
+.p-sun{width:52px;left:84px;top:-34px;animation:bob 2.2s ease-in-out infinite}
+.p-cloud{width:80px;left:16px;top:-70px;animation:bob 3s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-5px)}}
+.drop{position:absolute;width:3px;height:10px;border-radius:2px;background:#8fc3ec;opacity:0;animation:drop 1s linear infinite}
+@keyframes drop{0%{opacity:0;transform:translateY(0)}15%{opacity:.9}100%{opacity:0;transform:translateY(70px)}}
+.flake{position:absolute;width:15px;opacity:0;animation:flake 3.2s linear infinite}
+@keyframes flake{0%{opacity:0;transform:translateY(0) rotate(0)}15%{opacity:1}100%{opacity:0;transform:translate(10px,110px) rotate(140deg)}}
+.zz{position:absolute;left:100px;top:10px;font:18px Jua;color:#fff;text-shadow:0 1px 4px #0008;animation:zz 2.4s ease-in infinite;opacity:0}
+@keyframes zz{0%{opacity:0;transform:none}30%{opacity:1}100%{opacity:0;transform:translate(14px,-32px)}}
+/* the app's TalkBubble, felt */
+.talk{position:absolute;right:auto;left:0;top:0;max-width:180px;padding:8px 12px;font:600 13px/1.35 "Gowun Dodum",sans-serif;--c:#fffdf6;--r:18px;white-space:normal;text-align:center;
+  animation:pop .35s cubic-bezier(.3,1.6,.5,1) both}
+.talk b{font-family:Jua;font-weight:400;font-size:14px}
+.talk .t{display:block;font:12px Jua;color:#b5662a;margin-top:1px}
+.talk::before,.talk::after{content:"";position:absolute;border-radius:50%;background:#fffdf6;box-shadow:0 2px 4px #4a321c33}
+.talk::before{width:12px;height:12px;left:22px;bottom:-14px}
+.talk::after{width:7px;height:7px;left:14px;bottom:-24px}
+#wx .talk::before{left:92px} #wx .talk::after{left:104px}
+@keyframes pop{from{transform:scale(.4);opacity:0}}
+
+/* S7 store */
+.store{width:310px;aspect-ratio:9/16;border-radius:20px;overflow:hidden;position:relative;flex:none;max-width:100%;
+  background:var(--cream) url(img/felt.png) 0 0/170px;background-blend-mode:soft-light;box-shadow:0 12px 24px -12px #4a321c88}
+.store h3{position:absolute;top:26px;left:0;right:0;margin:0;text-align:center;font:26px/1.32 Jua;font-weight:400}
+.store h3 em{font-style:normal;display:inline-block;padding:2px 12px;border-radius:12px;background:var(--sun) url(img/felt.png) 0 0/120px;background-blend-mode:soft-light;box-shadow:0 3px 0 #6e564044;margin-top:4px}
+.store .polar{position:absolute;left:22px;top:150px;width:128px;padding:7px 7px 26px;background:#fffefa;border-radius:3px;transform:rotate(-6deg);box-shadow:0 8px 16px #4a321c44}
+.store .polar img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
+.store .polar span{position:absolute;bottom:5px;left:0;right:0;text-align:center;font:13px Jua;color:var(--muted)}
+.store .tape{position:absolute;top:-10px;left:36px;width:56px;height:20px;background:#f3d9a6cc;transform:rotate(4deg)}
+.store .arrow{position:absolute;left:140px;top:210px;width:60px}
+.store .res{position:absolute;right:14px;top:172px;width:136px;text-align:center;font:13px Jua;color:var(--muted)}
+.store .res img{width:126px;filter:drop-shadow(0 10px 8px #4a321c44)}
+.store .ped{width:120px;height:20px;margin:-14px auto 4px;border-radius:50%;background:radial-gradient(#fff8e2,#e8d6b4);box-shadow:0 4px 0 #cdb58e}
+.store .mini{position:absolute;left:50%;bottom:-40px;width:170px;height:250px;margin-left:-85px;border-radius:30px;border:7px solid #2b221c;background:#8aa0b8 url(img/wall.jpg) center/cover;overflow:hidden}
+.store .mini img{position:absolute;width:62px;left:72px;bottom:96px}
+.store .mini .talk{right:auto;left:14px;top:auto;bottom:160px;font-size:10px;padding:5px 8px;max-width:110px}
+.store .mini .talk::before{left:auto;right:20px;width:8px;height:8px;bottom:-10px}
+.store .mini .talk::after{display:none}
+.oldshot{width:230px;border-radius:14px;box-shadow:0 8px 18px -10px #0006;display:block}
+
+/* S8 reel */
+.reel{width:300px;aspect-ratio:9/16;border-radius:18px;overflow:hidden;position:relative;background:#555 url(img/calico.jpg) center/cover;flex:none;max-width:100%;box-shadow:0 12px 24px -12px #0008}
+.reel .lab{position:absolute;top:14px;left:14px;font:13px Jua;color:#fff;background:#0005;border-radius:9px;padding:2px 10px}
+.reel .fl{position:absolute;width:124px;left:22px;top:64px;opacity:0;transform:translateY(40px) scale(.2);filter:drop-shadow(0 12px 10px #0006)}
+.reel .fl.on{animation:popin .75s cubic-bezier(.3,1.6,.5,1) forwards}
+@keyframes popin{to{opacity:1;transform:none}}
+.reel .sp{position:absolute;width:26px;opacity:0}
+.reel .sp.on{animation:sp 1.1s ease-out forwards}
+@keyframes sp{0%{opacity:0;transform:scale(.3) rotate(0)}30%{opacity:1}100%{opacity:0;transform:scale(1.4) rotate(90deg)}}
+.reel .sub{position:absolute;left:14px;right:14px;bottom:44px;font:24px/1.35 Jua;color:#fff;text-shadow:0 2px 0 #3b2e22,0 0 10px #000a;min-height:66px}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>리얼뽑기, 펠트로 다시<br><em>시안 8화면</em></h1>
+  <p class="lead">고르신 A(펠트 미니어처)로 앱 화면을 360×780 실제 크기로 다시 짰어요. 배경·집게·버튼·캡슐·날씨 소품·작업대는 새로 그린 그림이고, 털뭉치 녀석들은 지금 앱에 들어 있는 그림 그대로예요. 버튼·카드는 전부 같은 펠트 천과 바느질선으로 맞췄어요.</p>
+</header>
+<nav class="toc" aria-label="화면 목록">
+  <a class="chip felt stitch" href="#s1">1 뽑기</a><a class="chip felt stitch" href="#s2">2 새 녀석 카드</a><a class="chip felt stitch" href="#s3">3 도감</a><a class="chip felt stitch" href="#s4">4 광고로 1장 더</a><a class="chip felt stitch" href="#s5">5 만드는 중</a><a class="chip felt stitch" href="#s6">6 날씨 말풍선</a><a class="chip felt stitch" href="#s7">7 스토어 첫 장</a><a class="chip felt stitch" href="#s8">8 릴스 첫 장면</a>
+</nav>
+
+<!-- 1 claw -->
+<section class="item felt stitch" id="s1">
+  <div>
+    <h2><span class="no felt">1</span>뽑기 화면 <span class="tag">화풍 통일의 시작</span></h2>
+    <p class="what">하늘·풀밭·울타리 구성은 그대로 두고, 전부 펠트 미니어처로 바꿨어요. 집게는 나무+양모, 버튼은 펠트 받침 위 빨간 단추라서 털뭉치 녀석들과 같은 세상처럼 보여요.</p>
+    <ul class="facts">
+      <li>화면을 끌어 집게를 맞추고 빨간 버튼을 눌러 보세요. 잡히면 캡슐에 싸여 통통 튀고 굴러가요(지금 앱 흐름 그대로).</li>
+      <li>카메라를 켜면 배경 대신 카메라 화면이고, 레일·집게·버튼·캡슐만 같은 그림으로 남아요.</li>
+      <li>앱에는 그림 4장(배경·집게·버튼·캡슐)만 바꿔 넣으면 돼요. 판정·움직임 코드는 그대로.</li>
+    </ul>
+    <span class="size felt">크기 M · 그림 교체 + 레일·라벨 다듬기</span>
+  </div>
+  <div class="stage">
+    <div><div class="dev"><div class="scr" id="old1" style="background:url(img/old-claw.jpg) center/cover"><div class="punch"></div></div></div><p class="cap">지금</p></div>
+    <div><div class="dev"><div class="scr" id="claw">
+      <div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="punch"></div>
+      <div class="rail"></div>
+      <div class="top">
+        <button class="chip felt stitch"><svg class="camoff" viewBox="0 0 24 24" fill="none" stroke="#3b2e22" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="18" height="13" rx="3"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/></svg>카메라 켜기</button>
+        <button class="chip felt stitch" id="dexn">도감 7</button>
+      </div>
+      <div class="clawbox" id="cb"><div class="str" id="str"></div><img class="c" src="img/claw.png" alt="집게"></div>
+      <div class="capwrap" id="capw"><img class="in" id="capIn" alt=""><img src="img/cap-closed.png" alt="" style="opacity:.82"></div>
+      <div class="hint felt stitch">끌어서 맞추고, 꾹!</div>
+      <button class="gobtn" id="go" aria-label="집기"><img src="img/button.png" alt=""><span class="lbl felt">집기</span></button>
+      <div class="toast felt stitch" id="toast"></div>
+    </div></div><p class="cap">펠트 (끌고 눌러 보세요)</p></div>
+  </div>
+</section>
+
+<!-- 2 new card -->
+<section class="item felt stitch" id="s2">
+  <div>
+    <h2><span class="no felt">2</span>새 녀석 카드 <span class="tag">CUBU</span></h2>
+    <p class="what">캡슐이 열리며 녀석이 튀어나오고, 신분증 같은 카드가 붙어요. 뽑은 시각·성격 두 개·모음 진행이 있어서 한 마리가 "모으는 것"이 돼요.</p>
+    <ul class="facts">
+      <li>성격 6개 중 2개는 뽑을 때 정해지고, 홈 화면 혼잣말 말투에도 써요(잠꾸러기 = "졸려…" 더 자주).</li>
+      <li>모음은 이미 있는 분류로: 고양이·강아지·털뭉치 16종·진짜 녀석. 위치는 권한 때문에 넣지 않아요.</li>
+      <li>주 버튼은 "도감에 넣기" 하나.</li>
+    </ul>
+    <span class="size felt">크기 S~M · 상세 상단 + 모음 표</span>
+  </div>
+  <div class="dev"><div class="scr" id="newc">
+    <div class="sb" style="color:#fff"><span>9:42</span><span>●●● ▮</span></div><div class="punch"></div>
+    <div class="burst"></div>
+    <div class="newt">새 녀석!</div>
+    <img class="capo" src="img/cap-open.png" alt="">
+    <img class="hero" src="img/calico-fluff.png" alt="삼색이">
+    <div class="dex felt stitch" style="--c:#fffaf0">
+      <div class="hd"><span>진짜 고양이</span><span>No.008</span></div>
+      <dl>
+        <dt>이름</dt><dd class="nm">삼색이</dd>
+        <dt>뽑은 날</dt><dd>11월 27일 오후 3:12</dd>
+        <dt>성격</dt><dd class="tags"><span>느긋함</span><span class="on">잠꾸러기</span><span>호기심</span><span class="on">애교쟁이</span><span>새침</span><span>장난</span></dd>
+        <dt>모음</dt><dd class="sets">
+          <div><b>고양이 모임</b><span class="bar"><i style="width:50%"></i></span>2/4</div>
+          <div><b>진짜 녀석</b><span class="bar"><i style="width:30%"></i></span>3/10</div>
+          <div><b>털뭉치 도감</b><span class="bar"><i style="width:44%"></i></span>7/16</div>
+        </dd>
+      </dl>
+    </div>
+    <div class="newbtns"><button class="fbtn felt stitch">도감에 넣기</button><button class="flink">이름 바꾸기</button></div>
+  </div></div>
+</section>
+
+<!-- 3 dex -->
+<section class="item felt stitch" id="s3">
+  <div>
+    <h2><span class="no felt">3</span>도감 <span class="tag">화풍 통일</span></h2>
+    <p class="what">칸마다 펠트 천 카드, 아직 못 뽑은 칸은 닫힌 캡슐로 보여요. "?" 점선 칸보다 "저 안에 뭐가 있을까"가 돼요.</p>
+    <ul class="facts">
+      <li>진짜 녀석(사진으로 뽑은 우리 집 고양이·강아지)은 빨간 "진짜" 딱지.</li>
+      <li>숫자 알약(8/16)은 캡슐 그림 + 숫자 — 누르는 버튼과 모양이 달라서 헷갈리지 않아요.</li>
+      <li>"펫 설정"은 오른쪽 위 보조 칩 하나로.</li>
+    </ul>
+    <span class="size felt">크기 M · 공통 카드·칩 컴포넌트</span>
+  </div>
+  <div class="dev"><div class="scr" id="dexg">
+    <div class="sb"><span>9:43</span><span>●●● ▮</span></div><div class="punch"></div>
+    <div class="dhead"><button class="chip felt stitch">‹ 뽑기</button><button class="chip felt stitch">펫 설정</button></div>
+    <div class="dtitle"><h3>도감</h3><span class="prog felt"><img src="img/cap-closed.png" alt="">8 / 16</span></div>
+    <div class="grid" id="grid"></div>
+  </div></div>
+</section>
+
+<!-- 4 detail + ad -->
+<section class="item felt stitch" id="s4">
+  <div>
+    <h2><span class="no felt">4</span>광고 보고 1장 더 <span class="tag">릴펫</span></h2>
+    <p class="what">무료 5장을 다 쓴 상세 화면. 지금은 누를 수 없는 "구매 · 500원"이 있던 자리에 "광고 보고 1장 더"가 들어가요.</p>
+    <ul class="facts">
+      <li>강조 버튼은 하나. 남은 장수는 캡슐 5칸으로 한 번만 보여요(지금은 같은 숫자가 3번).</li>
+      <li>하루 3번. 광고 단가가 그림 원가보다 낮으면 "광고 2번에 1장" — AdMob 보상형 단가부터 재요.</li>
+      <li>털뭉치·피규어는 버튼 2개 대신 고르는 칸 2개 + 버튼 1개.</li>
+    </ul>
+    <span class="size felt">크기 M · AdMob 보상형 + Worker 1장 지급</span>
+  </div>
+  <div class="dev"><div class="scr" id="det">
+    <div class="sb"><span>9:44</span><span>●●● ▮</span></div><div class="punch"></div>
+    <div class="dtop"><button class="chip felt stitch">‹ 도감</button><button class="chip felt stitch">자랑하기</button></div>
+    <div class="who"><div class="pic felt"><img src="img/kkam-fluff.jpg" alt="까망이"></div><div><h3>까망이</h3><p>진짜 고양이 · No.1 · 11월 19일 뽑음</p></div></div>
+    <div class="make felt stitch" style="--c:#fffaf0;--r:22px">
+      <h4>펫으로 만들기</h4>
+      <div class="pick" role="group" aria-label="모양">
+        <button class="felt" aria-pressed="true" data-k="털뭉치"><img src="img/kkam-fluff.jpg" alt="">털뭉치</button>
+        <button class="felt" aria-pressed="false" data-k="피규어"><img src="img/kkam-figure.jpg" alt="">피규어</button>
+      </div>
+      <div class="left"><span class="dots" id="dots"><i></i><i></i><i></i><i></i><i></i></span><span id="leftT">무료 펫 그림 다 썼어요</span></div>
+      <button class="fbtn felt stitch" id="adBtn">▶ 광고 보고 1장 더</button>
+      <div class="adnote" id="adNote">오늘 광고 0/3 · 500원 구매는 곧 열려요</div>
+    </div>
+    <div class="delete"><button class="flink">도감에서 지우기</button></div>
+    <div class="adsheet" id="adSheet"><div class="tv">광고 (보상형 · 실제 30초)</div><div class="adbar"><i id="adBar"></i></div>끝까지 보면 1장!</div>
+    <div class="got felt stitch" id="got">1장 받았어요! 털뭉치로 만들까요?</div>
+  </div></div>
+</section>
+
+<!-- 5 making -->
+<section class="item felt stitch" id="s5">
+  <div>
+    <h2><span class="no felt">5</span>펫 만드는 중 <span class="tag">CUBU</span></h2>
+    <p class="what">그림이 나오는 몇 초 동안, 작은 펠트 작업대에서 사진이 털 뭉치로 풀려 받침 위로 모이고 녀석이 퐁 나와요. 기다림이 볼거리가 돼요.</p>
+    <ul class="facts">
+      <li>털 색은 사진에서 뽑아요. 서버가 늦으면 털이 받침 둘레를 계속 맴돌기만 해요.</li>
+      <li>진행은 캡슐 5칸. 뽑기와 같은 재료.</li>
+      <li>배경은 그림 한 장 + 입자 40개라 가벼워요.</li>
+    </ul>
+    <span class="size felt">크기 M · 화면 하나</span>
+  </div>
+  <div style="text-align:center">
+    <div class="dev"><div class="scr" id="mk">
+      <div class="sb" style="color:#fff6e4"><span>9:45</span><span>●●● ▮</span></div><div class="punch"></div>
+      <div class="mkhead"><h3 id="mkT">만드는 중</h3><p id="mkS">사진 보고 털을 모으는 중이에요</p>
+        <div class="mkdots" id="mkDots"><img src="img/cap-closed.png" alt=""><img src="img/cap-closed.png" alt=""><img src="img/cap-closed.png" alt=""><img src="img/cap-closed.png" alt=""><img src="img/cap-closed.png" alt=""></div></div>
+      <div class="pol" id="pol"><img src="img/calico.jpg" alt="찍은 사진"></div>
+      <div class="glow" id="glow"></div>
+      <div class="tufts" id="tufts"></div>
+      <img class="born" id="born" src="img/calico-fluff.png" alt="완성된 삼색이">
+      <div class="mkbtn" id="mkBtn"><button class="fbtn felt stitch">홈 화면에 데려가기</button></div>
+    </div></div>
+    <div class="ctl" style="margin-inline:auto"><button class="chip felt stitch" id="mkRe">다시 보기</button></div>
+  </div>
+</section>
+
+<!-- 6 weather -->
+<section class="item felt stitch" id="s6">
+  <div>
+    <h2><span class="no felt">6</span>펫이 날씨를 알려 줘요 <span class="tag">릴펫</span></h2>
+    <p class="what">화면 전체가 아니라 <b>펫이 서 있는 작은 칸만</b> 써요. 펫이 우산을 쓰거나 목도리를 하고, 지금 쓰는 혼잣말 말풍선에 날씨 한 줄을 말해요.</p>
+    <ul class="facts">
+      <li>말하는 때는 지금 혼잣말 규칙 그대로(잠금 해제·홈 복귀, 10분 간격, 하루 12번). 아침 첫 잠금 해제엔 날씨를 먼저.</li>
+      <li>상태별 소품: 맑음 해님 · 비 우산(이 칸 안에만 빗방울) · 눈 목도리+눈송이 · 미세먼지 나쁨 마스크 · 밤엔 자면서 내일 날씨만.</li>
+      <li>날씨는 대략 위치가 필요해요. 기본 꺼짐, 펫 설정 "더 보기"의 "날씨 알려 주기" 하나. 기상청 단기예보(무료)로 3시간마다.</li>
+    </ul>
+    <span class="size felt">크기 M · Talk 에 날씨 줄 + 소품 그림 6장</span>
+  </div>
+  <div style="text-align:center">
+    <div class="dev"><div class="scr" id="wx">
+      <div class="sb" style="color:#fff"><span>8:12</span><span>●●● ▮</span></div><div class="punch"></div>
+      <div class="clock" id="wxClock">8:12</div><div class="date">11월 28일 금요일</div>
+      <div class="zone" id="zone"><span class="zl">펫이 쓰는 칸 (나머지는 그대로)</span>
+        <div id="fx"></div>
+        <div class="talk felt" id="talk"></div>
+        <div class="wpet" id="wpet"><img class="p" id="wimg" src="img/monggeul-front.webp" alt="몽글"></div>
+      </div>
+      <div class="apps"><i style="background:#506a8a">▣</i><i style="background:#e9786a">▲</i><i style="background:#f0b93a">≡</i><i style="background:#4caf74">●</i><i style="background:#9b6fd6">♪</i><i style="background:#3e5577">◷</i><i style="background:#ee8a3a">▦</i><i style="background:#6d7785">◎</i></div>
+      <div class="dock"></div>
+    </div></div>
+    <div class="ctl" style="margin-inline:auto" role="group" aria-label="날씨">
+      <button class="chip felt stitch" data-w="sun" aria-pressed="false">맑음</button><button class="chip felt stitch" data-w="rain" aria-pressed="true">비</button><button class="chip felt stitch" data-w="snow" aria-pressed="false">눈</button><button class="chip felt stitch" data-w="dust" aria-pressed="false">미세먼지</button><button class="chip felt stitch" data-w="night" aria-pressed="false">밤</button>
+    </div>
+    <label class="cap" style="display:block"><input type="checkbox" id="zoneT"> 펫이 쓰는 칸 보기</label>
+  </div>
+</section>
+
+<!-- 7 store -->
+<section class="item felt stitch" id="s7">
+  <div>
+    <h2><span class="no felt">7</span>스토어 첫 장 문구 <span class="tag">릴펫</span></h2>
+    <p class="what">첫 장을 기능 설명에서 "우리 아이" 이야기로 바꿔요. 사진 한 장 → 털뭉치 → 내 홈 화면, 세 단계가 한 장에 보여요.</p>
+    <ul class="facts">
+      <li>짧은 설명: <b>우리 아이 사진 한 장으로 털뭉치 펫을 만들어 홈 화면에 데려와요. 인형뽑기로 뽑는 녀석들도 함께.</b></li>
+      <li>뽑기 재미(펫 없는 사람도 즐김)는 2번째 장 — 릴펫과 다른 점이라 지켜요.</li>
+    </ul>
+    <span class="size felt">크기 S · 스크린샷·문구</span>
+  </div>
+  <div class="stage">
+    <div><img class="oldshot" src="img/old-shot2.jpg" alt="지금 스크린샷"><p class="cap">지금</p></div>
+    <div><div class="store">
+      <h3>우리 아이 사진 한 장이<br><em>털뭉치 펫이 돼요</em></h3>
+      <div class="polar"><i class="tape"></i><img src="img/calico.jpg" alt=""><span>우리 집 삼색이</span></div>
+      <svg class="arrow" viewBox="0 0 60 40"><path d="M4 30 C20 6, 40 6, 54 20" fill="none" stroke="#6e5640" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round"/><path d="M46 12 L55 21 L44 25" fill="none" stroke="#6e5640" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="res"><img src="img/calico-fluff.png" alt=""><div class="ped"></div>털뭉치 삼색이</div>
+      <div class="mini"><span class="talk felt">집사 왔어?</span><img src="img/calico-fluff.png" alt=""></div>
+    </div><p class="cap">바꾼 첫 장</p></div>
+  </div>
+</section>
+
+<!-- 8 reel -->
+<section class="item felt stitch" id="s8">
+  <div>
+    <h2><span class="no felt">8</span>릴스 첫 장면 <span class="tag">CUBU</span></h2>
+    <p class="what">0초에 결과부터. 진짜 삼색이 옆에 털뭉치 삼색이가 퐁 나타나요. 설명 없이 "아 이런 앱"이 돼요.</p>
+    <ul class="facts">
+      <li>촬영 없이 있는 사진과 결과물로 합성. 첫 1.5초만 바꾸고 뒤는 지금 릴스(framed-v2) 그대로.</li>
+      <li>자막 첫 줄 = 7번 스토어 문구와 같은 말.</li>
+    </ul>
+    <span class="size felt">크기 S · 렌더 1.5초</span>
+  </div>
+  <div style="text-align:center">
+    <div class="reel" id="reel"><span class="lab">그냥 시켜봄 · 리얼뽑기</span>
+      <img class="sp" id="sp1" src="img/wx-snow.png" alt="" style="left:132px;top:70px">
+      <img class="sp" id="sp2" src="img/wx-snow.png" alt="" style="left:18px;top:170px;width:18px">
+      <img class="fl" id="rl" src="img/calico-fluff.png" alt="">
+      <div class="sub" id="sub"></div>
+    </div>
+    <div class="ctl" style="margin-inline:auto"><button class="chip felt stitch" id="rlRe">다시 보기</button></div>
+  </div>
+</section>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- 1 claw ---------- */
+const scr = $("claw"), cb = $("cb"), str = $("str"), capw = $("capw");
+const W = 360, FLOOR = [560, 640, 715];
+const crits = [["monggeul", 40, 0], ["dalsom", 190, 1], ["bamtol", 120, 2]].map(([id, x, row]) => {
+  const el = document.createElement("div"); el.className = "crit";
+  const s = 1.2 + row * .22; el.innerHTML = `<img src="img/${id}-walk1.webp" alt="">`;
+  scr.appendChild(el);
+  return { id, el, img: el.firstChild, x, y: FLOOR[row], s, dir: row % 2 ? -1 : 1, f: 1, held: false, gone: false, speed: .5 + row * .15 };
+});
+let clawX = 132, busy = false, dex = 7;
+function placeClaw(){ cb.style.transform = `translateX(${clawX}px)`; }
+placeClaw();
+function tick(){
+  for (const c of crits) {
+    if (c.held || c.gone) continue;
+    c.x += c.dir * c.speed; if (c.x < -10 || c.x > W - 84 * c.s) c.dir *= -1;
+    c.el.style.transform = `translate(${c.x}px,${c.y - 84 * c.s}px) scale(${c.s})`; c.img.style.transform = `scaleX(${c.dir})`;
+    c.el.style.zIndex = 10 + Math.round(c.y / 10);
+  }
+}
+setInterval(() => { for (const c of crits) if (!c.held && !c.gone) { c.f = c.f % 4 + 1; c.img.src = `img/${c.id}-walk${c.f}.webp`; } }, 150);
+(function loop(){ tick(); requestAnimationFrame(loop); })();
+let drag = null;
+scr.addEventListener("pointerdown", e => { if (busy || e.target.closest("button")) return; drag = e.clientX; scr.setPointerCapture(e.pointerId); });
+scr.addEventListener("pointermove", e => { if (drag == null) return; const k = scr.getBoundingClientRect().width / W;
+  clawX = Math.max(0, Math.min(W - 96, clawX + (e.clientX - drag) / k)); drag = e.clientX; placeClaw(); });
+scr.addEventListener("pointerup", () => drag = null);
+function toast(t){ const el = $("toast"); el.textContent = t; el.classList.add("on"); setTimeout(() => el.classList.remove("on"), 1500); }
+function anim(el, kf, o){ return el.animate(kf, { fill: "forwards", easing: "ease-in-out", ...o }).finished; }
+$("go").onclick = async () => {
+  if (busy) return; busy = true;
+  const cx = clawX + 48;
+  const hit = crits.filter(c => !c.gone && Math.abs(c.x + 42 * c.s - cx) < 40 * c.s).sort((a, b) => b.y - a.y)[0];
+  const CLAW_H = 123, depth = hit ? Math.round(hit.y - 46 * hit.s - CLAW_H - 48) : 470;
+  if (hit) hit.held = true;
+  const imgD = cb.querySelector("img.c");
+  await Promise.all([anim(str, [{ height: "40px" }, { height: depth + "px" }], { duration: 900 }),
+    anim(imgD, [{ top: "40px" }, { top: depth + "px" }], { duration: 900 })]);
+  cb.classList.add("shut"); await wait(300);
+  if (!hit) { toast("아깝다! 다시 해 봐"); cb.classList.remove("shut");
+    await Promise.all([anim(str, [{ height: depth + "px" }, { height: "40px" }], { duration: 700 }), anim(imgD, [{ top: depth + "px" }, { top: "40px" }], { duration: 700 })]);
+    str.getAnimations().forEach(x => x.cancel()); imgD.getAnimations().forEach(x => x.cancel()); busy = false; return; }
+  // capsule wraps it on the way up
+  $("capIn").src = `img/${hit.id}-holdA.webp`; hit.el.style.visibility = "hidden";
+  capw.style.display = "block"; capw.style.left = (clawX) + "px";
+  const lift = [{ height: depth + "px" }, { height: "60px" }];
+  const capTopFrom = 48 + depth + 70, capTopTo = 48 + 60 + 70;
+  const a1 = anim(str, lift, { duration: 900 });
+  const imgC = cb.querySelector("img.c");
+  const a2 = anim(imgC, [{ top: depth + "px" }, { top: "60px" }], { duration: 900 });
+  const a3 = anim(capw, [{ top: capTopFrom + "px", transform: "scale(.6)" }, { top: capTopTo + "px", transform: "scale(1)" }], { duration: 900 });
+  await Promise.all([a1, a2, a3]);
+  cb.classList.remove("shut"); await wait(150);
+  // drop, bounce, roll out
+  await anim(capw, [{ top: capTopTo + "px" }, { top: "600px", offset: .55 }, { top: "540px", offset: .72 }, { top: "600px", offset: .86 }, { top: "585px", offset: .93 }, { top: "600px" }],
+    { duration: 1100, easing: "linear" });
+  dex++; $("dexn").textContent = `도감 ${dex}`; toast(`${hit.id === "monggeul" ? "몽글" : hit.id === "dalsom" ? "달솜" : "밤톨"} 뽑았다! 도감 +1`);
+  await anim(capw, [{ top: "600px", left: clawX + "px", transform: "rotate(0)" }, { top: "600px", left: W + 20 + "px", transform: "rotate(400deg)" }], { duration: 1000, easing: "ease-in" });
+  capw.getAnimations().forEach(a => a.cancel()); capw.style.display = "none";
+  str.getAnimations().forEach(a => a.cancel()); imgC.getAnimations().forEach(a => a.cancel()); imgC.style.top = "40px"; str.style.height = "40px";
+  hit.gone = true; setTimeout(() => { hit.x = -80; hit.dir = 1; hit.gone = false; hit.held = false; hit.el.style.visibility = ""; }, 1800);
+  busy = false;
+};
+
+/* ---------- 3 dex grid ---------- */
+const CELLS = [["calico-fluff.png", "삼색이", "고양이", 1], ["kkam-fluff.jpg", "까망이", "고양이", 1, 1], ["monggeul-front.webp", "몽글", "털뭉치"],
+  ["ppiyak-front.webp", "삐약", "털뭉치"], ["dalsom-front.webp", "달솜", "털뭉치"], ["bamtol-front.webp", "밤톨", "털뭉치"],
+  ["nyangsom-front.webp", "냥솜", "털뭉치"], ["meongsom-front.webp", "멍솜", "털뭉치"], [0], [0], [0], [0]];
+$("grid").innerHTML = CELLS.map(([f, n, t, real, ph]) => f
+  ? `<div class="cell felt stitch">${real ? '<span class="real">진짜</span>' : ""}<img ${ph ? 'class="ph"' : ""} src="img/${f}" alt="">${n}<small>${t}</small></div>`
+  : `<div class="cell felt q"><img src="img/cap-closed.png" alt=""><span class="qq">?</span><small style="visibility:hidden">-</small></div>`).join("");
+
+/* ---------- 4 detail + ad ---------- */
+document.querySelectorAll(".pick button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".pick button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  if (credit) $("adBtn").textContent = `${b.dataset.k}로 만들기 (1장)`;
+});
+let ads = 0, credit = 0;
+$("adBtn").onclick = async () => {
+  if (credit) { $("got").textContent = "만드는 중 화면으로 가요 (5번)"; $("got").classList.add("on"); setTimeout(() => $("got").classList.remove("on"), 1600); return; }
+  if (ads >= 3) return;
+  $("adSheet").classList.add("on"); const bar = $("adBar"); bar.style.transition = "none"; bar.style.width = 0;
+  requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.transition = "width 3s linear"; bar.style.width = "100%"; }));
+  await wait(3100); $("adSheet").classList.remove("on");
+  ads++; credit = 1; $("dots").children[0].classList.add("on"); $("leftT").textContent = "1장 남음";
+  $("adNote").textContent = `오늘 광고 ${ads}/3`;
+  const k = document.querySelector('.pick [aria-pressed="true"]').dataset.k;
+  $("adBtn").textContent = `${k}로 만들기 (1장)`;
+  $("got").textContent = "1장 받았어요!"; $("got").classList.add("on"); setTimeout(() => $("got").classList.remove("on"), 1800);
+};
+
+/* ---------- 5 making ---------- */
+const TUFT = ["#fbfaf6", "#efe6d8", "#e0b277", "#c98845", "#3b302b", "#f5efe4", "#b77a3c", "#ffffff"];
+let mkT = [];
+function make(){
+  mkT.forEach(clearTimeout); mkT = []; const at = (ms, f) => mkT.push(setTimeout(f, ms));
+  const pol = $("pol"), tf = $("tufts"); tf.innerHTML = ""; pol.getAnimations().forEach(a => a.cancel());
+  $("born").classList.remove("on"); $("mkBtn").classList.remove("on"); $("glow").style.opacity = .35;
+  $("mkT").textContent = "만드는 중"; $("mkS").textContent = "사진 보고 털을 모으는 중이에요";
+  const dots = [...$("mkDots").children]; dots.forEach(d => d.classList.remove("on"));
+  at(500, () => {
+    pol.animate([{ transform: "rotate(-5deg)", opacity: 1, filter: "blur(0)" }, { transform: "rotate(8deg) scale(.5) translateY(30px)", opacity: 0, filter: "blur(3px)" }],
+      { duration: 1100, fill: "forwards", easing: "ease-in" });
+    for (let i = 0; i < 46; i++) {
+      const t = document.createElement("i"); t.className = "tuft"; const sz = 9 + Math.random() * 16;
+      const sx = 120 + Math.random() * 120, sy = 200 + Math.random() * 150, tx = 180 + (Math.random() - .5) * 60, ty = 525 + (Math.random() - .5) * 30;
+      const a = Math.random() * 6.28, r = 70 + Math.random() * 50;
+      t.style.cssText = `left:${sx}px;top:${sy}px;width:${sz}px;height:${sz}px;background:radial-gradient(circle at 35% 35%,#fff9,${TUFT[i % TUFT.length]} 60%)`;
+      tf.appendChild(t);
+      t.animate([{ opacity: 0, transform: "scale(.3)" }, { opacity: 1, transform: "scale(1)", offset: .15 },
+        { opacity: 1, transform: `translate(${180 + Math.cos(a) * r - sx}px,${430 + Math.sin(a) * r * .55 - sy}px)`, offset: .6 },
+        { opacity: 0, transform: `translate(${tx - sx}px,${ty - sy}px) scale(.2)` }],
+        { duration: 2600 + Math.random() * 900, delay: Math.random() * 600, fill: "forwards", easing: "ease-in-out" });
+    }
+  });
+  dots.forEach((d, i) => at(800 + i * 620, () => d.classList.add("on")));
+  at(2200, () => $("glow").style.opacity = .9);
+  at(4000, () => { $("born").classList.add("on"); $("glow").style.opacity = .6; $("mkT").textContent = "완성!"; $("mkS").textContent = "삼색이가 왔어요"; });
+  at(4500, () => $("mkBtn").classList.add("on"));
+}
+$("mkRe").onclick = make;
+
+/* ---------- 6 weather ---------- */
+const WXS = {
+  sun:   { pose: "smile", cls: "sway", props: [["wx-sun", "p-sun"]], say: "오늘 맑아! 산책 가자", t: "맑음 18°", clock: "8:12" },
+  rain:  { pose: "curl", props: [["wx-umbrella", "p-umb"]], drops: 1, say: "비 와! 우산 꼭 챙겨", t: "비 12° · 오후까지", clock: "8:12" },
+  snow:  { pose: "smile", cls: "hop", props: [["wx-scarf", "p-scarf"]], flakes: 1, say: "눈 온다! 따뜻하게 입어", t: "눈 −2°", clock: "8:12" },
+  dust:  { pose: "front", props: [["wx-mask", "p-mask"]], say: "미세먼지 나빠… 마스크!", t: "미세먼지 나쁨", clock: "8:12" },
+  night: { pose: "sleep", z: 1, props: [["wx-rain", "p-cloud"]], say: "내일 아침 비 온대… 쿨", t: "내일 비 · 6시부터", clock: "23:40" },
+};
+function setW(k){
+  const w = WXS[k];
+  document.querySelectorAll("[data-w]").forEach(b => b.setAttribute("aria-pressed", b.dataset.w === k));
+  $("wimg").src = `img/monggeul-${w.pose}.webp`; $("wpet").className = "wpet " + (w.cls || "");
+  $("wxClock").textContent = w.clock; $("wx").style.filter = k === "night" ? "brightness(.62) saturate(.85)" : "";
+  const fx = $("fx"); fx.innerHTML = "";
+  const pet = $("wpet"); pet.querySelectorAll(".prop").forEach(p => p.remove());
+  for (const [img, cls] of w.props) { const p = document.createElement("img"); p.src = `img/${img}.png`; p.className = "prop " + cls; p.alt = "";
+    (cls === "p-umb" ? pet.prepend(p) : pet.appendChild(p)); }
+  if (w.drops) for (let i = 0; i < 14; i++) { const d = document.createElement("i"); d.className = "drop";
+    d.style.cssText = `left:${60 + Math.random() * 130}px;top:${70 + Math.random() * 40}px;animation-delay:${Math.random()}s`; fx.appendChild(d); }
+  if (w.flakes) for (let i = 0; i < 7; i++) { const f = document.createElement("img"); f.src = "img/wx-snow.png"; f.className = "flake"; f.alt = "";
+    f.style.cssText = `left:${40 + Math.random() * 150}px;top:${50 + Math.random() * 40}px;width:${10 + Math.random() * 10}px;animation-delay:${Math.random() * 3}s`; fx.appendChild(f); }
+  if (w.z) { const z = document.createElement("span"); z.className = "zz"; z.textContent = "z Z"; pet.appendChild(z); }
+  const talk = $("talk"); talk.style.animation = "none"; void talk.offsetWidth; talk.style.animation = "";
+  talk.innerHTML = `<b>${w.say}</b><span class="t">${w.t}</span>`;
+}
+document.querySelectorAll("[data-w]").forEach(b => b.onclick = () => setW(b.dataset.w));
+$("zoneT").onchange = e => $("zone").classList.toggle("show", e.target.checked);
+setW("rain");
+
+/* ---------- 8 reel ---------- */
+let rlT = [];
+function reel(){
+  rlT.forEach(clearTimeout); rlT = []; const fl = $("rl"), sub = $("sub");
+  [fl, $("sp1"), $("sp2")].forEach(e => e.classList.remove("on")); void fl.offsetWidth; sub.textContent = "";
+  rlT.push(setTimeout(() => { fl.classList.add("on"); $("sp1").classList.add("on"); setTimeout(() => $("sp2").classList.add("on"), 200); }, 650));
+  const text = "우리 집 고양이가\n털뭉치가 됐어요";
+  [...text].forEach((c, i) => rlT.push(setTimeout(() => sub.innerHTML = text.slice(0, i + 1).replace("\n", "<br>"), 150 + i * 70)));
+}
+$("rlRe").onclick = reel;
+
+const io = new IntersectionObserver(es => es.forEach(e => { if (!e.isIntersecting) return; e.target.id === "s5" ? make() : reel(); io.unobserve(e.target); }), { threshold: .35 });
+io.observe($("s5")); io.observe($("s8"));
+</script>
