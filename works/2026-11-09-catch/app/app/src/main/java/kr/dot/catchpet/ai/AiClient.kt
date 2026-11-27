@@ -1,6 +1,7 @@
 package kr.dot.catchpet.ai
 
 import android.content.Context
+import android.provider.Settings
 import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -8,6 +9,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 import java.security.SecureRandom
 
 /** The Worker (works/2026-11-09-catch/worker): /transform = AI preview, /sheet = bought pose sheet. */
@@ -102,8 +104,16 @@ class AiClient(private val base: String, private val deviceId: String, private v
             return o.put("image", Base64.encodeToString(png, Base64.NO_WRAP)).toString()
         }
 
-        /** "dev-" + 24 of [a-z0-9], made once per install. */
+        /** "dev-" + 24 of [a-z0-9]. From ANDROID_ID (per signing key and user, the same after a reinstall or "clear
+         *  data", new only after a factory reset), hashed so the Worker never sees the raw id: the free previews and
+         *  pet pictures it counts per device don't start over with a reinstall (operator 11-27). No ANDROID_ID (some
+         *  emulators, Robolectric) = a random id made once per install, as before. */
         fun deviceId(ctx: Context): String {
+            val aid = runCatching { Settings.Secure.getString(ctx.contentResolver, Settings.Secure.ANDROID_ID) }.getOrNull()
+            if (!aid.isNullOrBlank()) {
+                val h = MessageDigest.getInstance("SHA-256").digest("catchpet|$aid".toByteArray())
+                return "dev-" + h.joinToString("") { "%02x".format(it) }.take(24)
+            }
             val p = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE)
             p.getString("device", null)?.let { return it }
             val abc = "abcdefghijklmnopqrstuvwxyz0123456789"
