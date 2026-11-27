@@ -97,6 +97,32 @@ void main() {
     expect(deleted, isNotNull);
   });
 
+  testWidgets('dates: swipe turns the month, the year opens a year list, never past this month', (t) async {
+    final shown = <DateTime>[];
+    await pump(t, DatesScreen(month: sampleMonth, photos: samplePhotosPerDay, onClose: no, onNext: (_, _) {}, onMonth: shown.add));
+    await t.fling(find.text('15'), const Offset(-300, 0), 1200);
+    await t.pumpAndSettle();
+    expect(find.text('7월'), findsOneWidget);
+    await t.fling(find.text('15'), const Offset(300, 0), 1200);
+    await t.pumpAndSettle();
+    expect(find.text('6월'), findsOneWidget);
+    await t.tap(find.text('2026년'));
+    await t.pumpAndSettle();
+    await shot(t, 'd3-1-dates-year');
+    await t.tap(find.text('2023'));
+    await t.pumpAndSettle();
+    expect(find.text('2023년'), findsOneWidget);
+    expect(shown, [DateTime(2026, 7), DateTime(2026, 6), DateTime(2023, 6)]);
+    // this month is the last one
+    final now = DateTime.now();
+    shown.clear();
+    await pump(t, DatesScreen(key: UniqueKey(), month: DateTime(now.year, now.month), photos: const {}, onClose: no, onNext: (_, _) {}, onMonth: shown.add));
+    await t.tap(find.text('›'));
+    await t.pumpAndSettle();
+    expect(shown, isEmpty);
+    expect(find.text('${now.month}월'), findsOneWidget);
+  });
+
   testWidgets('dates', (t) async {
     await pump(
         t,

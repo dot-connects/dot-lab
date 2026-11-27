@@ -1,4 +1,5 @@
-// D3 1/3 날짜: a month calendar, two taps for the range, a dot on days with photos, counts per day.
+// D3 1/3 날짜: a month calendar (swipe or ‹ › for the month, tap the year for a year list), two taps for the range,
+// a dot on days with photos, counts per day.
 import 'package:material_ui/material_ui.dart';
 
 import '../tokens.dart';
@@ -48,6 +49,48 @@ class _DatesScreenState extends State<DatesScreen> {
   late DateTime _m = DateTime(widget.month.year, widget.month.month);
   late DateTime? _s = widget.start, _e = widget.end;
   bool _goOn = false; // "N장으로 계속" under partial access
+  int _dir = 1; // the last month change: 1 = later (slides in from the right), -1 = earlier
+
+  void _show(DateTime m) {
+    final now = DateTime.now(), last = DateTime(now.year, now.month);
+    if (m.isAfter(last)) m = last; // no trips in the future
+    if (m == _m) return;
+    setState(() {
+      _dir = m.isAfter(_m) ? 1 : -1;
+      _m = m;
+    });
+    widget.onMonth?.call(_m);
+  }
+
+  Future<void> _pickYear() async {
+    final now = DateTime.now().year;
+    final y = await showSheet<int>(
+      context,
+      (c) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text('몇 년도 여행이에요?', style: ui(17, w: FontWeight.w700)),
+        const SizedBox(height: 14),
+        GridView.count(
+          shrinkWrap: true,
+          crossAxisCount: 4,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 1.9,
+          children: [
+            for (var y = now; y > now - 16; y--)
+              GestureDetector(
+                onTap: () => Navigator.of(c).pop(y),
+                child: Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: y == _m.year ? C.ink : C.card, borderRadius: BorderRadius.circular(12)),
+                  child: Text('$y', style: nm(14, w: FontWeight.w600, color: y == _m.year ? C.paper : C.ink)),
+                ),
+              ),
+          ],
+        ),
+      ]),
+    );
+    if (y != null) _show(DateTime(y, _m.month));
+  }
 
   void _tap(DateTime d) => setState(() {
         if (_s == null || _e != null || d.isBefore(_s!)) {
@@ -82,19 +125,50 @@ class _DatesScreenState extends State<DatesScreen> {
                 '허용한 ${widget.partial}장에서만 찾아요. 모두 허용해야 날짜만으로 여행 사진을 다 찾고, 사진에 든 위치도 읽어요.'),
           ),
         Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-          Text('${_m.year}. ${_m.month}', style: nm(15, w: FontWeight.w600)),
+          GestureDetector(
+            onTap: _pickYear,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(10, 5, 4, 5),
+              decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(999)),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text('${_m.year}년', style: nm(14, w: FontWeight.w600)),
+                const Icon(Icons.arrow_drop_down_rounded, size: 20, color: C.ink2),
+              ]),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text('${_m.month}월', style: nm(15, w: FontWeight.w600)),
           const Spacer(),
           for (final (g, dm) in [('‹', -1), ('›', 1)])
             GestureDetector(
-              onTap: () {
-                setState(() => _m = DateTime(_m.year, _m.month + dm));
-                widget.onMonth?.call(_m);
-              },
-              child: SizedBox(width: 26, height: 26, child: Center(child: Text(g, style: ui(16, color: C.ink2)))),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _show(DateTime(_m.year, _m.month + dm)),
+              child: SizedBox(width: 36, height: 32, child: Center(child: Text(g, style: ui(18, color: C.ink2)))),
             ),
         ]),
         const SizedBox(height: 6),
-        _grid(),
+        GestureDetector(
+          // swipe left = next month, right = earlier; taps still reach the day cells
+          onHorizontalDragEnd: (d) {
+            final v = d.primaryVelocity ?? 0;
+            if (v.abs() > 150) _show(DateTime(_m.year, _m.month + (v < 0 ? 1 : -1)));
+          },
+          child: ClipRect(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              transitionBuilder: (child, a) {
+                final inc = child.key == ValueKey(_m);
+                final from = Offset((inc ? 1 : -1) * _dir * .35, 0);
+                return FadeTransition(
+                  opacity: a,
+                  child: SlideTransition(position: Tween(begin: from, end: Offset.zero).animate(a), child: child),
+                );
+              },
+              layoutBuilder: (cur, prev) => Stack(alignment: Alignment.topCenter, children: [...prev, if (cur != null) cur]),
+              child: KeyedSubtree(key: ValueKey(_m), child: _grid()),
+            ),
+          ),
+        ),
         Container(
           margin: const EdgeInsets.only(top: 10),
           padding: const EdgeInsets.only(top: 10),
