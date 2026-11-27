@@ -1,0 +1,61 @@
+<!doctype html><meta charset="utf-8"><body><script type="module">
+// Bakes the weather actions (tools/weather-props.js) as 256x256 frames with bake.html's exact camera and framing,
+// plus one review sheet per action (frames over the wallpaper, then the same frames at 112 px).
+// Driven by tools/bake-weather.mjs; results land in window.__out = { "<id>-<action>-NN" | "<id>-<action>-sheet": dataURL }.
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js";
+import { makeCreature, SPECS } from "../site/js/creatures.js";
+import { rig, ACTIONS } from "./weather-props.js";
+
+const q = new URLSearchParams(location.search);
+const ids = q.get("ids").split(","), only = q.get("actions")?.split(",");
+const R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+R.setPixelRatio(1); R.setSize(256, 256, false); R.outputColorSpace = THREE.SRGBColorSpace; R.setClearColor(0x000000, 0);
+const wall = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = "../mockups/next7v2/img/wall.jpg"; });
+const load = url => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = url; });
+
+async function sheet(urls) {
+  const C = 192, S = 112, cols = Math.min(8, urls.length), rows = Math.ceil(urls.length / cols);
+  const cv = document.createElement("canvas"); cv.width = cols * C; cv.height = rows * C + S + 8;
+  const g = cv.getContext("2d"); g.fillStyle = "#222"; g.fillRect(0, 0, cv.width, cv.height);
+  const wy = wall.height * 0.55;   // a strip of the wallpaper behind each cell
+  for (const [i, u] of urls.entries()) {
+    const im = await load(u), x = (i % cols) * C, y = Math.floor(i / cols) * C;
+    g.drawImage(wall, 0, wy, wall.width, wall.width, x, y, C, C); g.drawImage(im, x, y, C, C);
+    g.fillStyle = "#fff"; g.font = "12px sans-serif"; g.fillText(String(i), x + 4, y + 14);
+    if (i < cv.width / S) { g.drawImage(wall, 0, wy, wall.width, wall.width, i * S, rows * C + 8, S, S); g.drawImage(im, i * S, rows * C + 8, S, S); }
+  }
+  return cv.toDataURL("image/png");
+}
+
+const out = {};
+for (const id of ids) {
+  const spec = SPECS.find(s => s.id === id);
+  // the same framing as bake.html, so a weather frame lines up with front.webp / sleep.webp
+  const probe = makeCreature(spec); probe.update(0.016);
+  const box = new THREE.Box3().setFromObject(probe.object3d), sz = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
+  const frame = { mid, d: Math.max(sz.x, sz.y) * 0.56 / Math.tan(Math.PI / 12) };
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 10);
+  cam.position.set(frame.mid.x, frame.mid.y + frame.d * 0.12, frame.mid.z + frame.d); cam.lookAt(frame.mid);
+  for (const [name, act] of Object.entries(ACTIONS)) {
+    if (only && !only.includes(name)) continue;
+    const c = makeCreature(spec), scene = new THREE.Scene(), holder = new THREE.Group();
+    holder.add(c.object3d); scene.add(holder);
+    c.object3d.children.forEach(o => { if (o.isMesh && o.renderOrder === -1) o.visible = false; });
+    c.setPose("idle"); for (let i = 0; i < 2; i++) c.update(0.016);
+    const r = rig(c, spec), st = act.setup(r), urls = [];
+    for (let f = 0; f < act.frames; f++) {
+      const s = act.at(f, st, r);
+      c.setPose(s.happy ? "caught" : "idle");   // only swaps the eyes; update() is not called again
+      holder.rotation.z = s.roll * Math.PI / 180; holder.scale.set(s.sx, s.sy, s.sx);
+      R.render(scene, cam);
+      const u = R.domElement.toDataURL("image/png");
+      out[`${id}-${name}-${String(f).padStart(2, "0")}`] = u; urls.push(u);
+    }
+    out[`${id}-${name}-sheet`] = await sheet(urls);
+    r.dispose();
+    c.object3d.traverse(o => { o.geometry?.dispose?.(); });
+  }
+  window.__p = (window.__p || 0) + 1;
+}
+window.__out = out;
+</script>

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>날씨 행동 미리보기</title>
+<style>
+  body{margin:0;padding:16px;background:#1d1a18;color:#eee;font:14px/1.4 sans-serif}
+  .row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:18px}
+  .cell{background:#8aa0b8 url(img/wall.jpg) center 55%/cover;border-radius:14px;text-align:center;padding:6px 6px 4px}
+  .cell img{display:block}
+  .cell span{font-size:12px;color:#fff;text-shadow:0 1px 2px #000}
+  button{font:inherit;padding:6px 12px;border-radius:8px;border:0;margin-bottom:12px}
+</style></head><body>
+<button id="again">처음부터 다시</button>
+<div id="root"></div>
+<script>
+// 12 fps: the action plays once, then its idle loops (rain-open -> rain-hold, mask-on -> mask-idle, scarf loops)
+const SEQ = { "비 · 우산": [["rain-open", 16], ["rain-hold", 4]], "미세먼지 · 마스크": [["mask-on", 14], ["mask-idle", 4]], "눈 · 목도리": [[null, 0], ["scarf", 4]] };
+const players = [];
+for (const size of [112, 256]) {
+  const row = document.createElement("div"); row.className = "row"; root.append(row);
+  for (const id of ["monggeul", "nyangsom"]) for (const [label, [[a, an], [loop, ln]]] of Object.entries(SEQ)) {
+    const once = Array.from({ length: an }, (_, i) => `img/wx3d/${id}-${a}-${String(i).padStart(2, "0")}.webp`);
+    const rep = Array.from({ length: ln }, (_, i) => `img/wx3d/${id}-${loop}-${String(i).padStart(2, "0")}.webp`);
+    [...once, ...rep].forEach(u => (new Image().src = u));
+    const cell = document.createElement("div"); cell.className = "cell";
+    const img = new Image(size, size); cell.append(img, Object.assign(document.createElement("span"), { textContent: `${id} · ${label}` }));
+    row.append(cell); players.push({ img, once, rep });
+  }
+}
+let f = 0;
+setInterval(() => { for (const p of players) p.img.src = f < p.once.length ? p.once[f] : p.rep[(f - p.once.length) % p.rep.length]; f++; }, 1000 / 12);
+again.onclick = () => (f = 0);
+</script>
+</body></html>
