@@ -271,7 +271,7 @@ function launcherOne() {
     w.fillStyle = lg; w.fillRect(0, 0, 1080, 1920);
     w.globalAlpha = .4; w.filter = "blur(70px) saturate(.6) brightness(.6)"; w.drawImage(wall, -160, -160, 1400, 2240); w.filter = "none"; w.globalAlpha = 1;
   }
-  g.drawImage(wallOne, 0, 0, W, H);
+  g.drawImage(Q.has("wallsharp") ? wall : wallOne, 0, 0, W, H);   // ?wallsharp = the wall image as is (real phone wallpaper, 11-27)
   g.textBaseline = "alphabetic"; g.fillStyle = "#FFFFFF"; g.font = `500 14px ${UI}`; g.textAlign = "left"; g.fillText("9:41", 24, 23);
   g.textAlign = "right"; g.font = "17px 'Material Symbols Rounded'"; g.fillText("wifi signal_cellular_4_bar battery_5_bar", W - 16, 25);
   g.fillStyle = "#000"; g.beginPath(); g.arc(W / 2, 17, 5.5, 0, 7); g.fill();
