@@ -978,8 +978,9 @@ function shareScreen(mode) {
     : `친구가 이 링크를 열면 네 옆에 서서 찍어.<br>너는 찍은 자리 그대로 들어가.<br>둘 다 찍으면 사진이랑 영상이 열려.`;
   // Toss has no link to reopen: A checks right here, from the first share screen on (phone test 10-31)
   $("recheck").hidden = !(waiting || P.native && mode === "sent");
-  $("testB").hidden = !(TEST_B && waiting);
-  $("notMine").hidden = !(waiting && S.mine === "a");     // recognised by the Worker, not by this browser: a way out
+  // one way to shoot the second side here: my own link opened on this phone (the Worker recognised it), a friend on my
+  // Wi-Fi it mistook for me, or on the web anyone who wants to fill both sides themselves (operator 11-27)
+  $("notMine").hidden = !(waiting && (S.mine === "a" || TEST_B));
   $("goDeco").hidden = !fin; $("decNote").hidden = fin;
   $("shareBtn").textContent = fin ? "완성됐어 링크 보내기" : "친구한테 링크 보내기";
   $("shareBtn").className = fin ? "cta alt" : "cta";
@@ -1758,7 +1759,6 @@ const ACT = {
   modeGo: () => startShoot("a"),
   startB: () => startShoot("b"),
   notMine: () => { S.mine = null; landB(); prefetchHQ(); },   // the Worker guessed wrong: a friend on my Wi-Fi with my phone
-  testB: () => { landB(); prefetchHQ(); },          // TEST_B: A shoots the friend's side on this phone
   goDeco: () => decorate(),
   hoCopy: async () => {
     $("hoBox").hidden = false;
