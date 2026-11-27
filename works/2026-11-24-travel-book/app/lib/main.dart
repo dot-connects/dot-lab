@@ -64,7 +64,7 @@ class _RootState extends State<_Root> {
   List<Book> _books = [];
   App get app => widget.app;
   ShelfView get _view => app.prefs.shelfView == 'timeline' ? ShelfView.timeline : ShelfView.display;
-  int get _free => freeLeft([for (final b in _books) shelfOf(b, app.booksDir)]);
+  int get _free => freeLeft([for (final b in _books) shelfOf(b, app.booksDir)], made: app.prefs.made);
 
   @override
   void initState() {
@@ -103,6 +103,20 @@ class _RootState extends State<_Root> {
     if (app.prefs.onboarded) app.limited = await app.src.isLimited().catchError((_) => false);
     final bs = await app.store.all();
     if (mounted) setState(() => _books = bs);
+    unawaited(_syncMade(bs));
+  }
+
+  /// Free books are counted per phone on the server: send the written books, keep the larger count (never goes down).
+  Future<void> _syncMade(List<Book> bs) async {
+    final written = [for (final b in bs) if (b.written) b.id];
+    var n = written.length;
+    final id = (await deviceId())?.toLowerCase();
+    if (id != null) n = (await app.pipe.ai.made(id, written)) ?? n;
+    if (n <= app.prefs.made) return;
+    app.prefs
+      ..made = n
+      ..save();
+    if (mounted) setState(() {});
   }
 
   Future<void> _allow() async {

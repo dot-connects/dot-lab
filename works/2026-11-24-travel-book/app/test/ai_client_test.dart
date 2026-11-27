@@ -29,4 +29,10 @@ void main() {
   test('not configured: no request, failed', () async {
     expect(await AiClient(url: '', token: '').pick([img], const []), isA<AiFailed>());
   });
+
+  test('made: the server count, or null when it cannot be had (the app then keeps its own count)', () async {
+    expect(await client(200, '{"made":3}').made('a1b2c3d4e5f60718', ['1']), 3);
+    expect(await client(400, '{"error":"body"}').made('x', []), isNull);
+    expect(await client(200, '{"other":1}').made('a1b2c3d4e5f60718', []), isNull);
+  });
 }

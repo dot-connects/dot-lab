@@ -281,3 +281,17 @@ test("a request without a job still gets the old streamed answer", async () => {
   const b = layoutBody(); delete b.job;
   assert.deepEqual((await call(b, { path: "/layout" })).body, PLAN);
 });
+
+test("/made: counts each book once per phone, survives the app forgetting its books, and keeps phones apart", async () => {
+  const made = (device, books) => handle(new Request("https://w/made", { method: "POST", headers: { "x-app-token": "tok" },
+    body: JSON.stringify({ device, books }) }), env, {}, counts).then(r => r.json());
+  assert.deepEqual(await made("a1b2c3d4e5f60718", ["b1"]), { made: 1 });
+  assert.deepEqual(await made("a1b2c3d4e5f60718", ["b1", "b2"]), { made: 2 });
+  assert.deepEqual(await made("a1b2c3d4e5f60718", []), { made: 2 }, "reinstalled: the phone sends no books, the count stays");
+  assert.deepEqual(await made("ffff0000ffff0000", ["b1"]), { made: 1 });
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM made WHERE dev LIKE '%a1b2%'").get().n, 0, "the raw id is never stored");
+  for (const bad of [{ device: "../x", books: [] }, { device: "a1b2c3d4", books: ["a b"] }, { device: "a1b2c3d4" }]) {
+    const r = await handle(new Request("https://w/made", { method: "POST", headers: { "x-app-token": "tok" }, body: JSON.stringify(bad) }), env, {}, counts);
+    assert.equal(r.status, 400);
+  }
+});

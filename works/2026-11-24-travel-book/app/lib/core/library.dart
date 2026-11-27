@@ -48,8 +48,9 @@ List<(int, List<ShelfBook>)> groupByYear(List<ShelfBook> books) {
 
 const freeBooks = 2;
 
-/// Free books left: only books whose text was written (stage == written) use one up.
-int freeLeft(List<ShelfBook> books) {
-  final used = books.where((b) => b.stage == 'written').length;
+/// Free books left: only books whose text was written (stage == written) use one up. [made] = books this phone has
+/// made in all (server count, kept in prefs): a deleted book or a reinstall does not give a free one back.
+int freeLeft(List<ShelfBook> books, {int made = 0}) {
+  final w = books.where((b) => b.stage == 'written').length, used = w > made ? w : made;
   return used >= freeBooks ? 0 : freeBooks - used;
 }

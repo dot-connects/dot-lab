@@ -167,6 +167,9 @@ class FakeAi implements AiClient {
   }
 
   @override
+  Future<int?> made(String device, List<String> books) async => null;
+
+  @override
   Future<AiResult> rewrite(List<AiImage> images, Map<String, String> page, String shape, {List<Map<String, String?>> notes = const []}) async =>
       onRewrite;
 

@@ -93,6 +93,14 @@ class AiClient {
   Future<AiResult> rewrite(List<AiImage> images, Map<String, String> page, String shape, {List<Map<String, String?>> notes = const []}) =>
       _post('/rewrite', {'images': images, 'page': page, 'notes': notes, 'shape': shape});
 
+  /// Tells the server this phone's written [books] (already-known ones change nothing) and returns how many books the
+  /// phone has ever made, or null when the server cannot be reached. Free books are counted by this, so deleting a
+  /// book or reinstalling the app never gives one back.
+  Future<int?> made(String device, List<String> books) async {
+    final r = await _post('/made', {'device': device, 'books': books.take(50).toList()});
+    return r is AiOk && r.body['made'] is int ? r.body['made'] as int : null;
+  }
+
   Future<AiResult> _post(String path, Map<String, Object?> body) async {
     if (!configured) return const AiFailed('not configured');
     try {

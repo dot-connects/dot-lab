@@ -23,3 +23,14 @@ Future<String?> takeLaunchBook() async {
 void onOpenBook(void Function(String book) f) => _ch.setMethodCallHandler((c) async {
       if (c.method == 'open' && c.arguments is String) f(c.arguments as String);
     });
+
+/// The phone's ANDROID_ID (kr.dot.tripbook/device): free books are counted by it on the server. Null off Android.
+Future<String?> deviceId() async {
+  try {
+    return await const MethodChannel('kr.dot.tripbook/device').invokeMethod<String>('id');
+  } on PlatformException {
+    return null;
+  } on MissingPluginException {
+    return null;
+  }
+}

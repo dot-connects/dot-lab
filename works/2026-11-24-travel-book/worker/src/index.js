@@ -1,5 +1,6 @@
 // 「여행 책자」 AI relay. The app sends 512 px previews, local times, place names and the user's notes; the model picks
 // photos and writes captions/essay. Keys stay here, a month money ceiling guards the bill.
+// /made counts the books each phone has made (free books): the phone's ANDROID_ID, hashed, and book ids (D1 `made`).
 // Stored: /layout runs as a queued job (the app may leave and come back): its request waits in KV up to 2 h (deleted when
 // the job ends) and the plan text stays in D1 `jobs` up to 24 h. Nothing else is stored.
 // Model: OpenAI Responses API (operator 11-25: use the GPT key already on hand); the MODEL var picks the model.
@@ -27,6 +28,7 @@ const IMG_TOKENS = 400;            // a 512 px preview at detail "low" is well u
 const KEEPALIVE_MS = 10_000;
 const OPENAI_URL = "https://api.openai.com/v1/responses";
 const JOB = /^[A-Za-z0-9_-]{23,64}$/;   // the app sends 128 random bits: the name is the only key to a result
+const DEVICE = /^[0-9a-f]{8,32}$/, BOOK = /^[A-Za-z0-9_-]{1,64}$/;   // ANDROID_ID is 16 hex
 const JOB_MAX_MS = 30 * 60_000, JOB_KEEP_MS = 24 * 3600_000;
 
 const num = (v, d) => (v === undefined || v === "" ? d : +v);   // "0" is a real limit (the off switch)
@@ -198,9 +200,16 @@ const chars = body => JSON.stringify({ s: body.shots, n: body.notes, o: body.opt
 
 export async function handle(req, env, ctx, counts) {
   const url = new URL(req.url);
-  const route = ROUTES[url.pathname], result = url.pathname === "/result";
-  if (req.method !== "POST" || !(route || result)) return json({ error: "not found" }, 404);
+  const route = ROUTES[url.pathname], result = url.pathname === "/result", made = url.pathname === "/made";
+  if (req.method !== "POST" || !(route || result || made)) return json({ error: "not found" }, 404);
   if (!env.APP_TOKEN || req.headers.get("x-app-token") !== env.APP_TOKEN) return json({ error: "token" }, 401);
+  if (made) {   // the app's written books (idempotent) in, how many this phone has ever made out
+    let b;
+    try { b = await req.json(); } catch { return json({ error: "body" }, 400); }
+    const books = Array.isArray(b?.books) ? b.books : null;
+    if (!DEVICE.test(b?.device) || !books || books.length > 50 || !books.every(x => typeof x === "string" && BOOK.test(x))) return json({ error: "body" }, 400);
+    return json({ made: await madeCount(env.DB, b.device, books) });
+  }
   if (result) {   // polled every few seconds: no IP limiter, no counters
     let b;
     try { b = await req.json(); } catch { return json({ error: "body" }, 400); }
@@ -294,6 +303,16 @@ export async function handle(req, env, ctx, counts) {
   })();
   ctx?.waitUntil?.(work);
   return new Response(readable, { status: 200, headers: { "content-type": "application/json" } });
+}
+
+/** Records [books] for the phone (already-known ones change nothing) and returns how many it has made in all. */
+export async function madeCount(db, device, books) {
+  const dev = [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`tripbook|${device}`)))]
+    .map(x => x.toString(16).padStart(2, "0")).join("");
+  for (const book of books) {
+    await db.prepare("INSERT OR IGNORE INTO made (dev, book, created) VALUES (?1, ?2, ?3)").bind(dev, book, Date.now()).run();
+  }
+  return (await db.prepare("SELECT COUNT(*) AS n FROM made WHERE dev = ?1").bind(dev).first()).n;
 }
 
 export default {

@@ -39,5 +39,9 @@ void main() {
     expect(freeLeft([b('a', d, d, stage: 'picked'), b('b', d, d, stage: 'picked')]), 2);
     expect(freeLeft([b('a', d, d), b('b', d, d, stage: 'picked')]), 1);
     expect(freeLeft([b('a', d, d), b('b', d, d), b('c', d, d)]), 0);
+    // the phone made 2 before (server count): a deleted book or a reinstall gives none back
+    expect(freeLeft([], made: 2), 0);
+    expect(freeLeft([b('a', d, d)], made: 0), 1);
+    expect(freeLeft([b('a', d, d), b('b', d, d)], made: 1), 0);
   });
 }
