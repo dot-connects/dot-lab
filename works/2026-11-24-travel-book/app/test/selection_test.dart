@@ -71,4 +71,22 @@ void main() {
     expect(ids.contains('closed'), isFalse);
     expect(ids.where((i) => i.startsWith('v')).length, lessThanOrEqualTo(11)); // views capped near 35% (+ room left)
   });
+
+  test('collapse never merges a must photo into its sharper twin', () {
+    final r = collapse([c('m', 0, dhash: 0, sharp: 10), c('t', 1, dhash: 0, sharp: 90)], must: {'m'});
+    expect([for (final f in r.frames) f.id], ['m', 't']);
+  });
+
+  test('slots: more moments than room - one each for the busiest, never above the cap', () {
+    final s = slots([5, 50, 1, 9], [5, 50, 1, 9], 2);
+    expect(s, [0, 1, 0, 1]);
+  });
+
+  test('shortlist: series and must on top of the slots are trimmed back to the cap, must kept', () {
+    final m = [for (var i = 0; i < 12; i++) c('s$i', i * 5, dhash: i)];
+    final series = {for (final x in m) x.id: 1};
+    final out = shortlist([m], [12], series, 3, must: {'s11'});
+    expect(out.length, 3);
+    expect(out.map((x) => x.id), contains('s11'));
+  });
 }

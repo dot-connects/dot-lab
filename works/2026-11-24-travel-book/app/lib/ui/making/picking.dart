@@ -87,7 +87,7 @@ class _PickingScreenState extends State<PickingScreen> with SingleTickerProvider
     return switch (_phase) {
       _Phase.looking when w.measured == 0 => '고른 앨범 ${w.albums}개 · ${fmtInt(w.albumPhotos)}장을 처음부터 살펴볼게요',
       _Phase.looking => '${fmtInt(w.toMeasure)}장 중 살펴본 사진',
-      _Phase.scouting => 'AI가 추린 ${fmtInt(w.scoutTotal)}장을 훑어보는 중\n흔들림·어두움 ${fmtInt(f.blurDark)} · 비슷한 사진 ${fmtInt(f.similar)} 뺐어요',
+      _Phase.scouting => '폰이 추린 ${fmtInt(w.scoutTotal)}장을 AI가 훑어보는 중\n흔들림·어두움 ${fmtInt(f.blurDark)} · 비슷한 사진 ${fmtInt(f.similar)} 뺐어요',
       _Phase.choosing => [
           if (f.blurDark > 0) '흔들림·어두움 ${fmtInt(f.blurDark)}',
           if (f.similar > 0) '비슷한 사진 ${fmtInt(f.similar)}',

@@ -349,7 +349,10 @@ class _MakingFlowState extends State<MakingFlow> {
             await app.pipe.addOne(b, day);
             setState(() {});
           },
-          onBack: nav.pop, // the book stays "picked" on the shelf and resumes here
+          onBack: () async {
+            await _settlePairs(); // the pairs live only here: leaving settles them (higher score stays)
+            nav.pop(); // the book stays "picked" on the shelf and resumes here
+          },
           // a new book chose its theme and length before the picking (operator 11-27): straight on to making;
           // a book picked by an older version still asks here
           onMake: widget.draft == null ? _choose : _writeNew,

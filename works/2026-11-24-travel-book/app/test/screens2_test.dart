@@ -55,7 +55,7 @@ void main() {
         sample: paths, inRange: 412, albums: 2, albumPhotos: 186, measured: 180, toMeasure: 180, scoutTotal: 120, scouted: 40,
         found: const ['가장 많이 찍은 곳 · 협재 해변 64장'], filtered: (blurDark: 34, similar: 88, capture: 7), onClose: no));
     expect(find.text('40'), findsOneWidget); // the first look: tagged so far
-    expect(find.text('AI가 추린 120장을 훑어보는 중\n흔들림·어두움 34 · 비슷한 사진 88 뺐어요'), findsOneWidget);
+    expect(find.text('폰이 추린 120장을 AI가 훑어보는 중\n흔들림·어두움 34 · 비슷한 사진 88 뺐어요'), findsOneWidget);
     expect(find.text('가장 많이 찍은 곳 · 협재 해변 64장'), findsOneWidget);
     await shot(t, 'd4-1-picking-scout');
     await pump(t, picking(measured: 180, sent: true));

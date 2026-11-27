@@ -42,12 +42,17 @@ List<List<T>> momentsBy<T>(List<T> xs, DateTime Function(T) at, (double, double)
 /// Frames <= 1.5 s apart that look the same (dHash distance <= 6) are one frame: the sharpest stays.
 /// Then runs of 3+ frames, each <= 15 s after the one before with a similar picture (distance <= 18), are a pose
 /// series: [series] maps each member's id to its series number (1, 2, …). Nothing of a series is dropped here.
-({List<Candidate> frames, Map<String, int> series}) collapse(List<Candidate> good, {int firstSeries = 1}) {
+/// A [must] photo is never merged into another frame (nor replaced by a sharper twin).
+({List<Candidate> frames, Map<String, int> series}) collapse(List<Candidate> good, {int firstSeries = 1, Set<String> must = const {}}) {
   final s = [...good]..sort((a, b) => a.local.compareTo(b.local));
   final frames = <Candidate>[];
   for (final c in s) {
     final l = frames.isEmpty ? null : frames.last;
-    if (l != null && c.local.difference(l.local).inMilliseconds.abs() <= 1500 && hamming(c.dhash, l.dhash) <= 6) {
+    if (l != null &&
+        !must.contains(c.id) &&
+        !must.contains(l.id) &&
+        c.local.difference(l.local).inMilliseconds.abs() <= 1500 &&
+        hamming(c.dhash, l.dhash) <= 6) {
       if (c.sharp > l.sharp) frames[frames.length - 1] = c;
       continue;
     }
@@ -76,6 +81,12 @@ List<List<T>> momentsBy<T>(List<T> xs, DateTime Function(T) at, (double, double)
 /// Room per moment out of [cap]: in proportion to sqrt(its shots) (a busy place gets more, not all), at least 1,
 /// never more than it has. [sizes] = shots per moment, [have] = frames left to choose from.
 List<int> slots(List<int> sizes, List<int> have, int cap) {
+  if (sizes.length > cap) {
+    // more moments than room: one each for the busiest [cap] of them
+    final order = [for (var i = 0; i < sizes.length; i++) i]..sort((a, b) => sizes[b].compareTo(sizes[a]));
+    final top = order.take(cap).toSet();
+    return [for (var i = 0; i < sizes.length; i++) top.contains(i) && have[i] > 0 ? 1 : 0];
+  }
   final w = [for (final n in sizes) math.sqrt(math.max(1, n))];
   final sum = w.fold(0.0, (a, b) => a + b);
   final out = [for (var i = 0; i < sizes.length; i++) math.min(have[i], math.max(1, (cap * w[i] / sum).floor()))];
@@ -138,7 +149,12 @@ List<Candidate> shortlist(List<List<Candidate>> moments, List<int> sizes, Map<St
       }
     }
   }
-  return out..sort((a, b) => a.local.compareTo(b.local));
+  out.sort((a, b) => a.local.compareTo(b.local));
+  if (out.length <= cap) return out;
+  // series and must ids went on top of the slots: back to [cap], must ids kept, the rest evenly in time
+  final keep = out.where((c) => must.contains(c.id)).toList(), rest = out.where((c) => !must.contains(c.id)).toList();
+  final n = math.max(0, cap - keep.length);
+  return [...keep, for (var k = 0; k < n && rest.isNotEmpty; k++) rest[k * rest.length ~/ n]]..sort((a, b) => a.local.compareTo(b.local));
 }
 
 /// What the first look says about one photo.

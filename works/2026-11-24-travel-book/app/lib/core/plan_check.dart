@@ -61,9 +61,10 @@ BookPlan fallbackPlan(List<Candidate> sent, BookOptions o, {String theme = 'a', 
 const kinds = {'풍경', '사람', '음식', '실내', '이동', '물건', '기타'};
 
 /// /pick answer -> picks (no captions yet), ambiguous pairs, clips, chapter lines, theme.
+/// [fallback]: the book to use when the answer is missing or too thin (the caller's recipe order and length).
 BookPlan checkPick(Map<String, dynamic>? ai, List<Candidate> sent, BookOptions o,
-    {String recommended = 'a', Set<String> must = const {}}) {
-  if (ai == null) return fallbackPlan(sent, o, theme: recommended, must: must);
+    {String recommended = 'a', Set<String> must = const {}, BookPlan Function()? fallback}) {
+  if (ai == null) return fallback?.call() ?? fallbackPlan(sent, o, theme: recommended, must: must);
   final byId = {for (final c in sent) c.id: c};
   final seen = <String>{};
   var picks = <Pick>[];
@@ -75,7 +76,7 @@ BookPlan checkPick(Map<String, dynamic>? ai, List<Candidate> sent, BookOptions o
     picks.add(Pick(id, '', score is num ? score.round().clamp(0, 100) : 50,
         kind: kind is String && kinds.contains(kind) ? kind : '', what: what is String ? what.trim().substring(0, math.min(30, what.trim().length)) : ''));
   }
-  if (picks.length < 5) return fallbackPlan(sent, o, theme: recommended, must: must);
+  if (picks.length < 5) return fallback?.call() ?? fallbackPlan(sent, o, theme: recommended, must: must);
   for (final m in must) {
     if (byId.containsKey(m) && seen.add(m)) picks.add(Pick(m, '', 50));
   }
@@ -107,7 +108,10 @@ BookPlan checkPick(Map<String, dynamic>? ai, List<Candidate> sent, BookOptions o
     final fresh = ids.toSet().where((x) => groups.every((o) => !o.$2.contains(x))).toList();
     if ((k == '연속' || k == '음식') && fresh.length >= 2) groups.add((k as String, fresh.take(6).toList()));
   }
-  final covers = [for (final x in (ai['covers'] as List? ?? const [])) if (x is String && picked.contains(x)) x].take(3).toList();
+  final covers = [
+    for (final x in (ai['covers'] as List? ?? const []))
+      if (x is String && picked.contains(x) && !(byId[x]?.shot.isVideo ?? true)) x,
+  ].take(3).toList();
 
   final aiTheme = ai['theme'];
   return BookPlan(

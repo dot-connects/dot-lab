@@ -191,7 +191,6 @@ class Pipeline {
       for (final m in momentsBy<int>(look, (i) => all[i].utc, (i) => all[i].lat == null || all[i].lng == null ? null : (all[i].lat!, all[i].lng!)))
         for (var k = 0, n = math.min(m.length, (40 + 6 * math.sqrt(m.length)).round()); k < n; k++) m[k * m.length ~/ n],
     ]..sort();
-    final thinned = look.length - measuredIdx.length;
     var p = PickProgress(
       inRange: inRange,
       albums: albums,
@@ -265,7 +264,8 @@ class Pipeline {
     final shotsOnly = free.where((c) => !c.shot.isVideo && !isScreenshot(c.shot)).toList();
     final capture = free.length - vids.length - shotsOnly.length;
     final good = shotsOnly.where((c) => !skippedIds.contains(c.id) && !isBad(c)).toList();
-    final blurDark = shotsOnly.length - thinned - good.length;
+    final thinnedFree = shotsOnly.where((c) => skippedIds.contains(c.id)).length; // must ids are not counted here
+    final blurDark = math.max(0, shotsOnly.length - thinnedFree - good.length);
 
     // the trip as moments over every photo: the shots taken in a moment say how much that place mattered
     final photoCands = [...shotsOnly, ...mustC.where((c) => !c.shot.isVideo)];
@@ -281,13 +281,13 @@ class Pipeline {
     final keepIds = {for (final c in good) c.id, for (final c in mustC) c.id};
     final frames = <List<Candidate>>[], series = <String, int>{};
     for (final m in moments) {
-      final r = collapse([for (final c in m) if (keepIds.contains(c.id)) c], firstSeries: series.values.fold(0, math.max) + 1);
+      final r = collapse([for (final c in m) if (keepIds.contains(c.id)) c], firstSeries: series.values.fold(0, math.max) + 1, must: must);
       frames.add(r.frames);
       series.addAll(r.series);
     }
     final goodIds = {for (final c in good) c.id};
     final kept = frames.fold(0, (n, f) => n + f.where((c) => goodIds.contains(c.id)).length);
-    final similar = math.max(0, good.length - kept) + thinned;
+    final similar = math.max(0, good.length - kept) + thinnedFree;
     final found = <String>[];
     if (moments.isNotEmpty) {
       final top = moments.reduce((a, x) => x.length > a.length ? x : a);
@@ -337,7 +337,9 @@ class Pipeline {
     final target = lengthTarget[opts.length] ?? 32;
     final sentVids = capEvenly(vids, maxPickVideos);
     final refImages = [for (final n in notes) if (n.image != null) n.image!];
-    final room = math.max(0, maxAiImages - sentVids.length * sceneAt.length - refImages.length);
+    // must videos come on top of the chosen ones: their scenes count against the same images
+    final mustVids = mustC.where((c) => c.shot.isVideo).length;
+    final room = math.max(0, maxAiImages - (sentVids.length + mustVids) * sceneAt.length - refImages.length);
     final fin = finalists(wide, tags, momentOf, momentSize, series, math.min(room, (target * 2.6).round()), must: must, people: opts.people);
     final ranked = [...fin]..sort((a, b) {
         final d = (tags[b.id]?.score ?? 3) - (tags[a.id]?.score ?? 3);
@@ -368,13 +370,15 @@ class Pipeline {
     lap('previews');
     AiShot shot(Candidate c) => _aiShot(c,
         tag: tags[c.id]?.kind ?? '', people: tags[c.id]?.people ?? 0, busy: momentSize[momentOf[c.id]] ?? 0, series: series[c.id] ?? 0);
+    assert(images.length + refImages.length <= maxAiImages, 'final look over its image cap');
     final r = await ai.pick(images, [for (final c in sent) shot(c)],
         notes: noteList, opts: opts.toJson(), mustInclude: [for (final c in mustC) c.id], target: target);
     // no answer: the recipe's own order is the book (best first), as many as the length asks for
+    BookPlan fallback() => fallbackPlan({...mustC, ...ranked, ...sentVids}.toList(), opts,
+        theme: recommended, must: sentIds.intersection(must), ranked: true, limit: target);
     final plan = r is AiOk
-        ? checkPick(r.body, sent, opts, recommended: recommended, must: sentIds.intersection(must))
-        : fallbackPlan([...ranked, ...sentVids, ...mustC.where((c) => c.shot.isVideo)], opts,
-            theme: recommended, must: sentIds.intersection(must), ranked: true, limit: target);
+        ? checkPick(r.body, sent, opts, recommended: recommended, must: sentIds.intersection(must), fallback: fallback)
+        : fallback();
 
     final picks = plan.picks;
     // the person's theme (chosen before picking, operator 11-27) wins over the AI's suggestion
@@ -397,7 +401,7 @@ class Pipeline {
     lap('ai');
     await store.save(book); // the answer is kept at once: a crash after this never pays twice
     if (lab != null) {
-      final picked = {for (final x in picks) x.id: x};
+      final picked = {for (final x in picks) x.id: x}, wideIds = {for (final x in wide) x.id};
       await File('${lab.path}/pick.json').writeAsString(jsonEncode({
         'from': ymd(from),
         'to': ymd(to),
@@ -420,7 +424,7 @@ class Pipeline {
               'sent': sentIds.contains(c.id),
               'moment': momentOf[c.id],
               if (series[c.id] != null) 'series': series[c.id],
-              'wide': wide.any((x) => x.id == c.id),
+              'wide': wideIds.contains(c.id),
               if (tags[c.id] != null) 'tag': tags[c.id]!.toJson(),
               if (picked[c.id] != null) 'pick': picked[c.id]!.toJson(),
             },
