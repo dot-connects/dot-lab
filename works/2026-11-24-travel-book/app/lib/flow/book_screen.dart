@@ -12,6 +12,7 @@ import '../ui/new_book/draft.dart' show PhotoRef;
 import '../ui/tokens.dart';
 import '../ui/widgets.dart';
 import 'app.dart';
+import 'export_flow.dart';
 
 String whenOf(DateTime t) => '${t.month}.${t.day} ${weekdays[t.weekday - 1]} ${two(t.hour)}:${two(t.minute)}';
 
@@ -114,7 +115,7 @@ class _BookScreenState extends State<BookScreen> {
       title: b.title,
       onBack: Navigator.of(context).pop,
       onEdit: () {}, // 다듬기: M2
-      onExport: () {}, // 내보내기: the export task
+      onExport: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ExportFlow(app: app, book: b))),
       tip: _failed != null
           ? null
           : _tip != null

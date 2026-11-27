@@ -16,6 +16,7 @@ import 'device/gallery.dart' as g;
 import 'device/making_channel.dart';
 import 'flow/app.dart';
 import 'flow/book_screen.dart';
+import 'flow/export_flow.dart';
 import 'flow/making_flow.dart';
 import 'flow/new_book_flow.dart';
 import 'pipeline.dart';
@@ -185,7 +186,10 @@ class _RootState extends State<_Root> {
       view: _view,
       onViewChanged: _setView,
       onOpen: _open,
-      onExport: (_) {}, // the export task
+      onExport: (s) {
+        final b = _book(s);
+        if (b.pages.isNotEmpty) _go(ExportFlow(app: app, book: b));
+      },
       onRename: _rename,
       onDelete: (s) async {
         await app.store.delete(s.id);

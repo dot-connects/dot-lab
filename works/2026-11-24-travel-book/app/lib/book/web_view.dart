@@ -7,7 +7,19 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:material_ui/material_ui.dart';
 
 const _origin = 'https://appassets.androidplatform.net';
-const _index = '$_origin/assets/flutter_assets/assets/book/index.html';
+const bookIndex = '$_origin/assets/flutter_assets/assets/book/index.html';
+
+/// The runtime's WebView settings (also the headless one that exports pages).
+InAppWebViewSettings bookSettings(String booksDir) => InAppWebViewSettings(
+      webViewAssetLoader: WebViewAssetLoader(pathHandlers: [
+        AssetsPathHandler(path: '/assets/'),
+        InternalStoragePathHandler(path: '/books/', directory: booksDir),
+      ]),
+      mediaPlaybackRequiresUserGesture: false,
+      allowFileAccess: false,
+      transparentBackground: true,
+      supportZoom: false,
+    );
 
 class BookWebView extends StatefulWidget {
   final Map<String, Object?> book; // bookJs(book)
@@ -38,17 +50,8 @@ class _BookWebViewState extends State<BookWebView> {
 
   @override
   Widget build(BuildContext context) => InAppWebView(
-        initialUrlRequest: URLRequest(url: WebUri(_index)),
-        initialSettings: InAppWebViewSettings(
-          webViewAssetLoader: WebViewAssetLoader(pathHandlers: [
-            AssetsPathHandler(path: '/assets/'),
-            InternalStoragePathHandler(path: '/books/', directory: widget.booksDir),
-          ]),
-          mediaPlaybackRequiresUserGesture: false,
-          allowFileAccess: false,
-          transparentBackground: true,
-          supportZoom: false,
-        ),
+        initialUrlRequest: URLRequest(url: WebUri(bookIndex)),
+        initialSettings: bookSettings(widget.booksDir),
         onWebViewCreated: (c) {
           _c = c;
           c.addJavaScriptHandler(
