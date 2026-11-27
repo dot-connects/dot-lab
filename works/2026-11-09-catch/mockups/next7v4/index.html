@@ -9,7 +9,7 @@
 
 <div class="wrap">
 <header>
-  <h1>리얼뽑기, 펠트로 다시<br><em>v4 · 말씀하신 10가지</em></h1>
+  <h1>리얼뽑기, 펠트로 다시<br><em>v5 · 11-28 말씀 반영</em></h1>
   <p class="lead">화면마다 직접 눌러 볼 수 있어요. 화면은 실제 앱 크기(360×780)이고, 뽑기 판정·문구는 지금 앱 코드 그대로예요.</p>
 </header>
 <nav class="toc" aria-label="화면 목록">
@@ -20,10 +20,10 @@
 <section class="item felt stitch" id="c1">
   <div>
     <h2><span class="no felt">1</span>카메라로 진짜 녀석 뽑기</h2>
-    <p class="what">"잡자마자 작게" 하나로 정했어요. 집게가 몸을 집는 순간 <b>녀석이 쏙 줄어들며 캡슐로 들어가고</b>, 캡슐이 "탁" 닫혀요. 들려 올라간 캡슐은 맨 위에서 떨어져 세 번 통통 튀고 굴러 나가요.</p>
+    <p class="what">"잡자마자 작게" 하나로 정했어요. 집게가 몸을 집으면 <b>뚜껑이 열린 캡슐</b>이 나타나고, 녀석이 쏙 줄어들어 들어가면 <b>분홍 뚜껑이 "탁" 덮여요</b>. 들려 올라간 캡슐은 맨 위에서 떨어져 세 번 통통 튀고 굴러 나가요.</p>
     <ul class="facts">
       <li>"고양이 찾았다!" 라벨은 찾은 녀석 위에 항상 떠 있어요(강아지·사람도 같은 자리).</li>
-      <li>집게는 빨리 내려가 살짝 파고든 뒤 닫히고, 올라갈 때 캡슐이 진자처럼 흔들려요.</li>
+      <li>집게는 <b>천천히 묵직하게</b> 내려가 살짝 파고든 뒤 닫히고(1~1.7초), 올라갈 때는 그대로 가볍게. 캡슐은 진자처럼 흔들려요.</li>
       <li>미끄러져 놓침: 올라가다 캡슐이 덜덜 떨리다 "펑" 열리고, 작은 녀석이 제자리로 튕겨 돌아가요. 헛집음: 빈 곳에서 집게가 "딱" 닫혀요. 문구는 앱 그대로.</li>
       <li>성공하면 2번 카드가 그 자리에서 떠요.</li>
     </ul>
@@ -104,21 +104,23 @@
 <section class="item felt stitch" id="c4">
   <div>
     <h2><span class="no felt">4</span>도감</h2>
-    <p class="what"><b>방금 뽑은 녀석이 맨 앞</b>이에요. 별을 누르거나 칸을 <b>꾹 누르면</b> 즐겨찾기가 돼서 맨 앞에 고정돼요. 순서는 부드럽게 자리를 바꿔요.</p>
+    <p class="what"><b>방금 뽑은 녀석이 맨 앞</b>이에요. 칸을 <b>꾹 누르면</b> 앱처럼 여러 마리를 골라 한 번에 지워요. 즐겨찾기는 칸을 눌러 들어간 <b>상세의 별</b>로 하고, 맨 앞에 고정돼요.</p>
     <ul class="facts">
       <li>순서: 즐겨찾기(고른 순) → 나머지는 뽑은 날 최신순 → 아직 못 뽑은 칸.</li>
-      <li>펫을 만드는 중인 칸은 흔들리는 캡슐(5번과 같은 캡슐).</li>
+      <li>꾹 누르기: 위 버튼이 "취소 · N마리 지우기"로 바뀌고 칸마다 동그란 체크. 지우기 전에 앱과 같은 확인 창이 떠요(만드는 중인 칸은 이번엔 빠져요).</li>
+      <li>펫을 만드는 중인 칸은 흔들리는 캡슐(5번과 같은 캡슐). 즐겨찾기한 칸엔 작은 별만 붙어요.</li>
     </ul>
-    <span class="size felt">크기 S · 정렬 + 별 1개</span>
+    <span class="size felt">크기 S · 정렬 + 상세 별 1개 · 지우기는 앱 그대로</span>
   </div>
   <div class="col">
     <div class="dev"><div class="scr" id="dx">
       <div class="sb"><span>9:43</span><span>●●● ▮</span></div><div class="punch"></div>
-      <div class="dx-head"><button class="chip felt stitch">‹ 뽑기</button><button class="chip felt stitch">펫 설정</button></div>
+      <div class="dx-head"></div>
       <div class="dx-title"><h3>도감</h3><span class="dx-prog felt"><img src="img/cap-closed.png" alt="">털뭉치 7 / 16</span></div>
       <div class="dx-grid" id="dxGrid"></div>
     </div></div>
-    <p class="cap">별을 누르거나 칸을 꾹 눌러 보세요</p>
+    <div class="ctl"><button class="chip felt stitch" id="dxRefill">지운 칸 되돌리기</button></div>
+    <p class="cap">칸을 누르면 상세(별), 꾹 누르면 골라 지우기</p>
   </div>
 </section>
 
@@ -126,10 +128,11 @@
 <section class="item felt stitch" id="c5">
   <div>
     <h2><span class="no felt">5</span>펫 만들기</h2>
-    <p class="what">버튼은 처음에 <b>"펫 미리보기"</b>. 누르면 털뭉치·피규어 <b>두 가지를 한 번에</b> 그려요. 다 그리면 버튼이 <b>"털뭉치 펫 만들기 · 무료 5장"</b>으로 바뀌고, 누르면 캡슐이 흔들리며 금이 가다 "퐁" 열려요.</p>
+    <p class="what">버튼은 처음에 <b>"펫 미리보기"</b>. 누르면 털뭉치·피규어 <b>두 가지를 한 번에</b> 그려요. 다 그리면 버튼이 <b>"펫 만들기 · 무료 5장"</b>으로 바뀌고, 누르면 <b>털뭉치·피규어 둘 다</b> 만들어요(무료 1장만 써요). 캡슐 두 개가 흔들리며 금이 가다 "퐁" 열려요.</p>
     <ul class="facts">
       <li>금은 캡슐과 한 몸이라 같이 흔들려요. 다 열리면 캡슐은 사라지고 펫만 남아요.</li>
-      <li>무료가 끝나면 "· 500원". 광고는 없어요.</li>
+      <li>모양을 고르는 단계는 없어요. 홈에 어느 쪽을 띄울지는 6번 펫 설정에서 골라요.</li>
+      <li>무료가 끝나면 "· 500원"(둘 다 만드는 값은 아직 안 정함). 광고는 없어요. 위 별 = 즐겨찾기.</li>
       <li>시안은 그리기 2초, 만들기(실제 1~3분)를 6초로 줄였어요. 나가도 되고 다 되면 알림.</li>
     </ul>
     <span class="size felt">크기 M · 상세 화면 + 알림</span>
@@ -137,15 +140,15 @@
   <div class="col">
     <div class="dev"><div class="scr" id="dt">
       <div class="sb"><span>9:44</span><span>●●● ▮</span></div><div class="punch"></div>
-      <div class="dt-noti felt" id="dtNoti"><img src="img/cap-open.png" alt=""><span><b>리얼뽑기</b><br>삼색이 털뭉치가 다 됐어요!</span></div>
-      <div class="dt-top"><button class="chip felt stitch">‹ 도감</button><button class="chip felt stitch">자랑하기</button></div>
+      <div class="dt-noti felt" id="dtNoti"><img src="img/cap-open.png" alt=""><span><b>리얼뽑기</b><br>삼색이 털뭉치·피규어가 다 됐어요!</span></div>
+      <div class="dt-top"><button class="chip felt stitch">‹ 도감</button><span class="dt-acts"><button class="chip felt stitch dx-star" id="dtStar" aria-pressed="false" aria-label="즐겨찾기"><svg viewBox="0 0 24 24"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg></button><button class="chip felt stitch">자랑하기</button></span></div>
       <div class="dt-hero"><img src="img/cam2-sticker.png" alt="삼색이"><i class="dt-ped"></i></div>
       <div class="dt-name"><h3>삼색이</h3><p>소파 구석에서 동그랗게 자다 뽑힘. 꿈에서 츄르 먹던 중</p><div class="k-tags"><span>잠꾸러기</span><span>말랑함</span></div></div>
       <div class="dt-make felt stitch">
         <h4>펫으로 만들기</h4>
-        <div class="dt-pick" role="group" aria-label="모양">
-          <button class="felt" data-k="털뭉치" aria-pressed="true"><span class="dt-tile" data-img="img/calico-fluff.png"></span>털뭉치</button>
-          <button class="felt" data-k="피규어" aria-pressed="false"><span class="dt-tile" data-img="img/calico-figure.webp"></span>피규어</button>
+        <div class="dt-pick">
+          <div class="dt-look felt"><span class="dt-tile" data-img="img/calico-fluff.png"></span>털뭉치</div>
+          <div class="dt-look felt"><span class="dt-tile" data-img="img/calico-figure.webp"></span>피규어</div>
         </div>
         <button class="fbtn felt stitch" id="dtBtn">펫 미리보기</button>
         <p class="dt-note" id="dtNote">사진으로 털뭉치·피규어 두 가지를 그려 볼게요 · 미리보기는 무료</p>
@@ -163,6 +166,7 @@
     <ul class="facts">
       <li>문구도 앱 그대로예요. "홈 화면/항상", "최근 앱/자주 쓴 앱/직접 선택"을 누르면 아래 설명이 앱처럼 바뀌어요.</li>
       <li>크기는 홈 화면에서 실제로 보일 크기 그대로 세 마리를 보여 줘요.</li>
+      <li>털뭉치·피규어를 둘 다 만든 녀석(삼색이)은 "누구를 띄울까"에 두 칸으로 나와요. 홈에 띄울 쪽은 여기서 골라요(앱처럼 모양마다 한 칸).</li>
     </ul>
     <span class="size felt">크기 S · PetScreen 생김새만</span>
   </div>
@@ -209,9 +213,10 @@
 <section class="item felt stitch" id="c7">
   <div>
     <h2><span class="no felt">7</span>날씨: 펫이 직접 해요</h2>
-    <p class="what">맑음 · 더움 · 추움 · 눈 · 비 · 미세먼지. 날씨가 바뀌면 털뭉치가 <b>한 번 행동</b>(우산 펴기, 마스크 쓰기…)을 하고, 그 뒤엔 그 모습으로 <b>계속 살아요</b>. 소품은 펫과 같은 3D 털 엔진에서 같은 빛으로 구웠어요.</p>
+    <p class="what">맑음 · 더움 · 추움 · 눈 · 비 · 미세먼지. 화면 효과(비·눈·햇빛)는 없고 <b>펫 행동만</b> 있어요. 날씨가 바뀌거나 <b>그날 처음 홈에 오면</b> 한 번 행동(우산 펴기, 마스크 쓰기…)하고 평소 모습으로 돌아와요. 그 뒤엔 <b>톡 눌렀을 때 가끔</b> 그 행동을 해요.</p>
     <ul class="facts">
-      <li>12fps. 행동 → 반복 순서로 재생하고, 그림은 미리 다 불러온 뒤 시작해요.</li>
+      <li>12fps. 행동 → 잠깐 그 모습 → 소품을 거두고 평소로. 그림은 미리 다 불러온 뒤 시작해요.</li>
+      <li>톡 반응: 보통은 폴짝 + 하트, 세 번에 한 번쯤 날씨 행동. 소품은 펫과 같은 3D 털 엔진에서 같은 빛으로 구웠어요.</li>
       <li>6가지 모두 몽글·냥솜 둘 다 구웠어요. 아래 "녀석"으로 바꿔 보세요.</li>
       <li>말풍선은 지금 혼잣말 그대로 한 줄.</li>
     </ul>
@@ -219,8 +224,7 @@
   </div>
   <div class="col">
     <div class="dev"><div class="scr" id="wx">
-      <div class="wx-sky" id="wxSky"></div>
-      <div class="sb" style="color:#fff"><span>8:12</span><span>●●● ▮</span></div><div class="punch"></div>
+            <div class="sb" style="color:#fff"><span>8:12</span><span>●●● ▮</span></div><div class="punch"></div>
       <div class="wx-clock">8:12</div><div class="wx-date" id="wxDate">11월 28일 금요일 · 비 12°</div>
       <div class="wx-zone"><div class="wx-talk felt" id="wxTalk"></div><canvas id="wxCv" width="300" height="300"></canvas><div class="wx-wait felt" id="wxWait" hidden></div></div>
       <div class="wx-apps"><i style="background:#506a8a">▣</i><i style="background:#e9786a">▲</i><i style="background:#f0b93a">≡</i><i style="background:#4caf74">●</i><i style="background:#9b6fd6">♪</i><i style="background:#3e5577">◷</i><i style="background:#ee8a3a">▦</i><i style="background:#6d7785">◎</i></div>
@@ -228,7 +232,8 @@
     </div></div>
     <div class="ctl" role="group" aria-label="날씨" id="wxCtl"></div>
     <div class="ctl" role="group" aria-label="녀석"><span class="lab">녀석</span><button class="chip felt stitch" data-wp="monggeul" aria-pressed="true">몽글</button><button class="chip felt stitch" data-wp="nyangsom" aria-pressed="false">냥솜</button></div>
-    <p class="cap">날씨를 누르면 그 행동을 처음부터 해요</p>
+    <div class="ctl" role="group" aria-label="펫"><span class="lab">펫</span><button class="chip felt stitch" id="wxTap">톡</button><button class="chip felt stitch" id="wxFirst">오늘 처음 홈 화면</button></div>
+    <p class="cap">날씨를 바꾸면 한 번 행동 · 톡은 펫을 눌러도 돼요</p>
   </div>
 </section>
 
@@ -261,16 +266,16 @@
 <section class="item felt stitch" id="c9">
   <div>
     <h2><span class="no felt">9</span>릴스: 구성 그대로, 펠트로</h2>
-    <p class="what">지금 릴스(35초)의 장면·자막·타이밍을 그대로 두고 그림만 펠트 수준으로 다시 그렸어요. 테두리(6번째 그냥 시켜본 것)도 그대로.</p>
+    <p class="what">지금 릴스(35초, 날씨 장면을 넣어 37.7초)의 장면·자막·타이밍을 그대로 두고 그림만 펠트 수준으로 다시 그렸어요. 테두리(6번째 그냥 시켜본 것)도 그대로.</p>
     <ul class="facts">
-      <li>장면: 홈의 펫 → 진짜 고양이 → 집게로 집기 → 캡슐에서 털뭉치 → 도감 → 톡 → 두 번 톡(앱 구름) → 휘 튕기기 → 벽에 붙기 → 강아지·사람 → 그때 모습 → 곰인형 → 끝 카드.</li>
+      <li>장면: 홈의 펫 → 진짜 고양이 → 집게로 집기 → 캡슐에서 털뭉치 → 도감 → 톡 → 두 번 톡(앱 구름) → 휘 튕기기 → 벽에 붙기 → <b>날씨도 알려줘요(새로)</b> → 강아지·사람 → 그때 모습 → 곰인형 → 끝 카드.</li>
       <li>아래 막대로 아무 장면이나 넘겨 볼 수 있어요.</li>
     </ul>
-    <span class="size felt">크기 M · 렌더 35초</span>
+    <span class="size felt">크기 M · 렌더 37.7초</span>
   </div>
   <div class="col">
     <div class="rl-slot"><div class="rl" id="rl"></div></div>
-    <div class="rl-bar"><button class="chip felt stitch" id="rlPlay">일시정지</button><input type="range" id="rlSeek" min="0" max="35.3" step="0.05" value="0" aria-label="재생 위치"><span id="rlTime">0.0s</span></div>
+    <div class="rl-bar"><button class="chip felt stitch" id="rlPlay">일시정지</button><input type="range" id="rlSeek" min="0" max="37.7" step="0.05" value="0" aria-label="재생 위치"><span id="rlTime">0.0s</span></div>
   </div>
 </section>
 
@@ -282,7 +287,7 @@
     <ul class="facts">
       <li>여기선 화면을 옆으로 끌면 둘러보고, 위아래로 끌면 기울여요(폰으로 열면 자이로). 집게는 레일 쪽(위)에서 끌어요.</li>
       <li>빨간 버튼은 늘 맨 위. 녀석이 지나가도 안 가려요.</li>
-      <li>잡는 판정은 앱 그대로(가운데 80% · 가장자리 35%), 놓치면 미끄러져 떨어져요.</li>
+      <li>잡는 판정은 앱 그대로(가운데 80% · 가장자리 35%), 놓치면 미끄러져 떨어져요. 집게는 1번처럼 천천히 내려가고, 잡으면 뚜껑 열린 캡슐에 들어가 뚜껑이 덮여요.</li>
     </ul>
     <span class="size felt">크기 M · 파노라마 1장 + 판정 그대로</span>
   </div>

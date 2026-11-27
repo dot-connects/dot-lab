@@ -72,9 +72,9 @@
     const hit = crits.filter(c => c.state === "walk" && Math.abs(sx(c) + 180 - cx) < size(c) * .42).sort((a, b) => b.d - a.d)[0];
     const target = hit ? Math.round(feet(hit) - size(hit) * .62 - 48 - TIP) : Math.round(feet({ d: .5 }) - 60 - 48 - TIP);
     if (hit) hit.state = "aimed";
-    const dur = 230 + (target - 40) * 1.2;
-    await tween(dur, E.io, (t, r) => { rig.drop = lerp(40, target + 7, t); rig.swing = Math.sin(r * Math.PI) * -1.4; rig.draw(); });
-    await rig.to(110, E.outQ, { drop: target, swing: 0 });
+    const dur = Math.min(1700, 650 + (target - 40) * 2.4);       // slow, heavy descent; the rise stays brisk
+    await tween(dur, E.sine, (t, r) => { rig.drop = lerp(40, target + 5, t); rig.swing = Math.sin(r * Math.PI) * -.8; rig.draw(); });
+    await rig.to(200, E.outQ, { drop: target, swing: 0 });
     if (!hit) {
       await rig.to(100, E.outC, { close: 1.32 }); puff(scr, rig.cx(), rig.tipY() - 4, 5, 16, 72);
       await tween(200, E.lin, (_, r) => { rig.swing = Math.sin(r * 30) * 2.2 * (1 - r); rig.draw(); });
@@ -83,7 +83,7 @@
     // grip: the chance is the app's (0.80 at the centre .. 0.35 at the edge)
     const off = clamp(Math.abs(sx(hit) + 180 - cx) / (size(hit) * .42), 0, 1), p = .8 - .45 * off, win = Math.random() < p;
     hit.state = "held"; const w = size(hit);
-    heldEl.src = WALK.has(hit.id) ? `img/${hit.id}-holdA.webp` : `img/${hit.id}-front.webp`; heldEl.style.display = "block";
+    heldEl.src = WALK.has(hit.id) ? `img/${hit.id}-holdA.webp` : `img/${hit.id}-front.webp`; hangHeld(w, 0); heldEl.style.display = "block";
     await rig.to(130, E.outC, { close: .72, squash: .04 }); rig.to(140, E.outQ, { squash: 0 });
     hangHeld(w, 0);
     await tween(120, E.outQ, t => hangHeld(w, 0, -6 * t));      // a little tug
@@ -106,12 +106,13 @@
     const [px, py] = pivot();
     const cap = makeCapsule(scr, heldEl.src, [0, 120, 200, 300][dex % 4]); cap.x = px; cap.y = py + 30;
     cap.top.style.opacity = cap.bot.style.opacity = 0; cap.con.style.visibility = "hidden"; cap.draw();
-    const closing = sleep(100).then(() => closeCapsule(scr, cap));
     const s0 = w;
-    await tween(260, E.inC, t => { const ww = lerp(s0, 48, t); heldEl.style.width = ww + "px";
-      heldEl.style.transform = `translate(${px - ww / 2}px,${lerp(py - 28, py + 30 - ww * .55, t)}px)`; });
-    heldEl.style.display = "none"; cap.con.style.visibility = "";
-    await closing; await sleep(80);
+    await closeCapsule(scr, cap, async () => {
+      await tween(260, E.inC, t => { const ww = lerp(s0, 48, t); heldEl.style.width = ww + "px";
+        heldEl.style.transform = `translate(${px - ww / 2}px,${lerp(py - 28, py + 30 - ww * .55, t)}px)`; });
+      heldEl.style.display = "none"; cap.con.style.visibility = "";
+    });
+    await sleep(80);
     rig.to(180, E.outQ, { close: 0, swing: 0 });
     dex++; $("fwDex").textContent = `도감 ${dex}`; toast(`${NAMES[hit.id]} 뽑았다! 도감 +1`);
     await dropAndRoll(cap, 752, 360);

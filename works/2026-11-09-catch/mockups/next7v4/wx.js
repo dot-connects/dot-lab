@@ -1,13 +1,15 @@
-// 7 weather: plays the 3D-baked frames (tools/bake-weather.*) — the action once, then its loop, at 12 fps on a canvas.
+// 7 weather: no screen effects, only the pet acts (3D-baked frames, tools/bake-weather.*), at 12 fps on a canvas.
+// When the weather changes (or on the first home visit of the day) it plays the act once — act, a moment in that look,
+// the act backwards to put the prop away — then idles as usual. Afterwards a tap sometimes plays it as one of its reactions.
 // What exists comes from img/wx3d/manifest.json, else from probing the files; missing states show "굽는 중".
 {
   const STATES = [
     ["sun", "맑음", "햇볕 좋다~ 광합성 중", "맑음 18°"], ["hot", "더움", "더워… 녹는다", "더움 33°"], ["cold", "추움", "추워! 목도리 꽁꽁", "추움 −4°"],
-    ["snow", "눈", "눈 온다! 뽀득뽀득", "눈 −2°"], ["rain", "비", "비 와! 우산 챙겨", "비 12° · 오후까지"], ["dust", "미세먼지", "미세먼지 나빠… 마스크!", "미세먼지 나쁨"]];
-  const FPS = 12, cv = $("wxCv"), g = cv.getContext("2d"), base = "img/wx3d/";
+    ["snow", "눈", "눈 온다! 뽀득뽀득", "눈 −2°"], ["rain", "비", "비 와! 우산 챙겨", "비 12°"], ["dust", "미세먼지", "미세먼지 나빠… 마스크!", "미세먼지 나쁨"]];
+  const FPS = 12, cv = $("wxCv"), g = cv.getContext("2d"), base = "img/wx3d/", zone = cv.parentElement;
   const nn = i => String(i).padStart(2, "0");
   const cache = {};                      // "critter/state" -> Promise<{act:[Image], loop:[Image]}>
-  let manifest = null, pet = "monggeul", cur = "rain", seq = null, t0 = 0, token = 0;
+  let manifest = null, pet = "monggeul", cur = "rain", f = null, anim = null, hop = null, token = 0, taps = 0;
   const manifestP = fetch(base + "manifest.json", { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null).then(m => manifest = m);
   const img = src => new Promise(res => { const i = new Image(); i.onload = () => (i.decode ? i.decode().catch(() => {}) : Promise.resolve()).then(() => res(i)); i.onerror = () => res(null); i.src = src; });
   async function run(name, n){                 // known count: load all in parallel
@@ -32,47 +34,72 @@
       return { act, loop: lp.length ? lp : act.slice(-1) };
     })();
   }
-  const drawFrame = im => { g.clearRect(0, 0, 300, 300); if (!im) return;
-    const k = Math.min(300 / im.naturalWidth, 300 / im.naturalHeight), w = im.naturalWidth * k, h = im.naturalHeight * k;
-    g.drawImage(im, (300 - w) / 2, 300 - h, w, h); };
+  /** bottom-anchored, optional hop (dy) and squash */
+  const drawFrame = (im, dy = 0, sx = 1, sy = 1) => { g.clearRect(0, 0, 300, 300); if (!im) return;
+    const k = Math.min(300 / im.naturalWidth, 300 / im.naturalHeight), w = im.naturalWidth * k * sx, h = im.naturalHeight * k * sy;
+    g.drawImage(im, (300 - w) / 2, 300 - h - dy, w, h); };
   (function tick(now){
-    if (seq) { const i = Math.floor((now - t0) / 1000 * FPS);
-      drawFrame(i < seq.act.length ? seq.act[i] : seq.loop[(i - seq.act.length) % seq.loop.length]); }
+    if (f) {
+      if (anim) {                                       // the weather act: act -> its loop twice -> act backwards
+        const i = Math.floor((now - anim.t0) / 1000 * FPS);
+        if (i < anim.seq.length) drawFrame(anim.seq[i]);
+        else { anim = null; talk(false); }
+      }
+      if (!anim) {                                      // everyday idle: the plain pose, breathing; a tap = a hop
+        const idle = f.act[0], b = Math.sin(now / 520) * .012;
+        let dy = 0, sx = 1 + b, sy = 1 - b;
+        if (hop) { const r = (now - hop) / 520;
+          if (r >= 1) hop = null;
+          else if (r < .18) { const q = r / .18; sx = 1 + .1 * q; sy = 1 - .12 * q; }
+          else { const q = (r - .18) / .82; dy = Math.sin(Math.PI * q) * 46; const land = Math.max(0, 1 - Math.abs(q - 1) * 8); sx = 1 - .05 * Math.sin(Math.PI * q) + .08 * land; sy = 2 - sx; } }
+        drawFrame(idle, dy, sx, sy);
+      }
+    }
     requestAnimationFrame(tick);
   })(performance.now());
 
-  /* sky effects, cheap DOM particles */
-  const sky = $("wxSky");
-  const TINT = { sun: "radial-gradient(circle at 88% 6%,#fff6c8cc,#ffe08a44 30%,#0000 60%)", hot: "linear-gradient(#ff9a3c55,#ffcf7a22 50%,#0000)",
-    cold: "linear-gradient(#bfe3ff55,#0000 60%)", snow: "linear-gradient(#dfeefd66,#0000 70%)", rain: "linear-gradient(#2b3d5577,#2b3d5533)", dust: "linear-gradient(#c7a97a88,#b9996c55)" };
-  function fx(s){
-    sky.innerHTML = ""; sky.style.background = TINT[s];
-    const n = { rain: 46, snow: 34, dust: 26 }[s] || 0;
-    for (let i = 0; i < n; i++) { const p = document.createElement("i");
-      p.className = s === "rain" ? "wx-drop" : s === "snow" ? "wx-flake" : "wx-mote";
-      p.style.left = Math.random() * 390 + "px"; p.style.top = (s === "dust" ? Math.random() * 760 : -20) + "px";
-      p.style.animationDelay = -Math.random() * (s === "snow" ? 6 : s === "rain" ? .7 : 7) + "s";
-      if (s === "snow") { const z = .5 + Math.random(); p.style.width = p.style.height = 4 + z * 6 + "px"; p.style.animationDuration = 5 + z * 3 + "s"; }
-      sky.appendChild(p); }
+  const st = () => STATES.find(x => x[0] === cur);
+  /** the one-line monologue: shows while the act plays */
+  function talk(on){
+    const el = $("wxTalk");
+    if (!on) { el.classList.remove("on", "pop"); return; }
+    el.textContent = st()[2]; el.classList.remove("pop"); void el.offsetWidth; el.classList.add("on", "pop");
   }
-  async function play(s){
-    cur = s; const my = ++token, st = STATES.find(x => x[0] === s);
+  function act(){
+    if (!f || !f.act.length) return;
+    const loop2 = [...f.loop, ...f.loop].slice(0, Math.max(10, f.loop.length * 2));
+    anim = { t0: performance.now(), seq: [...f.act, ...loop2, ...[...f.act].reverse()] }; hop = null; talk(true);
+  }
+  function hearts(){
+    for (let i = 0; i < 3; i++) { const h = document.createElement("i"); h.className = "wx-heart"; h.textContent = "♥"; zone.appendChild(h);
+      h.style.left = 129 + (i - 1) * 22 + "px";
+      h.animate([{ transform: "translateY(0) scale(.4)", opacity: 0 }, { transform: `translate(${(i - 1) * 8}px,-26px) scale(1.1)`, opacity: 1, offset: .35 }, { transform: `translate(${(i - 1) * 14}px,-60px) scale(.9)`, opacity: 0 }],
+        { duration: 900, delay: i * 90, easing: "ease-out", fill: "backwards" }).finished.then(() => h.remove()); }
+  }
+  /** a tap: usually a hop with hearts; about one in three it plays today's weather act */
+  function tap(){
+    if (!f || anim) return;
+    taps++;
+    if (taps % 3 === 0) act(); else { hop = performance.now(); hearts(); }
+  }
+  async function show(s){
+    cur = s; const my = ++token, x = st();
     document.querySelectorAll("#wxCtl [data-wx]").forEach(b => b.setAttribute("aria-pressed", b.dataset.wx === s));
-    const talk = $("wxTalk"); talk.innerHTML = `<b>${st[2]}</b><span>${st[3]}</span>`; talk.classList.remove("pop"); void talk.offsetWidth; talk.classList.add("pop");
-    $("wxDate").textContent = `11월 28일 금요일 · ${st[3].split(" · ")[0]}`; fx(s);
-    const f = await frames(pet, s);
+    $("wxDate").textContent = `11월 28일 금요일 · ${x[3]}`;
+    anim = null; talk(false);
+    const fr = await frames(pet, s);
     if (my !== token) return;
     const wait = $("wxWait");
-    if (!f.act.length && !f.loop.length) { seq = null; drawFrame(null);
-      wait.innerHTML = `<i class="yarn"></i>${st[1]} 굽는 중<small>3D 털 엔진에서 굽고 있어요</small>`; wait.hidden = false; talk.style.visibility = "hidden"; return; }
-    wait.hidden = true; talk.style.visibility = ""; seq = f; t0 = performance.now();
-    // warm the rest in the background so switching is instant
-    STATES.forEach(([k]) => frames(pet, k));
+    if (!fr.act.length) { f = null; drawFrame(null);
+      wait.innerHTML = `<i class="yarn"></i>${x[1]} 굽는 중<small>3D 털 엔진에서 굽고 있어요</small>`; wait.hidden = false; return; }
+    wait.hidden = true; f = fr; taps = 0; act();
+    STATES.forEach(([k]) => frames(pet, k));          // warm the rest so switching is instant
   }
   $("wxCtl").innerHTML = '<span class="lab">날씨</span>' + STATES.map(([k, n]) => `<button class="chip felt stitch" data-wx="${k}" aria-pressed="${k === cur}">${n}</button>`).join("");
-  document.querySelectorAll("#wxCtl [data-wx]").forEach(b => b.onclick = () => play(b.dataset.wx));
+  document.querySelectorAll("#wxCtl [data-wx]").forEach(b => b.onclick = () => show(b.dataset.wx));
   document.querySelectorAll("#c7 [data-wp]").forEach(b => b.onclick = () => { pet = b.dataset.wp;
-    document.querySelectorAll("#c7 [data-wp]").forEach(o => o.setAttribute("aria-pressed", o === b)); play(cur); });
-  play(cur);   // starts now, not on window load
-  window.__wx = { play, state: () => ({ cur, pet, playing: !!seq, act: seq?.act.length, loop: seq?.loop.length }) };
+    document.querySelectorAll("#c7 [data-wp]").forEach(o => o.setAttribute("aria-pressed", o === b)); show(cur); });
+  $("wxTap").onclick = tap; cv.onclick = tap;
+  $("wxFirst").onclick = () => { if (f) { taps = 0; act(); } };
+  show(cur);   // starts now, not on window load
 }

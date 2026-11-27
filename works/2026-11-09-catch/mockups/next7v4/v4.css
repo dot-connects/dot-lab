@@ -28,7 +28,7 @@
 .k-body img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
 .k-con{inset:20% 21% 16% !important;width:58% !important;height:64% !important}
 .k-bot{clip-path:inset(52% 0 0 0)}
-.k-top{clip-path:inset(0 0 46% 0);opacity:.72}
+.k-top{clip-path:inset(0 0 46% 0);opacity:.72;transform-origin:95% 53%}   /* the lid's hinge on the right rim */
 .k-shadow{position:absolute;left:50%;top:0;width:70px;height:14px;border-radius:50%;background:#1d140c;filter:blur(4px);opacity:0;transform-origin:50% 50%}
 .k-puff{position:absolute;width:13px;height:13px;border-radius:50%;background:radial-gradient(#fffdf6,#f3e6cf);pointer-events:none;box-shadow:0 1px 2px #0002}
 .k-star{position:absolute;width:12px;height:12px;pointer-events:none;background:#ffd84d;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)}
@@ -105,12 +105,49 @@
 .dx-real{position:absolute;top:7px;left:7px;font:10px Jua;background:#cf4a3c;color:#fff;border-radius:6px;padding:0 5px;z-index:3}
 .dx-new{position:absolute;top:7px;left:7px;font:10px Jua;background:#f08a3c;color:#fff;border-radius:6px;padding:0 5px;z-index:3}
 .dx-real+.dx-new{top:24px}
-.dx-star{position:absolute;top:2px;right:2px;width:32px;height:32px;border:0;background:none;cursor:pointer;z-index:3;display:grid;place-items:center;padding:0}
-.dx-star svg{width:20px;height:20px;transition:transform .25s cubic-bezier(.3,1.8,.5,1)}
-.dx-star path{fill:#fffaf0;stroke:#b9a688;stroke-width:1.8;stroke-linejoin:round;transition:fill .2s,stroke .2s}
-.dx-cell.fav .dx-star path{fill:#ffc93c;stroke:#b07a12}
+/* favourite = a small star badge (set in the detail), not a button */
+.dx-fav{position:absolute;top:5px;right:5px;width:21px;height:21px;z-index:3;display:none}
+.dx-fav svg{width:100%;height:100%;filter:drop-shadow(0 1px 0 #6e564055)}
+.dx-fav path{fill:#ffc93c;stroke:#b07a12;stroke-width:1.8;stroke-linejoin:round}
+.dx-cell.fav .dx-fav{display:block}
 .dx-cell.fav{--c:#fff4cf}
-.dx-cell.fav .dx-star svg{transform:scale(1.12)}
+/* select mode (long-press): check circles, picked cells go gold, the ? cells and the hint step aside */
+.dx-check{position:absolute;top:6px;right:6px;width:23px;height:23px;border-radius:50%;background:#fffaf0;border:2px solid var(--ink);z-index:4;display:none;place-items:center}
+.dx-check::after{content:"";width:9px;height:5px;border:solid #fff;border-width:0 0 2.6px 2.6px;transform:translateY(-1.5px) rotate(-45deg);opacity:0}
+#dx.picking .dx-check{display:grid}
+#dx.picking .dx-fav,#dx.picking .dx-cell.q,#dx.picking .dx-hint{display:none}
+#dx.picking .dx-cell.fav{--c:var(--cream)}
+.dx-cell.picked,#dx.picking .dx-cell.picked{--c:#ffe9a8}
+.dx-cell.picked .dx-check{background:#6aa84f}
+.dx-cell.picked .dx-check::after{opacity:1}
+#dx.picking .dx-cell:not(.picked) .pic img{opacity:.8}
+.dx-del{--c:#ff8a80}
+.dx-del:disabled{--c:#efe3cf;color:var(--muted);cursor:default}
+.dx-hint{grid-column:1/-1;margin:4px 0 0;text-align:center;font:12.5px "Gowun Dodum";color:#3d5a2a}
+.dx-dlg{position:absolute;inset:0;z-index:40;background:#2a1c1066;display:grid;place-items:center;padding:0 26px}
+.dx-dbox{--c:#fffaf0;--r:24px;padding:20px 20px 16px}
+.dx-dbox h4{margin:0 0 8px;font:21px Jua;font-weight:400}
+.dx-dbox p{margin:0 0 16px;font:14px/1.55 "Gowun Dodum";color:#4a3a2b;word-break:keep-all}
+.dx-dbtn{display:flex;justify-content:flex-end;gap:8px}
+/* the detail a tap opens (same page as 5), with the favourite star */
+.dx-det{position:absolute;inset:0;z-index:20;display:none;background:linear-gradient(var(--sky) 0 37%,var(--grass) 37%)}
+.dx-det.on{display:block}
+.dx-det::before{content:"";position:absolute;inset:0;background:url(img/felt.png) 0 0/180px;mix-blend-mode:soft-light;opacity:.9}
+.dx-det>*{z-index:2}
+.dx-star svg{width:19px;height:19px}
+.dx-star path{fill:#fffaf0;stroke:#a8916e;stroke-width:1.9;stroke-linejoin:round;transition:fill .2s,stroke .2s}
+.dx-star[aria-pressed="true"]{--c:#fff1c2}
+.dx-star[aria-pressed="true"] path{fill:#ffc93c;stroke:#b07a12}
+.dx-dhero{position:absolute;left:50%;top:92px;width:180px;height:200px;margin-left:-90px}
+.dx-dhero img{position:absolute;left:0;top:0;width:180px;height:186px;object-fit:contain;object-position:50% 100%;z-index:2;filter:drop-shadow(0 8px 8px #0003)}
+.dx-dhero.real img{transform:rotate(-4deg)}
+.dx-dhero img.cut{filter:drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff) drop-shadow(0 8px 8px #0003)}
+.dx-dhero i{position:absolute;left:14px;right:14px;bottom:0;height:26px;border-radius:50%;background:radial-gradient(#fff8e2,#e6d2ad);box-shadow:0 5px 0 #c9ad83}
+.dx-dname{position:absolute;top:306px;left:24px;right:24px;text-align:center}
+.dx-dname h3{margin:0;font:32px/1 Jua;font-weight:400}
+.dx-dname p{margin:6px 0 0;font:600 13px "Gowun Dodum";color:#4f6a3a}
+.dx-dmake{position:absolute;left:30px;right:30px;top:448px;width:auto;pointer-events:none}
+.dx-dnote{position:absolute;left:30px;right:30px;top:378px;margin:0;--c:#fffaf0;--r:16px;padding:12px 14px;text-align:center;font:14px Jua;color:var(--ink)}
 .dx-cell.q{--c:#efe6d2;cursor:default}
 .dx-cell.q .pic img{filter:grayscale(.5) brightness(.96);opacity:.7;padding:10px}
 .dx-cell.q .qq{position:absolute;inset:0;display:grid;place-items:center;font-size:30px;color:#6e5640aa}
@@ -125,6 +162,8 @@
 #dt::before{content:"";position:absolute;inset:0;background:url(img/felt.png) 0 0/180px;mix-blend-mode:soft-light;opacity:.9}
 #dt>*{z-index:2} #dt>.dt-noti{z-index:60}
 .dt-top{position:absolute;top:44px;left:16px;right:16px;display:flex;justify-content:space-between}
+.dt-acts{display:flex;gap:8px}
+.dt-acts .dx-star{padding:5px 11px}
 .dt-hero{position:absolute;left:50%;top:84px;width:150px;margin-left:-75px;height:180px}
 .dt-hero img{position:absolute;left:0;top:0;width:150px;transform:rotate(-4deg);filter:drop-shadow(0 8px 8px #0003);z-index:2}
 .dt-ped{position:absolute;left:4px;right:4px;bottom:0;height:26px;border-radius:50%;background:radial-gradient(#fff8e2,#e6d2ad);box-shadow:0 5px 0 #c9ad83}
@@ -135,12 +174,11 @@
 .dt-make{position:absolute;left:16px;right:16px;top:392px;padding:15px 14px 13px;--c:#fffaf0;--r:22px}
 .dt-make h4{margin:0 0 10px;font:19px Jua;font-weight:400;text-align:center}
 .dt-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.dt-pick button{--r:16px;padding:7px 7px 8px;border:0;cursor:pointer;font:15px Jua;color:var(--ink);display:flex;flex-direction:column;gap:5px;align-items:stretch;transition:box-shadow .2s}
-.dt-pick button:disabled{cursor:default}
+.dt-look{--r:16px;padding:7px 7px 8px;font:15px Jua;color:var(--ink);display:flex;flex-direction:column;gap:5px;align-items:stretch;text-align:center;transition:box-shadow .3s}
 .dt-tile{position:relative;aspect-ratio:1;border-radius:11px;background:#f1e7d6;display:grid;place-items:center;overflow:hidden}
 .dt-tile>img.pet{width:86%;height:86%;object-fit:contain}
-.dt-pick button[aria-pressed="true"]{--c:#fff1c2;box-shadow:0 0 0 3px var(--sun),0 2px 0 #6e564033,0 10px 18px -8px #4a321c66}
-.dt-pick.pre button{box-shadow:inset 0 0 0 1px #6e56401a,0 2px 0 #6e564033;--c:var(--cream)}
+.dt-look.made{--c:#fff1c2;box-shadow:0 0 0 3px var(--sun),0 2px 0 #6e564033,0 10px 18px -8px #4a321c66}
+.dt-pick.pre .dt-look{box-shadow:inset 0 0 0 1px #6e56401a,0 2px 0 #6e564033;--c:var(--cream)}
 .dt-empty{position:absolute;inset:6px;border:2px dashed #6e564055;border-radius:9px;display:grid;place-items:center;font:12px/1.35 "Gowun Dodum";color:var(--muted);text-align:center}
 .dt-empty svg{width:44px;height:44px;opacity:.55;display:block;margin:0 auto 4px}
 /* "drawing": a wool ball being felted by a needle, roving wisps orbiting */
@@ -158,7 +196,7 @@
 @keyframes dtPoke{0%,100%{transform:translateY(-6px) rotate(8deg)}50%{transform:translateY(10px) rotate(8deg)}}
 @keyframes dtSpin{to{transform:rotate(360deg)}}
 @keyframes dtDot{0%,100%{opacity:.2}40%{opacity:1}}
-.dt-note{margin:8px 0 0;text-align:center;font-size:12px;color:var(--muted);min-height:16px}
+.dt-note{margin:8px 0 0;text-align:center;font-size:12px;color:var(--muted);min-height:16px;word-break:keep-all}
 .dt-hatch{position:absolute;inset:0;display:grid;place-items:center}
 .dt-hatch .wob{position:relative;width:74%;height:79%;transform-origin:50% 88%}
 .dt-hatch .wob img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
@@ -217,7 +255,6 @@
 
 /* ---------- 7 weather ---------- */
 #wx{background:#8aa0b8 url(img/wall.jpg) center/cover}
-.wx-sky{position:absolute;inset:0;z-index:1;pointer-events:none;transition:background .8s}
 .wx-clock{position:absolute;top:84px;width:100%;text-align:center;color:#fff;font:300 64px/1 system-ui,sans-serif;text-shadow:0 2px 10px #0003;z-index:3}
 .wx-date{position:absolute;top:156px;width:100%;text-align:center;color:#fff;font:14px system-ui,sans-serif;opacity:.92;z-index:3}
 .wx-apps{position:absolute;left:26px;right:26px;bottom:110px;display:grid;grid-template-columns:repeat(4,1fr);gap:20px 0;justify-items:center;z-index:3}
@@ -225,9 +262,10 @@
 .wx-dock{position:absolute;left:18px;right:18px;bottom:22px;height:70px;border-radius:24px;background:#ffffff38;backdrop-filter:blur(8px);z-index:3}
 .wx-zone{position:absolute;left:60px;top:250px;width:260px;height:260px;z-index:5}
 #wxCv{position:absolute;left:60px;top:80px;width:150px;height:150px}
-.wx-talk{position:absolute;left:20px;top:10px;max-width:210px;padding:8px 13px;font:600 13px/1.35 "Gowun Dodum",sans-serif;--c:#fffdf6;--r:18px;white-space:nowrap}
-.wx-talk b{font:14px Jua;font-weight:400;display:block}
-.wx-talk span{display:block;font:12px Jua;color:#b5662a;margin-top:1px}
+.wx-talk{position:absolute;left:20px;top:22px;max-width:230px;padding:8px 14px;font:15px/1.3 Jua,sans-serif;--c:#fffdf6;--r:18px;white-space:nowrap;opacity:0;transition:opacity .3s}
+.wx-talk.on{opacity:1}
+.wx-heart{position:absolute;top:96px;z-index:3;color:#ff6b8b;font:15px system-ui;font-style:normal;text-shadow:0 1px 0 #fff8;pointer-events:none}
+#wxCv{cursor:pointer}
 .wx-talk::before,.wx-talk::after{content:"";position:absolute;border-radius:50%;background:#fffdf6;box-shadow:0 2px 4px #4a321c33}
 .wx-talk::before{width:12px;height:12px;left:96px;bottom:-14px}
 .wx-talk::after{width:7px;height:7px;left:106px;bottom:-24px}
@@ -237,16 +275,12 @@
 .wx-wait small{display:block;font:11.5px "Gowun Dodum";color:var(--muted);margin-top:3px}
 .wx-wait .yarn{display:block;width:34px;height:34px;margin:0 auto 6px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ffd9a6,#e89a4c);box-shadow:inset -3px -4px 0 #c97a35;position:relative;animation:dtSpin 2s linear infinite}
 .wx-wait .yarn::after{content:"";position:absolute;inset:5px;border-radius:50%;border:2px solid #fff4;border-left-color:transparent;border-right-color:transparent}
-.wx-drop{position:absolute;width:2px;height:14px;border-radius:2px;background:linear-gradient(#cfe8ff00,#cfe8ffdd);animation:wxRain .7s linear infinite}
-@keyframes wxRain{from{transform:translate(0,-40px)}to{transform:translate(-30px,820px)}}
-.wx-flake{position:absolute;width:8px;height:8px;border-radius:50%;background:#fff;opacity:.9;box-shadow:0 0 4px #fff;animation:wxSnow 6s linear infinite}
-@keyframes wxSnow{from{transform:translate(0,-20px)}50%{transform:translate(18px,400px)}to{transform:translate(-6px,820px)}}
-.wx-mote{position:absolute;width:5px;height:5px;border-radius:50%;background:#b39b74;opacity:.5;animation:wxMote 7s ease-in-out infinite}
-@keyframes wxMote{50%{transform:translate(24px,-30px)}}
 
 /* ---------- 8 store (built at 360x640 = 1080x1920 / 3) ---------- */
-.st-slot{width:300px;height:533.3px;flex:none;border-radius:20px;overflow:hidden;box-shadow:0 14px 26px -12px #2a1c1099}
-.st{width:360px;height:640px;position:relative;overflow:hidden;transform:scale(.8333);transform-origin:0 0;background:#c9c6c1}
+/* .8333 made the 360 px scene 299.99 px in a 300 px slot: a sliver of the page showed down the right edge.
+   A hair over 300/360 (clipped by the slot) plus a photo-coloured slot leaves no gap at any pixel ratio. */
+.st-slot{width:300px;height:533.3px;flex:none;border-radius:20px;overflow:hidden;box-shadow:0 14px 26px -12px #2a1c1099;background:#757170}
+.st{width:360px;height:640px;position:relative;overflow:hidden;transform:scale(.8338);transform-origin:0 0;background:#c9c6c1}
 .st-photo{position:absolute;left:-30px;top:-118px;width:420px;height:910px;object-fit:cover}
 .st-shade{position:absolute;inset:0;background:linear-gradient(#2a1d1233,#0000 34%,#0000 70%,#2a1d1266)}
 .st-banner{position:absolute;left:22px;right:22px;top:38px;--c:#fffaf0;--r:22px;padding:16px 14px 17px;text-align:center}
@@ -370,3 +404,11 @@
 .rl-endpet{width:74px;margin-top:22px;filter:drop-shadow(0 5px 5px #0006)}
 .rl-cta{margin-top:10px;font:900 13px "Noto Sans KR";color:#2a2016;background:#ffd84d url(img/felt.png) 0 0/90px;background-blend-mode:soft-light;border-radius:999px;padding:8px 22px;box-shadow:0 3px 0 #b48d1d}
 .rl-end small{margin-top:9px;font:500 10px "Noto Sans KR";opacity:.85}
+
+/* reel: the weather scene (11-28) — same home as the opening, no screen effects, the pet does the act */
+.rl-wx{background:#21403f url(img/wall.jpg) center/cover;z-index:10}   /* above the home pet (z 5-7), under the captions (30) */
+.rl-wclock{position:absolute;top:104px;width:100%;text-align:center;color:#fff;font:300 40px/1 system-ui,sans-serif;text-shadow:0 2px 8px #0003}
+.rl-wdate{position:absolute;top:150px;width:100%;text-align:center;color:#fff;font:600 10.5px system-ui,sans-serif;opacity:.95}
+.rl-wbub{position:absolute;left:50%;top:196px;margin-left:-62px;width:124px;--c:#fffdf6;--r:999px;font:12.5px Jua;color:var(--ink);text-align:center;padding:5px 0;transform-origin:50% 100%;z-index:2}
+.rl-wbub::after{content:"";position:absolute;left:56px;bottom:-9px;width:9px;height:9px;border-radius:50%;background:#fffdf6}
+.rl-wpet{position:absolute;left:50%;top:228px;width:176px;height:176px;margin-left:-88px;object-fit:contain;filter:drop-shadow(0 8px 8px #0004)}

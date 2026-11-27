@@ -1,7 +1,10 @@
 // 9 reel: the existing reel's beats, captions and timing (out/framed-v2.mp4, 35.3 s), redrawn with the felt assets.
 // Everything is a pure function of t (render(t)), so the bar can scrub to any frame.
+// 11-28: one scene added after the wall, "날씨도 알려줘요" (WA..WB, the baked rain act). The original timeline
+// is paused under it (first half at WA, second half already at WR, where the montage is in), so nothing else moved.
 {
-  const R = $("rl"), DUR = 35.3;
+  const WA = 24.4, WB = 27.1, WR = 24.72;
+  const R = $("rl"), DUR = 35.3 + (WB - WA) - (WR - WA);
   const sg = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
   const win = (t, a, b, f = .17) => Math.min(sg(t, a, a + f), 1 - sg(t, b - f, b));     // fade in at a, out at b
   const ICON = '<span class="rl-ic"><img src="img/icon-fg.webp" alt=""></span>';
@@ -48,6 +51,13 @@
         <div class="rl-mgrid">${["e01", "f01", "e02", "f03", "src00", "g06"].map(n => `<span class="rl-m"><img class="ph" src="img/reel/${n}.jpg" alt=""><img class="fl" src="img/reel/${n}-fluff.webp" alt=""></span>`).join("")}</div>
         <div class="rl-bear">${["g06", "g03"].map(n => `<span class="rl-b"><img class="fl" src="img/reel/${n}-fluff.webp" alt=""><img class="ph" src="img/reel/${n}.jpg" alt=""></span>`).join("")}</div>
       </div>
+      <div class="rl-layer rl-wx" id="rlWx">
+        <div class="rl-sb"><span>8:12</span><span>▾ ◢ ▮</span></div>
+        <div class="rl-wclock">8:12</div><div class="rl-wdate">11월 28일 금요일 · 비 12°</div>
+        <div class="rl-wbub felt" id="rlWxBub">비 와! 우산 챙겨</div>
+        <img class="rl-wpet" id="rlWxPet" alt="">
+        <div class="rl-dock">${[["#3c9a5f", "✆"], ["#3f7fd0", "✉"], ["#6a5bd0", "◍"], ["#d0504a", "◉"]].map(([c, g]) => `<i style="background:${c}">${g}</i>`).join("")}</div>
+      </div>
       <div class="rl-layer rl-end" id="rlEnd">
         ${ICON}<b class="rl-en">리얼뽑기</b><p>우리 아이도, 움직이는 털뭉치로</p>
         <img class="rl-endpet" id="rlEndPet" src="img/calico-fluff.png" alt="">
@@ -58,11 +68,16 @@
          [15.25, 18.05, 48, "<b>두 번</b> 치면<br>자주 쓰는 앱이 나와요"], [18.4, 21.5, 54, "휘 튕기면 <b>통통</b>"], [21.75, 24.6, 54, "벽에도 잘 <b>붙어</b> 있네요"],
          [24.75, 27.6, 34, "강아지든 사람이든<br>다 되더라고요"], [27.75, 29.2, 34, "머리도 옷도<br>찍힌 <b>그때 모습</b>이라"], [29.3, 31.1, 34, "안고 있던 <b>곰인형</b>도<br>같이 와요"]]
         .map(([a, b, y, h]) => `<div class="rl-cap" data-a="${a}" data-b="${b}" style="top:${y}px">${h}</div>`).join("")}
+      <div class="rl-cap" data-a="${WA + .3}" data-b="${WB - .05}" data-real="1" style="top:54px">날씨도 <b>알려줘요</b></div>
     </div></div>
     <div class="rl-foot" id="rlFoot"><b>리얼뽑기</b>· 우리 아이를 뽑아 폰에 키우는 앱</div>
     <div class="rl-foot2" id="rlFoot2"><b>지금 테스터 모집 중</b>많이 써 주시면 진짜 출시해 볼게요</div>`;
   const q = id => $(id), caps = [...R.querySelectorAll(".rl-cap[data-a]")];
-  const L = { home: q("rlHome"), cat: q("rlCat"), catch: q("rlCatch"), hatch: q("rlHatch"), dex: q("rlDex"), mont: q("rlMont"), end: q("rlEnd") };
+  const L = { home: q("rlHome"), cat: q("rlCat"), catch: q("rlCatch"), hatch: q("rlHatch"), dex: q("rlDex"), mont: q("rlMont"), end: q("rlEnd"), wx: q("rlWx") };
+  // the weather scene's frames (nyangsom, rain: act then loop), loaded up front so scrubbing never waits
+  const WXF = [...Array.from({ length: 26 }, (_, i) => `img/wx3d/nyangsom-rain-act-${String(i).padStart(2, "0")}.webp`),
+    ...Array.from({ length: 8 }, (_, i) => `img/wx3d/nyangsom-rain-loop-${String(i).padStart(2, "0")}.webp`)];
+  WXF.forEach(src => { const i = new Image(); i.src = src; });
   const set = (el, o, tf) => { el.style.opacity = o; if (tf != null) el.style.transform = tf; };
 
   // the flick: a deterministic little physics run (walls 0..260, floor at the pet line)
@@ -73,14 +88,21 @@
       if (y > 330) { y = 330; vy *= -.42; vx *= .7; if (Math.abs(vy) < 60) vy = 0; } }
     return out; })();
 
-  function render(t){
+  function render(T){
+    const t = T < WA ? T : T < WB ? (T < (WA + WB) / 2 ? WA : WR) : T - WB + WR;
+    // ---- the weather scene (real time T): same home, the pet opens its umbrella, one line
+    const wxA = win(T, WA, WB, .25); set(L.wx, wxA);
+    { const i = Math.floor((T - WA - .3) * 12), n = i < 0 ? 0 : i < 26 ? i : 26 + (i - 26) % 8, src = WXF[n];
+      if (!q("rlWxPet").src.endsWith(src)) q("rlWxPet").src = src;
+      const b = q("rlWxBub"), k = sg(T, WA + .75, WA + 1.05); b.style.opacity = k; b.style.transform = `scale(${.5 + .5 * E.back(k, 2.4)})`; }
     // ---- layer windows
     const homeA = Math.max(win(t, 0, 1.75, .12), win(t, 12.7, 24.7, .25));
     set(L.home, homeA); set(L.cat, win(t, 1.6, 3.5, .1), `scale(${1.04 + sg(t, 1.6, 3.5) * .06})`);
     set(L.catch, win(t, 3.4, 9.35, .1)); set(L.hatch, win(t, 8.9, 10.85, .3)); set(L.dex, win(t, 10.75, 13.2, .1));
     set(L.mont, win(t, 24.55, 31.25, .15)); set(L.end, sg(t, 31.15, 31.45));
     q("rlFoot").style.opacity = 1 - sg(t, 31.1, 31.4); q("rlFoot2").style.opacity = sg(t, 31.2, 31.5);
-    for (const c of caps) { const a = +c.dataset.a, b = +c.dataset.b, o = win(t, a, b); c.style.opacity = o; c.style.transform = `scale(${.9 + .1 * sg(t, a, a + .17)})`; }
+    for (const c of caps) { const tt = c.dataset.real ? T : t, a = +c.dataset.a, b = +c.dataset.b, o = win(tt, a, b) * (c.dataset.real ? 1 : 1 - wxA);
+      c.style.opacity = o; c.style.transform = `scale(${.9 + .1 * sg(tt, a, a + .17)})`; }
 
     // ---- home: pet walks / tapped / clouds / flick / wall
     const pet = q("rlPet"), bub = q("rlBub"), tap = q("rlTap"), cloud = q("rlCloud"), hearts = q("rlHearts"), daze = q("rlDaze");
@@ -136,7 +158,8 @@
     for (const el of R.querySelectorAll("#rlCatch .rl-rail,#rlCatch .rl-chips,#rlCatch .rl-btn,#rlCatch .rl-found,#rlClaw")) el.style.opacity = 1 - fl;
     // ---- hatch: the big capsule pops, the fluff comes out
     const pop = sg(t, 9.15, 9.3);
-    cbody.querySelector(".k-top").style.transform = `translate(${pop * 30}px,${-pop * 120}px) rotate(${pop * 160}deg)`; cbody.querySelector(".k-top").style.opacity = .72 * (1 - pop);
+    const lid = LID_OPEN * (1 - E.inQ(sg(t, 6.02, 6.2)));
+    cbody.querySelector(".k-top").style.transform = `translate(${pop * 30}px,${-pop * 120}px) rotate(${pop * 160 + lid}deg)`; cbody.querySelector(".k-top").style.opacity = .72 * (1 - pop);
     cbody.querySelector(".k-bot").style.transform = `translate(${-pop * 10}px,${pop * 140}px) rotate(${-pop * 30}deg)`; cbody.querySelector(".k-bot").style.opacity = 1 - pop;
     cbody.querySelector(".k-con").style.opacity = 1 - pop;
     const f = sg(t, 9.2, 9.75), fs = t < 9.2 ? 0 : E.back(f, 2.2);
@@ -162,11 +185,11 @@
     q("rlEndPet").style.transform = `translate(${wx}px,${-wb}px)`;
     e.querySelector(".rl-cta").style.transform = `scale(${E.back(sg(t, 32.4, 32.75))})`;
     e.querySelector("small").style.opacity = sg(t, 32.7, 33);
-    q("rlTime").textContent = t.toFixed(1) + "s";
+    q("rlTime").textContent = T.toFixed(1) + "s";
   }
 
   let t = 0, playing = false, last = 0;
-  const seek = q("rlSeek");
+  const seek = q("rlSeek"); seek.max = DUR.toFixed(2);
   function frame(now){ if (!playing) return; t += (now - last) / 1000; last = now; if (t > DUR) t = 0; seek.value = t; render(t); requestAnimationFrame(frame); }
   const play = on => { playing = on; q("rlPlay").textContent = on ? "일시정지" : "재생"; if (on) { last = performance.now(); requestAnimationFrame(frame); } };
   q("rlPlay").onclick = () => play(!playing);
