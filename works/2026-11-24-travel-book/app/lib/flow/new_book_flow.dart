@@ -1,4 +1,5 @@
-// D3 host: dates (real per-day counts) -> trip scan -> albums -> extras (must-include, notes, timeline, shape) -> make.
+// D3 host: dates (real per-day counts) -> trip scan -> albums -> extras (must-include, notes, timeline) -> pick.
+// The book's theme and length are chosen after the photos (making_flow -> choose_theme).
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -15,7 +16,6 @@ import '../device/gallery.dart' as g;
 import '../pipeline.dart';
 import '../ui/failures.dart';
 import '../ui/new_book/albums.dart';
-import '../ui/new_book/book_shape.dart';
 import '../ui/new_book/dates.dart';
 import '../ui/new_book/draft.dart';
 import '../ui/new_book/extras.dart';
@@ -27,8 +27,6 @@ import '../ui/tokens.dart' show fmtInt;
 import '../ui/widgets.dart';
 import 'app.dart';
 import 'making_flow.dart';
-
-DateTime _d(DateTime t) => DateTime(t.year, t.month, t.day);
 
 class NewBookFlow extends StatefulWidget {
   final App app;
@@ -278,7 +276,7 @@ class _ExtrasState extends State<_Extras> {
       final go = await showSheet<bool>(
         context,
         (c) => PriceSheet(
-          line: '${rangeShort(d.start!, d.end!)} · 약 ${lengthPages[d.opts.length]}쪽',
+          line: rangeShort(d.start!, d.end!),
           onLater: () => Navigator.of(c).pop(false),
           onMake: () => Navigator.of(c).pop(true),
         ),
@@ -314,20 +312,6 @@ class _ExtrasState extends State<_Extras> {
               onBack: back,
               onPickFile: _pickTimeline,
               onOpenSettings: g.openSettings, // ponytail: app settings; the OS location screen needs a channel call
-            )),
-        onShape: () => _push((back) => BookShapeScreen(
-              draft: d,
-              recommended: d.notes.any((n) => !n.bad) ? 'diary' : 'a',
-              reason: d.notes.any((n) => !n.bad) ? '일기를 넣어서' : '사진을 크고 넓게',
-              photos: widget.shots.length,
-              days: _d(d.end!).difference(_d(d.start!)).inDays + 1,
-              videos: widget.shots.where((s) => s.isVideo).length,
-              placesHint: '날마다 다닌 곳',
-              onBack: () {
-                d.shapeTouched = true;
-                back();
-              },
-              onMake: _make,
             )),
         onMake: _make,
       );

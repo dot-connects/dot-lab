@@ -27,7 +27,11 @@ class BookView extends StatelessWidget {
   final VoidCallback onBack, onEdit, onExport;
   final BookTip? tip;
   final BookBanner? banner;
+  final bool spread; // two pages per screen
+  final VoidCallback? onSpread; // toggles one page / two pages
   const BookView({
+    this.spread = false,
+    this.onSpread,
     super.key,
     required this.title,
     required this.page,
@@ -70,6 +74,21 @@ class BookView extends StatelessWidget {
                   child: SizedBox(width: 30, height: 44, child: Center(child: Text('‹', style: ui(18, color: C.ink)))),
                 ),
                 Expanded(child: Text(title, style: ui(14.5, w: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                if (onSpread != null) ...[
+                  GestureDetector(
+                    onTap: onSpread,
+                    behavior: HitTestBehavior.opaque,
+                    child: SizedBox(
+                      height: 44,
+                      child: Row(children: [
+                        Icon(spread ? Icons.auto_stories_outlined : Icons.crop_portrait, size: 18, color: C.ink),
+                        const SizedBox(width: 3),
+                        Text(spread ? '두 쪽' : '한 쪽', style: ui(12, w: FontWeight.w600)),
+                      ]),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
                 em('다듬기', false, onEdit),
                 const SizedBox(width: 6),
                 em('내보내기', true, onExport),

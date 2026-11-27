@@ -68,7 +68,9 @@ int _pastAnd(String s) {
 }
 
 /// Problems worth one more call. Empty = good as is.
-List<String> checkLayout(Map<String, dynamic> body, List<LayoutDef> defs, Map<String, Candidate> pool, LayoutRules rules) {
+/// [order] = photo id -> scene position (core/scenes.dart); [kinds] = photo id -> /pick kind (음식 pages may gather a day).
+List<String> checkLayout(Map<String, dynamic> body, List<LayoutDef> defs, Map<String, Candidate> pool, LayoutRules rules,
+    {Map<String, int> order = const {}, Map<String, String> kinds = const {}}) {
   final errs = <String>[];
   final by = {for (final d in defs) d.id: d};
   final pages = _pages(body);
@@ -103,6 +105,21 @@ List<String> checkLayout(Map<String, dynamic> body, List<LayoutDef> defs, Map<St
         errs.add('$n쪽 ${d.id}.$k: ${v.length}자 > $max자');
       }
     }
+  }
+  // the trip's order: scenes never go back (a page of only food may gather that day's meals; the end may echo the start)
+  if (order.isNotEmpty) {
+    var seen = -1, back = <String>[];
+    for (final (i, p) in pages.indexed) {
+      final d = by[_s(p['layout'])];
+      if (i == 0 || d == null || d.kind == 'end') continue;
+      final ids = [for (final x in _list(p['photos'])) _s(x['id'])].where(order.containsKey).toList();
+      if (ids.isEmpty) continue;
+      final food = ids.every((id) => kinds[id] == '음식');
+      final lo = ids.map((id) => order[id]!).reduce(math.min), hi = ids.map((id) => order[id]!).reduce(math.max);
+      if (lo < seen && !(food && pool[ids.first] != null)) back.add('${i + 1}쪽');
+      if (!food) seen = math.max(seen, hi);
+    }
+    if (back.isNotEmpty) errs.add('장면 순서가 거꾸로 간 쪽: ${back.take(6).join(', ')} — "여행의 흐름"의 날·장면 순서대로 놓아라');
   }
   final cover = pages.isEmpty ? <String>{} : {for (final x in _list(pages.first['photos'])) _s(x['id'])};
   used.forEach((k, v) {
@@ -203,8 +220,15 @@ const _months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 
   pages.removeWhere((p) => by[p.layout]?.kind == 'cover');
   final coverDef = defs.where((d) => d.kind == 'cover' && d.slots.length == 1).firstOrNull;
   final title = _s(body['title']).trim().isNotEmpty ? _s(body['title']).trim() : fallbackTitle;
-  if (covers.isNotEmpty) {
+  if (covers.isNotEmpty && (coverPhoto == null || covers.first.ids.contains(coverPhoto))) {
     pages.insert(0, covers.first);
+  } else if (covers.isNotEmpty && pool[coverPhoto] != null) {
+    // the person chose the cover photo: keep the editor's words, put their photo in a cover layout that fits it
+    final c = covers.first, shot = pool[coverPhoto]!.shot;
+    final d = by[c.layout]!.slots.length == 1 && slotFits(by[c.layout]!.slots.first, shot)
+        ? by[c.layout]!
+        : defs.where((d) => d.kind == 'cover' && d.slots.length == 1 && slotFits(d.slots.first, shot)).firstOrNull ?? by[c.layout]!;
+    pages.insert(0, PageSpec(d.id, [coverPhoto!], text: {for (final e in c.text.entries) if (d.texts.contains(e.key)) e.key: e.value}));
   } else if (coverDef != null) {
     final pic = coverPhoto ?? pool.values.where((c) => !c.shot.isVideo).firstOrNull?.id;
     if (pic != null) pages.insert(0, PageSpec(coverDef.id, [pic], text: {'title': title}));

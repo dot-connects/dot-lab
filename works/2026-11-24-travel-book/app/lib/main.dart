@@ -74,6 +74,7 @@ class _RootState extends State<_Root> {
       if (id != null) _openId(id);
     });
     onOpenBook(_openId);
+    app.shelfChanged.addListener(_reload);
   }
 
   void _openId(String id) {

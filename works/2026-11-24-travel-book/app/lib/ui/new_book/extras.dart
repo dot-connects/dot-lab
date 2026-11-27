@@ -12,7 +12,7 @@ class ExtrasScreen extends StatelessWidget {
   final int photos; // photos in the chosen albums and range
   final List<String> mustThumbs; // paths of the chosen must-include photos
   final int freeLeft;
-  final VoidCallback onBack, onMust, onNotes, onTimeline, onMake, onShape;
+  final VoidCallback onBack, onMust, onNotes, onTimeline, onMake;
   const ExtrasScreen({
     super.key,
     required this.draft,
@@ -24,17 +24,12 @@ class ExtrasScreen extends StatelessWidget {
     required this.onNotes,
     required this.onTimeline,
     required this.onMake,
-    required this.onShape,
   });
 
   @override
   Widget build(BuildContext context) {
     final o = draft.opts;
-    final pages = lengthPages[o.length]!;
     final must = draft.mustInclude.length;
-    final shapeLabel = draft.shapeTouched
-        ? '${themeNames[o.theme ?? 'a']} · ${lengthNames[o.length]} $pages쪽 · 바꾸기'
-        : '테마·길이 먼저 고르기';
     return NbScaffold(
       onBack: onBack,
       right: topLabel('3 / 3'),
@@ -57,9 +52,7 @@ class ExtrasScreen extends StatelessWidget {
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: C.line)),
           child: Text.rich(
             TextSpan(children: [
-              TextSpan(text: kw('사진 ${fmtInt(photos)}장에서 잘 나온 것을 골라 ')),
-              TextSpan(text: '약 $pages쪽', style: nm(12, w: FontWeight.w700)),
-              TextSpan(text: kw('으로 만들어요. 2~3분쯤 걸려요.\n이번 책: ')),
+              TextSpan(text: kw('사진 ${fmtInt(photos)}장에서 잘 나온 것을 고르고, 그 사진으로 책 모양을 골라요. 2~3분쯤 걸려요.\n이번 책: ')),
               if (freeLeft > 0) ...[
                 TextSpan(text: '무료', style: ui(12, w: FontWeight.w700)),
                 const TextSpan(text: ' (처음 2권) · '),
@@ -73,7 +66,7 @@ class ExtrasScreen extends StatelessWidget {
           ),
         ),
       ]),
-      foot: [Btn(freeLeft > 0 ? '책 만들기' : '책 만들기 · 1,500원', onTap: onMake), Btn(shapeLabel, ghost: true, onTap: onShape)],
+      foot: [Btn(freeLeft > 0 ? '사진 고르기 시작' : '사진 고르기 시작 · 1,500원', onTap: onMake)],
     );
   }
 

@@ -19,6 +19,7 @@ import 'core/paginate.dart';
 import 'core/plan_check.dart';
 import 'core/prefilter.dart';
 import 'core/refdocs.dart';
+import 'core/scenes.dart';
 import 'core/text_shape.dart';
 import 'core/timeline.dart';
 import 'device/gallery.dart' as g;
@@ -309,7 +310,15 @@ class Pipeline {
     final theme = layoutRules.containsKey(b.theme) ? b.theme : 'a';
     final rules = layoutRules[theme]!;
     final byId = {for (final c in picked) c.id: c};
-    final shots = [for (final c in picked) _aiShot(c)];
+    final tags = {for (final p in b.picks) p.id: p};
+    final shots = [
+      for (final c in picked)
+        AiShot(c.id, _localIso(c.local), c.place,
+            video: c.shot.isVideo, durMs: c.shot.durationMs, w: c.shot.w, h: c.shot.h, kind: tags[c.id]?.kind ?? '', what: tags[c.id]?.what ?? ''),
+    ];
+    final scenes = scenesOf(picked);
+    final order = sceneIndex(scenes);
+    final kinds = {for (final p in b.picks) p.id: p.kind};
     List<AiImage>? images;
     Future<List<AiImage>> previews() async {
       if (images != null) return images!;
@@ -329,16 +338,16 @@ class Pipeline {
     Future<AiResult> run({List<String>? fix, Map<String, dynamic>? prev}) => _job(
         b,
         (job) async => ai.layout(await previews(), shots,
-            job: job, theme: theme, catalog: layoutCatalog(defs), rules: rules.toJson(picked.length), notes: _notes(notes),
+            job: job, theme: theme, catalog: layoutCatalog(defs), rules: rules.toJson(picked.length), scenes: outlineJson(scenes), notes: _notes(notes),
             opts: b.opts.toJson(), fix: fix, prev: prev));
     final r = await run();
     if (r is! AiOk) return r is AiOff ? AiState.off : AiState.failed;
     var body = r.body;
-    final errs = checkLayout(body, defs, byId, rules);
+    final errs = checkLayout(body, defs, byId, rules, order: order, kinds: kinds);
     if (errs.isNotEmpty) {
       b.job = null; // the retry is a new job
       final r2 = await run(fix: errs.take(20).toList(), prev: body);
-      if (r2 is AiOk && checkLayout(r2.body, defs, byId, rules).length < errs.length) body = r2.body;
+      if (r2 is AiOk && checkLayout(r2.body, defs, byId, rules, order: order, kinds: kinds).length < errs.length) body = r2.body;
     }
     final out = repairLayout(body, defs, byId, fallbackTitle: _defaultTitle(b), coverPhoto: b.cover);
     if (out.pages.length < 2) return AiState.failed;
@@ -360,7 +369,7 @@ class Pipeline {
   Future<AiResult> _job(Book b, Future<AiResult> Function(String job) start) async {
     AiResult r;
     if (b.job == null) {
-      b.job = '${b.id}-${DateTime.now().microsecondsSinceEpoch}';
+      b.job = _jobName(); // unguessable: the job name is the only key to its result (the server checks nothing else)
       await store.save(b);
       r = await start(b.job!);
     } else {
@@ -490,6 +499,12 @@ class Pipeline {
   }
 
   // ----- helpers -----
+
+  /// 128 random bits, base64url (22 chars) behind a "j": a job name nobody can guess.
+  static String _jobName() {
+    final r = math.Random.secure();
+    return 'j${base64Url.encode(List<int>.generate(16, (_) => r.nextInt(256))).replaceAll('=', '')}';
+  }
 
   /// The page's own words to rewrite: its first filled text slot that is not a heading or a date.
   String _captionKey(PageSpec p) =>

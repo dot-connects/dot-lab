@@ -26,6 +26,11 @@ html,body{margin:0;height:100%;background:#1b1b1b;overscroll-behavior:none}
 .pg img{display:block;width:100%;height:100%;object-fit:cover}
 .pg video{display:block;width:100%;height:100%;object-fit:cover}
 .pg [data-text]:empty{visibility:hidden} /* keeps its box: grid auto-placement under the photos must not shift */
+/* spread: two pages per screen, a soft fold between them */
+body.spread .sheet.two{gap:0}
+body.spread .sheet.two .pg{width:min((100vw - 32px) / 2,(100vh - 24px) / var(--ratio))}
+body.spread .pg.left{box-shadow:inset -14px 0 18px -14px rgba(0,0,0,.28)}
+body.spread .pg.right{box-shadow:inset 14px 0 18px -14px rgba(0,0,0,.22)}
 /* export mode: one page fills the viewport exactly */
 body.export #book{overflow:hidden}
 body.export .sheet{flex-basis:100vw}

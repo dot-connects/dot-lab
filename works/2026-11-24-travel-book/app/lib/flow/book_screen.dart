@@ -101,6 +101,12 @@ class _BookScreenState extends State<BookScreen> {
     );
   }
 
+  /// Two pages side by side: the person's choice, else wide screens (landscape, unfolded foldables, tablets).
+  bool _spread(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    return app.prefs.spread ?? size.width > size.height * 0.9;
+  }
+
   @override
   Widget build(BuildContext context) {
     final picked = b.picks.length;
@@ -119,7 +125,11 @@ class _BookScreenState extends State<BookScreen> {
         AiState.failed => offlineBanner(picked, onRetry: _retry, onNoText: () => setState(() => _failed = null)),
         _ => null,
       },
-      page: BookWebView(book: bookJs(b), booksDir: app.booksDir, version: _version, onLongPress: _longPress),
+      spread: _spread(context),
+      onSpread: () => setState(() => app.prefs
+        ..spread = !_spread(context)
+        ..save()),
+      page: BookWebView(book: bookJs(b), booksDir: app.booksDir, version: _version, onLongPress: _longPress, spread: _spread(context)),
     );
   }
 }

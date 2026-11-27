@@ -26,14 +26,15 @@ Future<void> loadFonts() async {
   }
 }
 
-Future<void> shot(WidgetTester t, String name) async {
+/// [settle] false: keep the frame as it is (a screen with a running animation never settles).
+Future<void> shot(WidgetTester t, String name, {bool settle = true}) async {
   if (shots == null) return;
   await t.runAsync(() async {
     for (final e in find.byType(Image).evaluate()) {
       await precacheImage((e.widget as Image).image, e);
     }
   });
-  await t.pumpAndSettle();
+  settle ? await t.pumpAndSettle() : await t.pump();
   final ro = shotKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
   await t.runAsync(() async {
     final png = await (await ro.toImage(pixelRatio: 2)).toByteData(format: ui.ImageByteFormat.png);
@@ -41,8 +42,8 @@ Future<void> shot(WidgetTester t, String name) async {
   });
 }
 
-Future<void> pump(WidgetTester t, Widget w, [String? name]) async {
-  t.view.physicalSize = const Size(360, 740) * 2;
+Future<void> pump(WidgetTester t, Widget w, [String? name, Size size = const Size(360, 740)]) async {
+  t.view.physicalSize = size * 2;
   t.view.devicePixelRatio = 2;
   addTearDown(t.view.reset);
   await t.pumpWidget(RepaintBoundary(key: shotKey, child: MaterialApp(debugShowCheckedModeBanner: false, theme: appTheme(), home: w)));

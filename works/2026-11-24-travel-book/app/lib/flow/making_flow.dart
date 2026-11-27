@@ -1,4 +1,5 @@
-// D4 host: /pick with live numbers -> pairs -> review -> /write -> the book. Also resumes a "picked" book.
+// D4 host: /pick with live numbers -> pairs -> review -> book shape (theme, length) -> /write -> the book.
+// Also resumes a "picked" book, and one still being made (leaving the making screen does not stop it).
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
@@ -12,6 +13,7 @@ import '../device/media_channel.dart' as mc;
 import '../pipeline.dart';
 import '../ui/making/pairs.dart';
 import '../ui/making/picking.dart';
+import '../ui/making/choose_theme.dart';
 import '../ui/making/picks_review.dart';
 import '../ui/making/swap_sheet.dart';
 import '../ui/making/writing.dart';
@@ -22,8 +24,6 @@ import '../ui/widgets.dart';
 import 'app.dart';
 import 'book_screen.dart';
 
-const _amount = {'photos': '사진만', 'caption': '짧은 캡션', 'caption_essay': '캡션 + 에세이'};
-const _tones = {'kind': '다정한 존댓말', 'humor': '유머'};
 
 class MakingFlow extends StatefulWidget {
   final App app;
@@ -57,8 +57,6 @@ class _MakingFlowState extends State<MakingFlow> {
   PickProgress? _p;
   late Book? _book = widget.book;
   List<(String, String)> _ask = [];
-  Timer? _tick;
-  int _page = 0;
 
   App get app => widget.app;
   List<NoteInput> get _notes => [for (final n in widget.draft?.notes ?? const <NoteItem>[]) if (!n.bad && n.input != null) n.input!];
@@ -66,17 +64,18 @@ class _MakingFlowState extends State<MakingFlow> {
   @override
   void initState() {
     super.initState();
-    if (widget.book == null) {
+    final b = widget.book;
+    if (b == null) {
       _pick();
-    } else if (widget.book!.job != null && !app.making.contains(widget.book!.id)) {
-      // the app was closed while the AI editor worked: wait for that same job (no new charge)
+    } else if (app.writes.containsKey(b.id) || (b.job != null && !app.making.contains(b.id))) {
+      // still being made after the person left this screen (same future), or the app was closed while the AI
+      // editor worked (wait for that same job, no new charge)
       WidgetsBinding.instance.addPostFrameCallback((_) => _write());
     }
   }
 
   @override
   void dispose() {
-    _tick?.cancel();
     mc.keepScreenOn(false).catchError((_) {});
     super.dispose();
   }
@@ -104,7 +103,7 @@ class _MakingFlowState extends State<MakingFlow> {
       _open(failed: r.ai);
       return;
     }
-    await Future<void>.delayed(const Duration(milliseconds: 700)); // let "38" be seen
+    await Future<void>.delayed(const Duration(milliseconds: 1600)); // let the count ease down to "38" and be seen
     if (!mounted) return;
     // the picker is done; the review screen waits on the person, so the screen may sleep again (battery)
     unawaited(mc.keepScreenOn(false).catchError((_) {}));
@@ -116,27 +115,26 @@ class _MakingFlowState extends State<MakingFlow> {
 
   Future<void> _write() async {
     final b = _book!;
-    final pages = lengthPages[b.opts.length] ?? 24;
-    setState(() {
-      _phase = _Phase.writing;
-      _page = 0;
-    });
+    setState(() => _phase = _Phase.writing);
     unawaited(mc.keepScreenOn(true).catchError((_) {}));
+    final r = await (app.writes[b.id] ??= _run(b, _notes));
+    if (!mounted) return; // left for the shelf: _run reports to it
+    _open(failed: r == AiState.ok ? null : r);
+  }
+
+  /// The write itself, held in app.writes so it outlives this screen ([나가 있기] pops to the shelf).
+  Future<AiState> _run(Book b, List<NoteInput> notes) async {
     app.making.add(b.id);
     unawaited(makingStart(b.title)); // leaving the app keeps it going; "다 됐어요" if they are away at the end
-    // /layout is one call (two with the retry): the page count is a time estimate (about 2 min), never the last page early
-    _tick = Timer.periodic(Duration(milliseconds: 120000 ~/ pages), (t) {
-      if (_page >= pages - 1) return t.cancel(); // last page shown: stop rebuilding every 800 ms
-      setState(() => _page++);
-    });
-    final r = await app.pipe.write(b, notes: _notes);
+    final r = await app.pipe.write(b, notes: notes);
     app.making.remove(b.id);
-    final away = WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed;
-    unawaited(r == AiState.ok && away ? makingDone(b.title, b.id) : makingStop());
-    _tick?.cancel();
-    if (!mounted) return;
     if (r != AiState.ok) await app.pipe.finish(b); // pages without text; [다시 시도] on the book
-    _open(failed: r == AiState.ok ? null : r);
+    // away = out of the app, or back on the shelf: either way they were told "다 되면 알려 드릴게요"
+    final away = !mounted || WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed;
+    unawaited(r == AiState.ok && away ? makingDone(b.title, b.id) : makingStop());
+    app.writes.remove(b.id);
+    app.shelfChanged.value++;
+    return r;
   }
 
   void _open({AiState? failed}) {
@@ -189,34 +187,71 @@ class _MakingFlowState extends State<MakingFlow> {
     );
   }
 
-  Future<void> _shape() async {
+  List<Candidate> get _photos =>
+      [for (final p in _book!.picks) _cand(p.id)].nonNulls.where((c) => !c.shot.isVideo).toList()..sort((a, x) => a.local.compareTo(x.local));
+
+  /// The cover page's title: the book's own, else the place most photos were taken at, else the month.
+  String _place(List<Candidate> cs) {
     final b = _book!;
-    final d = widget.draft ?? (NewBookDraft()
+    if (b.title.isNotEmpty) return b.title;
+    final n = <String, int>{};
+    for (final c in cs) {
+      if (c.place != null) n[c.place!] = (n[c.place!] ?? 0) + 1;
+    }
+    final top = n.entries.fold<MapEntry<String, int>?>(null, (m, e) => m == null || e.value > m.value ? e : m);
+    return top?.key ?? '${b.from.month}월의 여행';
+  }
+
+  /// 어떤 책으로 만들까요? — always between the photo review and the making.
+  void _choose() {
+    final b = _book!, cs = _photos, nav = Navigator.of(context);
+    final d = NewBookDraft()
       ..start = b.from
       ..end = b.to
-      ..opts = b.opts);
-    final nav = Navigator.of(context);
-    await nav.push(MaterialPageRoute<void>(
-      builder: (_) => BookShapeScreen(
+      ..opts = b.opts;
+    final stats = (
+      photos: cs.length,
+      portrait: cs.where((c) => c.shot.h > c.shot.w).length,
+      days: b.to.difference(b.from).inDays + 1,
+      notes: _notes.isNotEmpty,
+    );
+    Future<void> make() async {
+      b
+        ..opts = d.opts
+        ..theme = d.opts.theme ??= b.theme;
+      await app.store.save(b);
+      nav.pop();
+      if (mounted) _write();
+    }
+
+    nav.push(MaterialPageRoute<void>(
+      builder: (_) => ChooseThemeScreen(
         draft: d,
         recommended: b.theme,
-        reason: '고른 사진에 맞춰',
-        photos: b.pool.length,
-        days: b.to.difference(b.from).inDays + 1,
-        videos: b.pool.where((c) => c.shot.isVideo).length,
-        placesHint: (b.pool.map((c) => c.place).nonNulls.toSet().take(3).join(' · ')),
+        photos: [for (final c in cs) 'gallery:${c.id}'],
+        title: _place(cs),
+        stats: stats,
+        price: widget.paid ? '1,500원' : null,
         onBack: nav.pop,
-        onMake: () {
-          nav.pop();
-          _write();
-        },
+        onMake: make,
+        onMore: () => nav.push(MaterialPageRoute<void>(
+          builder: (_) => BookShapeScreen(
+            draft: d,
+            recommended: b.theme,
+            reason: '고른 사진에 맞춰',
+            photos: cs.length,
+            days: stats.days,
+            videos: b.pool.where((c) => c.shot.isVideo).length,
+            placesHint: cs.map((c) => c.place).nonNulls.toSet().take(3).join(' · '),
+            onBack: nav.pop,
+            onMake: () {
+              nav.pop();
+              make();
+            },
+          ),
+        )),
       ),
     ));
-    b
-      ..opts = d.opts
-      ..theme = d.opts.theme ?? b.theme;
-    await app.store.save(b);
-    if (mounted) setState(() {});
   }
 
   @override
@@ -259,7 +294,6 @@ class _MakingFlowState extends State<MakingFlow> {
       case _Phase.review:
         final b = _book!;
         final days = app.pipe.picksByDay(b);
-        final o = b.opts;
         return PicksReviewScreen(
           days: [
             for (final (d, cs) in days) (d, [for (final c in cs) if (!c.shot.isVideo) PhotoRef(c.id, 'gallery:${c.id}')]),
@@ -268,31 +302,25 @@ class _MakingFlowState extends State<MakingFlow> {
           coverId: b.cover,
           from: widget.albumPhotos > 0 ? widget.albumPhotos : b.pool.length,
           videos: [for (final (_, cs) in days) ...cs].where((c) => c.shot.isVideo).length,
-          shapeLine: '${themeNames[b.theme] ?? ''} · ${lengthNames[o.length] ?? ''} · ${_amount[o.textAmount] ?? ''}',
-          pages: lengthPages[o.length] ?? 24,
-          price: widget.paid ? '1,500원' : null,
           onTapPhoto: _tapPhoto,
           onAdd: (day) async {
             await app.pipe.addOne(b, day);
             setState(() {});
           },
           onBack: nav.pop, // the book stays "picked" on the shelf and resumes here
-          onShape: _shape,
-          onMake: _write,
+          onMake: _choose,
         );
       case _Phase.writing:
-        final b = _book!;
-        final first = b.picks.map((p) => _cand(p.id)).nonNulls.where((c) => !c.shot.isVideo).firstOrNull;
+        final b = _book!, cs = _photos, o = b.opts;
+        void leave() => nav.popUntil((r) => r.isFirst); // the book keeps being made (app.writes)
         return WritingScreen(
-          photo: first == null ? 'assets/covers/a.jpg' : 'gallery:${first.id}',
-          meta: first == null ? '' : [hmOf(first.local), first.place].nonNulls.join(' · '),
-          typing: '',
-          picked: b.picks.length,
-          page: _page,
-          pages: lengthPages[b.opts.length] ?? 24,
-          tone: _tones[b.opts.tone] ?? '담담한 일기체',
-          theme: themeNames[b.theme] ?? '',
-          onClose: nav.pop,
+          photos: [for (final c in cs) 'gallery:${c.id}'],
+          theme: b.theme,
+          title: _place(cs),
+          line: '${themeNames[b.theme] ?? ''} · ${lengthNames[o.length] ?? ''} ${lengthPages[o.length] ?? 24}쪽 · 2~3분',
+          picked: cs.length,
+          words: o.textAmount != 'photos',
+          onLeave: leave,
         );
     }
   }

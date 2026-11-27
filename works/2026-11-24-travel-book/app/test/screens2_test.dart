@@ -7,7 +7,6 @@ import 'package:tripbook/ui/making/pairs.dart';
 import 'package:tripbook/ui/making/picking.dart';
 import 'package:tripbook/ui/making/picks_review.dart';
 import 'package:tripbook/ui/making/swap_sheet.dart';
-import 'package:tripbook/ui/making/writing.dart';
 import 'package:tripbook/ui/new_book/dates.dart';
 import 'package:tripbook/ui/new_book/draft.dart';
 import 'package:tripbook/ui/new_book/extras.dart';
@@ -25,25 +24,61 @@ void main() {
   setUpAll(loadFonts);
   void no() {}
 
-  testWidgets('picking', (t) async {
-    await pump(
-        t,
-        PickingScreen(
-            thumbs: samplePickStrip,
-            inRange: 412,
-            albums: 2,
-            albumPhotos: 186,
-            filtered: (blurDark: 34, similar: 88, capture: 7),
-            sent: 57,
-            picked: 38,
-            must: 3,
-            onClose: no),
-        'd4-1-picking');
+  Widget picking({int sent = 0, int? picked}) => PickingScreen(
+      thumbs: samplePickStrip,
+      inRange: 412,
+      albums: 2,
+      albumPhotos: 186,
+      filtered: sent == 0 ? (blurDark: 0, similar: 0, capture: 0) : (blurDark: 34, similar: 88, capture: 7),
+      sent: sent,
+      picked: picked,
+      must: 3,
+      onClose: no);
+
+  testWidgets('picking: the count steps down as the numbers arrive, never ahead of them', (t) async {
+    await pump(t, picking());
     expect(find.text('사진을 고르고 있어요'), findsOneWidget);
+    expect(find.text('412'), findsOneWidget);
+    expect(find.text('이 기간에 찍은 사진 412장'), findsOneWidget);
+    await t.pump(const Duration(milliseconds: 1300));
+    await t.pumpAndSettle();
+    expect(find.text('186'), findsOneWidget);
+    await t.pump(const Duration(seconds: 5)); // no filter numbers yet: it waits at the albums
+    await t.pumpAndSettle();
+    expect(find.text('186'), findsOneWidget);
+    await pump(t, picking(sent: 57)); // the phone has filtered: blur/dark -> similar -> capture -> sent, one per tick
+    const lines = ['흔들리거나 어두운 사진 거르는 중', '비슷한 사진은 한 장만', '화면 캡처 빼기', 'AI가 잘 나온 사진 고르는 중'];
+    final seen = <String>[], counts = <String>{};
+    for (var i = 0; i < 80; i++) {
+      await t.pump(const Duration(milliseconds: 100));
+      for (final l in lines) {
+        if (find.text(l).evaluate().isNotEmpty && !seen.contains(l)) seen.add(l);
+      }
+      for (final n in ['152', '64', '57']) {
+        if (find.text(n).evaluate().isNotEmpty) counts.add(n);
+      }
+    }
+    expect(seen, lines);
+    expect(counts, {'152', '64', '57'}); // each stage's count is reached before the next one starts
+    await t.pumpAndSettle();
     expect(find.text('57'), findsOneWidget);
+    await shot(t, 'd4-1-picking-ai');
+    await pump(t, picking(sent: 57, picked: 38)); // the answer jumps straight to the last stage
+    await t.pump(const Duration(milliseconds: 1100));
+    await t.pumpAndSettle();
     expect(find.text('38'), findsOneWidget);
-    expect(find.text(kw('흐림·어두움 34 · 비슷한 사진 88 · 화면 캡처 7')), findsOneWidget);
+    expect(find.text('38장 골랐어요 · 꼭 넣을 사진 3장 포함'), findsOneWidget);
+    await shot(t, 'd4-1-picking');
   });
+
+  for (final (sz, n) in [(const Size(412, 915), '412x915'), (const Size(360, 640), '360x640')]) {
+    testWidgets('picking at $n', (t) async {
+      t.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(t.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await pump(t, picking(sent: 57, picked: 38), 'd4-1-picking-$n', sz);
+      expect(find.text('38'), findsOneWidget);
+    });
+  }
 
   testWidgets('pairs: each tap moves on, the last one reports every kept id', (t) async {
     List<String>? kept;
@@ -66,12 +101,9 @@ void main() {
         coverId: sampleCoverId,
         from: 186,
         videos: 2,
-        shapeLine: '여백의 책 · 보통 · 캡션 + 에세이',
-        pages: 24,
         onTapPhoto: (_) {},
         onAdd: onAdd ?? (_) {},
         onBack: no,
-        onShape: no,
         onMake: no,
       );
 
@@ -82,8 +114,8 @@ void main() {
     expect(find.text('사진 38 · 영상 2'), findsOneWidget);
     expect(find.text('꼭'), findsNWidgets(3));
     expect(find.text('표지'), findsOneWidget);
-    expect(find.text('이대로 책 만들기 · 약 24쪽'), findsOneWidget);
-    expect(find.text('모양 바꾸기 ›'), findsOneWidget);
+    expect(find.text('이대로 책 만들기'), findsOneWidget);
+    expect(find.text('모양 바꾸기 ›'), findsNothing); // the shape screen always comes next
     await t.tap(find.text('+').first);
     expect(added, DateTime(2026, 6, 12));
   });
@@ -118,25 +150,6 @@ void main() {
     expect(find.text('+11'), findsOneWidget);
     expect(find.text('아까 둘 중'), findsOneWidget);
     expect(find.text('표지로 쓰기'), findsOneWidget);
-  });
-
-  testWidgets('writing', (t) async {
-    await pump(
-        t,
-        const WritingScreen(
-            photo: 'assets/sample/hyeopjae_2.jpg',
-            meta: '13:20 · 협재 해변',
-            typing: '물이 생각보다 차',
-            picked: 38,
-            page: 14,
-            pages: 24,
-            tone: '담담한 일기체',
-            theme: '여백의 책',
-            onClose: _no),
-        'd4-5-writing');
-    expect(find.text('글을 쓰고 있어요'), findsOneWidget);
-    expect(find.text('기다리는 중'), findsNWidgets(2));
-    expect(find.text(kw('시각·장소를 붙이고 담담한 일기체로')), findsOneWidget);
   });
 
   Widget book({BookTip? tip, BookBanner? banner}) => BookView(
@@ -188,10 +201,9 @@ void main() {
             onMust: no,
             onNotes: no,
             onTimeline: no,
-            onMake: no,
-            onShape: no),
+            onMake: no),
         'd5-3-price-extras');
-    expect(find.text('책 만들기 · 1,500원'), findsOneWidget);
+    expect(find.text('사진 고르기 시작 · 1,500원'), findsOneWidget);
     expect(find.text(kw('빠지면 안 되는 사진이 있으면 골라 두세요')), findsOneWidget);
     var made = false;
     showSheet<void>(t.element(find.byType(ExtrasScreen)), (_) => PriceSheet(line: '경주 10월 3–4일 · 약 16쪽', onLater: no, onMake: () => made = true));
@@ -288,4 +300,3 @@ void main() {
   });
 }
 
-void _no() {}

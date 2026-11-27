@@ -99,6 +99,27 @@ void main() {
     expect(errs, contains('같은 틀 a/drop'));
   });
 
+  test('check: scenes go forward; a page of only food may gather the day', () {
+    final order = {'l1': 0, 'l2': 1, 'p1': 2, 'l3': 3};
+    final body = {
+      'pages': [
+        _pg('a/c-paper', ['l1'], {'title': '제주'}),
+        _pg('a/drop', ['l3']),
+        _pg('a/drop', ['l2']), // back to an earlier scene
+      ],
+    };
+    expect(checkLayout(body, defs, pool, layoutRules['a']!, order: order).join(' | '), contains('장면 순서가 거꾸로 간 쪽: 3쪽'));
+    expect(checkLayout(body, defs, pool, layoutRules['a']!, order: order, kinds: {'l2': '음식'}).join(' | '), isNot(contains('장면 순서')));
+  });
+
+  test('repair: the chosen cover photo replaces the cover photo the editor picked', () {
+    final out = repairLayout({'pages': [_pg('a/c-paper', ['l1'], {'title': '제주', 'period': '6월'}), _pg('a/drop', ['l3'])]}, defs, pool,
+        fallbackTitle: 't', coverPhoto: 'p1');
+    expect(out.pages.first.ids, ['p1']);
+    expect(defs.firstWhere((d) => d.id == out.pages.first.layout).slots.single, isIn(['P', 'A']));
+    expect(out.pages.first.text['title'], '제주');
+  });
+
   test('repair: drops broken pages, cuts text, puts the cover first, fills crops', () {
     final body = {
       'title': '제주',

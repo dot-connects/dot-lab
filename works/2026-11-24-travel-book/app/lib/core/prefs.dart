@@ -7,6 +7,7 @@ class Prefs {
   String shelfView = 'display'; // display|timeline
   String quality = 'reduced'; // reduced|original — default for new books
   bool onboarded = false;
+  bool? spread; // book view: two pages side by side; null = by the screen (wide screens open as spreads)
   Prefs(this.file);
 
   /// Reads [dir]/prefs.json; a missing or broken file gives the defaults.
@@ -17,12 +18,13 @@ class Prefs {
       p.shelfView = j['shelfView'] as String? ?? p.shelfView;
       p.quality = j['quality'] as String? ?? p.quality;
       p.onboarded = j['onboarded'] as bool? ?? false;
+      p.spread = j['spread'] as bool?;
     } catch (_) {}
     return p;
   }
 
   void save() {
-    final tmp = File('${file.path}.tmp')..writeAsStringSync(jsonEncode({'shelfView': shelfView, 'quality': quality, 'onboarded': onboarded}));
+    final tmp = File('${file.path}.tmp')..writeAsStringSync(jsonEncode({'shelfView': shelfView, 'quality': quality, 'onboarded': onboarded, 'spread': spread}));
     tmp.renameSync(file.path);
   }
 }

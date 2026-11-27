@@ -1,4 +1,5 @@
 // D4 고른 사진 보기: the picked photos by day. Tap = swap sheet; [+] per day adds more, locked at 48 in a book.
+// [이대로 책 만들기] goes on to 어떤 책으로 만들까요? (choose_theme.dart), where theme and length are picked.
 import 'package:material_ui/material_ui.dart';
 
 import '../new_book/draft.dart';
@@ -13,12 +14,9 @@ class PicksReviewScreen extends StatelessWidget {
   final String? coverId;
   final int from; // photos the picker chose from
   final int videos;
-  final String shapeLine; // "여백의 책 · 보통 · 캡션 + 에세이"
-  final int pages;
-  final String? price; // "1,500원" on a paid book, null when free
   final ValueChanged<PhotoRef> onTapPhoto;
   final ValueChanged<DateTime> onAdd;
-  final VoidCallback onBack, onShape, onMake;
+  final VoidCallback onBack, onMake; // onMake: on to the book-shape screen
   const PicksReviewScreen({
     super.key,
     required this.days,
@@ -26,13 +24,9 @@ class PicksReviewScreen extends StatelessWidget {
     this.coverId,
     required this.from,
     this.videos = 0,
-    required this.shapeLine,
-    required this.pages,
-    this.price,
     required this.onTapPhoto,
     required this.onAdd,
     required this.onBack,
-    required this.onShape,
     required this.onMake,
   });
 
@@ -91,19 +85,7 @@ class PicksReviewScreen extends StatelessWidget {
         ],
       ]),
       foot: [
-        GestureDetector(
-          onTap: onShape,
-          behavior: HitTestBehavior.opaque,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Row(children: [
-              Expanded(child: Text(shapeLine, style: ui(11.5, color: C.body), maxLines: 1, overflow: TextOverflow.ellipsis)),
-              const SizedBox(width: 8),
-              Text('모양 바꾸기 ›', style: ui(11.5, w: FontWeight.w600)),
-            ]),
-          ),
-        ),
-        Btn(price == null ? '이대로 책 만들기 · 약 $pages쪽' : '이대로 책 만들기 · $price', onTap: onMake),
+        Btn('이대로 책 만들기', onTap: onMake),
       ],
     );
   }

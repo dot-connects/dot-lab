@@ -1,6 +1,7 @@
 // The AI's answers are untrusted input: keep only what refers to shots we sent, enforce the counts the schema
 // cannot (structured outputs carry no length limits), and fall back to a sharpness-ranked book when an answer
 // is missing or too thin. Two calls: /pick (which photos) and /write (text for the confirmed photos).
+import 'dart:math' as math;
 import 'models.dart';
 import 'text_shape.dart';
 
@@ -53,6 +54,8 @@ BookPlan fallbackPlan(List<Candidate> sent, BookOptions o, {String theme = 'a', 
   );
 }
 
+const kinds = {'풍경', '사람', '음식', '실내', '이동', '물건', '기타'};
+
 /// /pick answer -> picks (no captions yet), ambiguous pairs, clips, chapter lines, theme.
 BookPlan checkPick(Map<String, dynamic>? ai, List<Candidate> sent, BookOptions o,
     {String recommended = 'a', Set<String> must = const {}}) {
@@ -64,7 +67,9 @@ BookPlan checkPick(Map<String, dynamic>? ai, List<Candidate> sent, BookOptions o
     if (p is! Map) continue;
     final id = p['id'], score = p['score'];
     if (id is! String || !byId.containsKey(id) || !seen.add(id)) continue;
-    picks.add(Pick(id, '', score is num ? score.round().clamp(0, 100) : 50));
+    final kind = p['kind'], what = p['what'];
+    picks.add(Pick(id, '', score is num ? score.round().clamp(0, 100) : 50,
+        kind: kind is String && kinds.contains(kind) ? kind : '', what: what is String ? what.trim().substring(0, math.min(30, what.trim().length)) : ''));
   }
   if (picks.length < 5) return fallbackPlan(sent, o, theme: recommended, must: must);
   for (final m in must) {

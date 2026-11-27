@@ -31,7 +31,6 @@ class NewBookDraft {
   List<NoteItem> notes = [];
   String? timeline; // Timeline.json path
   BookOptions opts = BookOptions();
-  bool shapeTouched = false; // came back from the book-shape screen
 
   /// Toggle a must-include photo. Returns false (no change) when it would be the 11th.
   bool toggleMust(String id) {

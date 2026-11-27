@@ -140,13 +140,11 @@ void main() {
             onMust: no,
             onNotes: no,
             onTimeline: no,
-            onMake: no,
-            onShape: no),
+            onMake: no),
         'd3-3-extras');
     expect(find.text(kw('3장 골랐어요')), findsOneWidget);
-    expect(find.text('책 만들기'), findsOneWidget);
-    expect(find.text('테마·길이 먼저 고르기'), findsOneWidget);
-    expect(find.textContaining('약 24쪽'), findsOneWidget);
+    expect(find.text('사진 고르기 시작'), findsOneWidget);
+    expect(find.text('테마·길이 먼저 고르기'), findsNothing); // the theme comes after the photos now
     // 누구랑: a chip, own words, skip
     await t.tap(find.text('연인·부부'));
     await t.pump();

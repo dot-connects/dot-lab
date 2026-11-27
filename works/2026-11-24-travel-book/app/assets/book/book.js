@@ -87,15 +87,22 @@
     document.body.classList.toggle("tone", !!book.toneMatch);
     const root = document.getElementById("book");
     root.replaceChildren();
+    // spread: the cover alone, then two pages side by side like an open book (export always shows one page)
+    const spread = !!opts.spread && !opts.exportMode;
+    document.body.classList.toggle("spread", spread);
+    let sheet = null;
     book.pages.forEach((spec, n) => {
       const t = document.getElementById(spec.layout);
       if (!t) return;
-      const sheet = document.createElement("div");
-      sheet.className = "sheet";
+      if (!spread || n === 0 || n % 2 === 1) {
+        sheet = document.createElement("div");
+        sheet.className = spread && n > 0 ? "sheet two" : "sheet";
+        root.append(sheet);
+      }
       const pg = t.content.firstElementChild.cloneNode(true);
       fill(pg, spec, book, n);
+      if (spread && n > 0) pg.classList.add(n % 2 === 1 ? "left" : "right");
       sheet.append(pg);
-      root.append(sheet);
       seen.observe(pg);
       let timer = null;
       pg.addEventListener("pointerdown", () => { timer = setTimeout(() => bridge("longPress", { page: n }), 550); });

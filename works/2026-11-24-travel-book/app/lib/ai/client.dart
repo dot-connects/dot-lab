@@ -40,9 +40,13 @@ class AiShot {
   final String? place;
   final bool video;
   final int durMs, w, h;
-  const AiShot(this.id, this.local, this.place, {this.video = false, this.durMs = 0, this.w = 0, this.h = 0});
-  Map<String, dynamic> toJson() =>
-      {'id': id, 'local': local, 'place': place ?? '', 'video': video, 'durMs': durMs, if (w > 0) 'w': w, if (h > 0) 'h': h};
+  final String kind, what; // /pick's tags, sent to /layout
+  const AiShot(this.id, this.local, this.place,
+      {this.video = false, this.durMs = 0, this.w = 0, this.h = 0, this.kind = '', this.what = ''});
+  Map<String, dynamic> toJson() => {
+        'id': id, 'local': local, 'place': place ?? '', 'video': video, 'durMs': durMs, if (w > 0) 'w': w, if (h > 0) 'h': h,
+        if (kind.isNotEmpty) 'kind': kind, if (what.isNotEmpty) 'what': what,
+      };
 }
 
 class AiClient {
@@ -71,6 +75,7 @@ class AiClient {
           required String theme,
           required List<Map<String, Object>> catalog,
           required Map<String, Object> rules,
+          List<Map<String, Object>> scenes = const [],
           List<Map<String, String?>> notes = const [],
           Map<String, Object?> opts = const {},
           List<String>? fix,
@@ -78,6 +83,7 @@ class AiClient {
       _post('/layout', {
         'job': job,
         'images': images, 'shots': shots, 'notes': notes, 'opts': opts, 'theme': theme, 'catalog': catalog, 'rules': rules,
+        if (scenes.isNotEmpty) 'scenes': scenes,
         if (fix != null) 'fix': fix, if (prev != null) 'prev': prev,
       });
 

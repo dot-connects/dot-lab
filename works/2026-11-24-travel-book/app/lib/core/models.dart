@@ -64,9 +64,12 @@ class Pick {
   final String id;
   final String caption;
   final int score; // 0..100
-  const Pick(this.id, this.caption, this.score);
-  Map<String, dynamic> toJson() => {'id': id, 'caption': caption, 'score': score};
-  factory Pick.fromJson(Map<String, dynamic> j) => Pick(j['id'] as String, j['caption'] as String, j['score'] as int);
+  final String kind; // /pick's look at the photo: 풍경|사람|음식|실내|이동|물건|기타 ('' = unknown)
+  final String what; // what the photo shows, a short noun phrase ('' = unknown)
+  const Pick(this.id, this.caption, this.score, {this.kind = '', this.what = ''});
+  Map<String, dynamic> toJson() => {'id': id, 'caption': caption, 'score': score, if (kind.isNotEmpty) 'kind': kind, if (what.isNotEmpty) 'what': what};
+  factory Pick.fromJson(Map<String, dynamic> j) => Pick(j['id'] as String, j['caption'] as String, j['score'] as int,
+      kind: j['kind'] as String? ?? '', what: j['what'] as String? ?? '');
 }
 
 class Clip {

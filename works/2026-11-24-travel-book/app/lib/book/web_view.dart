@@ -14,7 +14,9 @@ class BookWebView extends StatefulWidget {
   final String booksDir; // <app documents>/books
   final int version; // bump to re-render after an edit
   final ValueChanged<int> onLongPress; // page index
-  const BookWebView({super.key, required this.book, required this.booksDir, this.version = 0, required this.onLongPress});
+  final bool spread; // two pages side by side (an open book) instead of one
+  const BookWebView(
+      {super.key, required this.book, required this.booksDir, this.version = 0, required this.onLongPress, this.spread = false});
   @override
   State<BookWebView> createState() => _BookWebViewState();
 }
@@ -25,13 +27,13 @@ class _BookWebViewState extends State<BookWebView> {
 
   Future<void> _render() async {
     if (_c == null || !_loaded) return;
-    await _c!.evaluateJavascript(source: 'window.renderBook(${jsonEncode(widget.book)})');
+    await _c!.evaluateJavascript(source: 'window.renderBook(${jsonEncode(widget.book)}, {spread: ${widget.spread}})');
   }
 
   @override
   void didUpdateWidget(BookWebView old) {
     super.didUpdateWidget(old);
-    if (old.version != widget.version) _render();
+    if (old.version != widget.version || old.spread != widget.spread) _render();
   }
 
   @override

@@ -132,11 +132,12 @@ class FakeAi implements AiClient {
       required String theme,
       required List<Map<String, Object>> catalog,
       required Map<String, Object> rules,
+      List<Map<String, Object>> scenes = const [],
       List<Map<String, String?>> notes = const [],
       Map<String, Object?> opts = const {},
       List<String>? fix,
       Map<String, dynamic>? prev}) async {
-    laidOut.add({'theme': theme, 'fix': fix, 'opts': opts, 'n': images.length, 'job': job});
+    laidOut.add({'theme': theme, 'fix': fix, 'opts': opts, 'n': images.length, 'job': job, 'scenes': scenes});
     if (onLayout != null) return onLayout!(images);
     jobs[job] = _plan(images, catalog);
     return const AiOk({'status': 'pending'});
@@ -282,6 +283,10 @@ void main() {
     expect(b.pages.where((p) => p.text.values.any((t) => t.startsWith('캡션 '))), isNotEmpty);
     expect(b.pages.skip(1).first.crop.first, '50% 40%');
     expect(ai.laidOut.first['theme'], 'a');
+    final days = ai.laidOut.first['scenes'] as List;
+    expect(days.length, 3); // three trip days, each with its scenes in time order
+    expect((days.first as Map)['label'], startsWith('첫째 날 · 6월 12일'));
+    expect(b.pages.first.ids.single, b.cover); // the cover is the chosen cover photo
     final js = bookJs(b);
     final media = js['media'] as Map<String, Object?>;
     for (final m in media.values) {
@@ -324,7 +329,7 @@ void main() {
     ai.pendingFor = 2;
     expect(await p.write(r.book), AiState.ok);
     final job = ai.laidOut.first['job'] as String;
-    expect(job, startsWith('b1-'));
+    expect(job, matches(RegExp(r'^j[A-Za-z0-9_-]{22}$')));
     expect(ai.polled.where((j) => j == job).length, 3); // pending, pending, plan
     expect(r.book.job, isNull); // done: nothing left to resume
 
