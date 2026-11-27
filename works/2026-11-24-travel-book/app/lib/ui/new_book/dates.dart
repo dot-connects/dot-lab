@@ -1,5 +1,7 @@
 // D3 1/3 날짜: a month calendar (swipe or ‹ › for the month, tap the year for a year list), two taps for the range,
-// a dot on days with photos, counts per day.
+// days darker the more photos they have (trips show as dark runs), counts per day.
+import 'dart:math' as math;
+
 import 'package:material_ui/material_ui.dart';
 
 import '../tokens.dart';
@@ -228,7 +230,9 @@ class _DatesScreenState extends State<DatesScreen> {
   Widget _cell(DateTime d, DateTime? e) {
     final isS = _s != null && d == _s, isE = e != null && d == e && _e != null;
     final inR = _s != null && e != null && !d.isBefore(_s!) && !d.isAfter(e) && _e != null;
-    final has = (widget.photos[d] ?? 0) > 0;
+    final n = widget.photos[d] ?? 0;
+    // operator 11-27: the more photos a day has, the darker its cell - trips show up as dark runs (1 light .. 200+ full)
+    final heat = n == 0 ? 0.0 : math.min(1.0, math.log(1 + n) / math.log(201));
     final cap = isS || isE || (_s != null && _e == null && d == _s);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -244,13 +248,14 @@ class _DatesScreenState extends State<DatesScreen> {
               )
             : null,
         child: Stack(alignment: Alignment.center, children: [
+          if (heat > 0 && !cap)
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(color: C.oak1.withValues(alpha: .14 + .56 * heat), borderRadius: BorderRadius.circular(9)),
+            ),
           if (cap) Container(width: 32, height: 32, decoration: const BoxDecoration(color: C.ink, shape: BoxShape.circle)),
           Text('${d.day}', style: nm(12.5, color: cap ? C.paper : C.ink, w: cap ? FontWeight.w700 : FontWeight.w500)),
-          if (has)
-            Positioned(
-              bottom: 3,
-              child: Container(width: 4, height: 4, decoration: BoxDecoration(color: cap ? C.paper : C.oak2, shape: BoxShape.circle)),
-            ),
         ]),
       ),
     );

@@ -41,11 +41,28 @@ class AiShot {
   final bool video;
   final int durMs, w, h;
   final String kind, what; // /pick's tags, sent to /layout
+  // what the phone and the first look found (/scout, /pick): kind tag, people, shots in its moment, pose series,
+  // the moment's number; /layout: the page group ("연속 1", "음식 1")
+  final String tag, group;
+  final int people, busy, series, scene;
   const AiShot(this.id, this.local, this.place,
-      {this.video = false, this.durMs = 0, this.w = 0, this.h = 0, this.kind = '', this.what = ''});
+      {this.video = false,
+      this.durMs = 0,
+      this.w = 0,
+      this.h = 0,
+      this.kind = '',
+      this.what = '',
+      this.tag = '',
+      this.group = '',
+      this.people = 0,
+      this.busy = 0,
+      this.series = 0,
+      this.scene = -1});
   Map<String, dynamic> toJson() => {
         'id': id, 'local': local, 'place': place ?? '', 'video': video, 'durMs': durMs, if (w > 0) 'w': w, if (h > 0) 'h': h,
         if (kind.isNotEmpty) 'kind': kind, if (what.isNotEmpty) 'what': what,
+        if (tag.isNotEmpty) 'tag': tag, if (group.isNotEmpty) 'group': group, if (people > 0) 'people': people,
+        if (busy > 0) 'busy': busy, if (series > 0) 'series': series, if (scene >= 0) 'scene': scene,
       };
 }
 
@@ -60,8 +77,12 @@ class AiClient {
   bool get configured => url.isNotEmpty && token.isNotEmpty;
 
   Future<AiResult> pick(List<AiImage> images, List<AiShot> shots,
-          {List<Map<String, String?>> notes = const [], Map<String, Object?> opts = const {}, List<String> mustInclude = const []}) =>
-      _post('/pick', {'images': images, 'shots': shots, 'notes': notes, 'opts': opts, 'mustInclude': mustInclude});
+          {List<Map<String, String?>> notes = const [], Map<String, Object?> opts = const {}, List<String> mustInclude = const [], int target = 0}) =>
+      _post('/pick', {'images': images, 'shots': shots, 'notes': notes, 'opts': opts, 'mustInclude': mustInclude, if (target > 0) 'target': target});
+
+  /// The first, wide look: up to 100 small previews tagged by a small model ({tags: [{n, k, p, s, e}]}, n = index).
+  Future<AiResult> scout(List<AiImage> images, List<AiShot> shots, {Map<String, Object?> opts = const {}}) =>
+      _post('/scout', {'images': images, 'shots': shots, 'opts': opts});
 
   Future<AiResult> write(List<AiImage> images, List<AiShot> shots, String shape,
           {List<Map<String, String?>> notes = const [], Map<String, Object?> opts = const {}}) =>

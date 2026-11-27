@@ -15,6 +15,8 @@ class PicksReviewScreen extends StatelessWidget {
   final int from; // photos the picker chose from
   final int videos;
   final String? notice; // why the phone picked these on its own (the AI did not answer)
+  final int pairs; // look-alike pairs the AI left to the person
+  final VoidCallback? onPairs;
   final ValueChanged<PhotoRef> onTapPhoto;
   final ValueChanged<DateTime> onAdd;
   final VoidCallback onBack, onMake; // onMake: on to the book-shape screen
@@ -26,6 +28,8 @@ class PicksReviewScreen extends StatelessWidget {
     required this.from,
     this.videos = 0,
     this.notice,
+    this.pairs = 0,
+    this.onPairs,
     required this.onTapPhoto,
     required this.onAdd,
     required this.onBack,
@@ -59,6 +63,21 @@ class PicksReviewScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
             decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(14)),
             child: Text(notice!, style: ui(12.5, color: C.ink, h: 1.5)),
+          ),
+        if (pairs > 0 && onPairs != null)
+          GestureDetector(
+            onTap: onPairs,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+              decoration: BoxDecoration(border: Border.all(color: C.ink, width: 1.5), borderRadius: BorderRadius.circular(14)),
+              child: Row(children: [
+                Expanded(
+                  child: Text('비슷하게 잘 나온 두 장이 $pairs쌍 있어요. 하나씩 골라 볼래요?\n안 고르면 점수가 높은 쪽으로 넣어요.', style: ui(12.5, color: C.ink, h: 1.5)),
+                ),
+                Text('고르기 ›', style: ui(13.5, w: FontWeight.w700)),
+              ]),
+            ),
           ),
         for (final (i, (day, ps)) in days.indexed) ...[
           Container(

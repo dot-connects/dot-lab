@@ -55,8 +55,8 @@ test("wrong token is 401 and costs nothing", async () => {
   assert.equal(calls.length, 0);
 });
 
-test("61 images is 413", async () => {
-  assert.equal((await call({ images: imgs(61) })).status, 413);
+test("131 images is 413", async () => {
+  assert.equal((await call({ images: imgs(131) })).status, 413);
   assert.equal(calls.length, 0);
 });
 
@@ -86,7 +86,7 @@ test("a good answer: JSON from the text block, the month records the real cost",
 });
 
 test("real cost above the reservation is still recorded past the ceiling", async () => {
-  const reserve = reserveMills(2, 50, 12000);
+  const reserve = reserveMills(2, 50, 16000);
   env.MONTH_CENTS = String(Math.ceil(reserve / 10));   // room for one reservation only
   env.fetchModel = fakeFetch({ reply: ok({}, { input_tokens: 10, output_tokens: 30000 }) });   // 300 mills > reserve
   await call({ images: imgs(2) });
@@ -112,7 +112,7 @@ test("rejected by the model API (HTTP error): upstream error, the reservation is
 test("network cut: billing unknown, the reservation stays", async () => {
   env.fetchModel = fakeFetch({ fail: new Error("socket") });
   await call({ images: imgs(2) });
-  assert.equal(month(), reserveMills(2, JSON.stringify({}).length, 12000));
+  assert.equal(month(), reserveMills(2, JSON.stringify({}).length, 16000));
 });
 
 test("logs carry counts only, never captions or notes", async () => {
@@ -294,4 +294,23 @@ test("/made: counts each book once per phone, survives the app forgetting its bo
     const r = await handle(new Request("https://w/made", { method: "POST", headers: { "x-app-token": "tok" }, body: JSON.stringify(bad) }), env, {}, counts);
     assert.equal(r.status, 400);
   }
+});
+
+test("/scout: the small model at low effort, numbered previews, its own limiter, mini prices", async () => {
+  let main = 0, scout = 0;
+  env.LIMIT = { limit: async () => { main++; return { success: false }; } };
+  env.SCOUT_LIMIT = { limit: async () => { scout++; return { success: true }; } };
+  const usage = { input_tokens: 6000, output_tokens: 3000 };
+  env.fetchModel = fakeFetch({ reply: ok({ tags: [{ n: 0, k: "음식", p: 0, s: 4, e: false }] }, usage) });
+  const r = await call({ images: imgs(3), shots: [{ id: "i0", local: "2026-06-12T12:00", place: "제주", scene: 2 }] }, { path: "/scout" });
+  assert.deepEqual(r.body.tags[0].k, "음식");
+  assert.equal(main, 0);
+  assert.equal(scout, 1);
+  assert.equal(calls[0].model, "gpt-5.4-mini");
+  assert.equal(calls[0].reasoning.effort, "low");
+  const text = calls[0].input[1].content.filter(c => c.type === "input_text").map(c => c.text);
+  assert.ok(text[0].startsWith("[0]"));
+  assert.equal(month(), realMills(usage, true));
+  assert.ok(realMills(usage, true) < realMills(usage));
+  assert.equal((await call({ images: imgs(101) }, { path: "/scout" })).status, 413);
 });

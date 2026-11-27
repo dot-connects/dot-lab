@@ -24,50 +24,49 @@ void main() {
   setUpAll(loadFonts);
   void no() {}
 
-  Widget picking({int sent = 0, int? picked}) => PickingScreen(
-      thumbs: samplePickStrip,
+  // the sample fixture's photos stand in for the trip: 12 in the mosaic, the "kept" six sent, four of those picked
+  final paths = [for (final (p, _) in samplePickStrip) p], sentPaths = [for (final (p, k) in samplePickStrip) if (k) p];
+  Widget picking({int measured = 0, bool sent = false, int? picked}) => PickingScreen(
+      sample: paths,
       inRange: 412,
       albums: 2,
       albumPhotos: 186,
-      filtered: sent == 0 ? (blurDark: 0, similar: 0, capture: 0) : (blurDark: 34, similar: 88, capture: 7),
-      sent: sent,
-      picked: picked,
+      measured: measured,
+      toMeasure: 180,
+      filtered: sent ? (blurDark: 34, similar: 88, capture: 7) : (blurDark: 0, similar: 0, capture: 0),
+      sent: sent ? sentPaths : const [],
+      picked: picked == null ? null : sentPaths.take(picked).toSet(),
       must: 3,
       onClose: no);
 
-  testWidgets('picking: the count steps down as the numbers arrive, never ahead of them', (t) async {
+  testWidgets('picking: the number is the real one at each step — looked at, sent, picked', (t) async {
+    // still mode: the AI step's light sweep repeats forever, and the numbers land at once
+    t.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(t.platformDispatcher.clearAccessibilityFeaturesTestValue);
     await pump(t, picking());
     expect(find.text('사진을 고르고 있어요'), findsOneWidget);
-    expect(find.text('412'), findsOneWidget);
-    expect(find.text('이 기간에 찍은 사진 412장'), findsOneWidget);
-    await t.pump(const Duration(milliseconds: 1300));
+    expect(find.text('0'), findsOneWidget); // counts up as the photos are looked at
+    expect(find.text('고른 앨범 2개 · 186장을 처음부터 살펴볼게요'), findsOneWidget);
+    await pump(t, picking(measured: 96));
     await t.pumpAndSettle();
-    expect(find.text('186'), findsOneWidget);
-    await t.pump(const Duration(seconds: 5)); // no filter numbers yet: it waits at the albums
-    await t.pumpAndSettle();
-    expect(find.text('186'), findsOneWidget);
-    await pump(t, picking(sent: 57)); // the phone has filtered: blur/dark -> similar -> capture -> sent, one per tick
-    const lines = ['흔들리거나 어두운 사진 거르는 중', '비슷한 사진은 한 장만', '화면 캡처 빼기', 'AI가 잘 나온 사진 고르는 중'];
-    final seen = <String>[], counts = <String>{};
-    for (var i = 0; i < 80; i++) {
-      await t.pump(const Duration(milliseconds: 100));
-      for (final l in lines) {
-        if (find.text(l).evaluate().isNotEmpty && !seen.contains(l)) seen.add(l);
-      }
-      for (final n in ['152', '64', '57']) {
-        if (find.text(n).evaluate().isNotEmpty) counts.add(n);
-      }
-    }
-    expect(seen, lines);
-    expect(counts, {'152', '64', '57'}); // each stage's count is reached before the next one starts
-    await t.pumpAndSettle();
-    expect(find.text('57'), findsOneWidget);
+    expect(find.text('96'), findsOneWidget);
+    expect(find.text('180장 중 살펴본 사진'), findsOneWidget);
+    await pump(t, PickingScreen(
+        sample: paths, inRange: 412, albums: 2, albumPhotos: 186, measured: 180, toMeasure: 180, scoutTotal: 120, scouted: 40,
+        found: const ['가장 많이 찍은 곳 · 협재 해변 64장'], filtered: (blurDark: 34, similar: 88, capture: 7), onClose: no));
+    expect(find.text('40'), findsOneWidget); // the first look: tagged so far
+    expect(find.text('AI가 추린 120장을 훑어보는 중\n흔들림·어두움 34 · 비슷한 사진 88 뺐어요'), findsOneWidget);
+    expect(find.text('가장 많이 찍은 곳 · 협재 해변 64장'), findsOneWidget);
+    await shot(t, 'd4-1-picking-scout');
+    await pump(t, picking(measured: 180, sent: true));
+    await t.pump(const Duration(seconds: 1));
+    expect(find.text('6'), findsOneWidget);
+    expect(find.text('후보 6장에서 책에 넣을 사진 고르는 중\n흔들림·어두움 34 · 비슷한 사진 88 · 캡처 7 뺐어요'), findsOneWidget);
     await shot(t, 'd4-1-picking-ai');
-    await pump(t, picking(sent: 57, picked: 38)); // the answer jumps straight to the last stage
-    await t.pump(const Duration(milliseconds: 1100));
+    await pump(t, picking(measured: 180, sent: true, picked: 4));
     await t.pumpAndSettle();
-    expect(find.text('38'), findsOneWidget);
-    expect(find.text('38장 골랐어요 · 꼭 넣을 사진 3장 포함'), findsOneWidget);
+    expect(find.text('4'), findsOneWidget);
+    expect(find.text('4장 골랐어요 · 꼭 넣을 사진 3장 포함'), findsOneWidget);
     await shot(t, 'd4-1-picking');
   });
 
@@ -75,8 +74,8 @@ void main() {
     testWidgets('picking at $n', (t) async {
       t.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
       addTearDown(t.platformDispatcher.clearAccessibilityFeaturesTestValue);
-      await pump(t, picking(sent: 57, picked: 38), 'd4-1-picking-$n', sz);
-      expect(find.text('38'), findsOneWidget);
+      await pump(t, picking(measured: 180, sent: true, picked: 4), 'd4-1-picking-$n', sz);
+      expect(find.text('4'), findsOneWidget);
     });
   }
 

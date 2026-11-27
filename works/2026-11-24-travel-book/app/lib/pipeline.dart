@@ -21,6 +21,7 @@ import 'core/plan_check.dart';
 import 'core/prefilter.dart';
 import 'core/refdocs.dart';
 import 'core/scenes.dart';
+import 'core/selection.dart';
 import 'core/text_shape.dart';
 import 'core/timeline.dart';
 import 'device/gallery.dart' as g;
@@ -38,10 +39,18 @@ abstract class Source {
   Future<String?> placeOf(double lat, double lng);
 }
 
-const maxAiImages = 60;
-/// ponytail: at most this many photos are measured on the phone (evenly in time); a smarter pre-pass if trips this
-/// big turn out common.
-const maxMeasure = 4000;
+/// Test builds for tuning the picker (--dart-define=LAB=true): each pick keeps its previews and numbers in
+/// <cache>/lab, and 설정 offers them as one zip. Off in store builds.
+const kLab = bool.fromEnvironment('LAB');
+
+/// Where a LAB build keeps the last pick's previews and numbers (emptied when a new trip is scanned).
+Future<Directory> labDir(Directory cache) async => Directory('${cache.path}/lab');
+
+/// The final look's images (photos at [finalPx] + 4 scenes per video + note photos): ~2.6x the book's photos.
+const maxAiImages = 128;
+const finalPx = 384;
+/// The first look: at most this many small previews, [scoutBatch] per request, all requests at once.
+const maxScout = 480, scoutBatch = 80;
 const _chunk = 48;
 const sceneAt = [.15, .40, .65, .90];
 
@@ -51,7 +60,11 @@ class PickProgress {
   final int measured, toMeasure; // photos looked at so far / to look at (the phone's own pass, before the AI)
   final int? picked;
   final int must;
-  final List<(String id, bool kept)> strip;
+  final List<String> sample; // up to 160 photo ids spread over the trip, time order (the picking mosaic)
+  final List<String> sentIds; // sent to the AI, time order
+  final Set<String>? pickedIds;
+  final int scoutTotal, scouted; // the first look: photos in it / tagged so far
+  final List<String> found; // what the picking found so far, newest last ("가장 많이 찍은 곳 · 성산일출봉 214장")
   const PickProgress({
     required this.inRange,
     required this.albums,
@@ -64,10 +77,26 @@ class PickProgress {
     this.toMeasure = 0,
     this.picked,
     this.must = 0,
-    this.strip = const [],
+    this.sample = const [],
+    this.sentIds = const [],
+    this.pickedIds,
+    this.scoutTotal = 0,
+    this.scouted = 0,
+    this.found = const [],
   });
   PickProgress copyWith(
-          {int? blurDark, int? similar, int? capture, int? sent, int? measured, int? toMeasure, int? picked, List<(String, bool)>? strip}) =>
+          {int? blurDark,
+          int? similar,
+          int? capture,
+          int? sent,
+          int? measured,
+          int? toMeasure,
+          int? picked,
+          List<String>? sentIds,
+          Set<String>? pickedIds,
+          int? scoutTotal,
+          int? scouted,
+          List<String>? found}) =>
       PickProgress(
         inRange: inRange,
         albums: albums,
@@ -80,7 +109,12 @@ class PickProgress {
         toMeasure: toMeasure ?? this.toMeasure,
         picked: picked ?? this.picked,
         must: must,
-        strip: strip ?? this.strip,
+        sample: sample,
+        sentIds: sentIds ?? this.sentIds,
+        pickedIds: pickedIds ?? this.pickedIds,
+        scoutTotal: scoutTotal ?? this.scoutTotal,
+        scouted: scouted ?? this.scouted,
+        found: found ?? this.found,
       );
 }
 
@@ -143,13 +177,20 @@ class Pipeline {
     List<NoteInput> notes = const [],
     Timeline? timeline,
     void Function(PickProgress)? onProgress,
+    Directory? lab, // test builds (LAB=true): keep each 256 px preview + a shot table + timings here
   }) async {
+    final clock = Stopwatch()..start(), times = <String, int>{};
+    void lap(String k) => times[k] = clock.elapsedMilliseconds;
+    if (lab != null) await Directory('${lab.path}/thumbs').create(recursive: true);
     final byId = {for (final s in shots) s.id: s}; // one shot can sit in two albums on other platforms
     final all = byId.values.toList();
-    // only photos are measured (videos and screen captures are never judged by sharpness); a huge trip is thinned
-    // evenly in time first - the AI sees at most [maxAiImages] anyway
+    // only photos are measured (videos and screen captures are never judged by sharpness); a moment with very many
+    // shots is thinned evenly in its own time first (40 + 6 per sqrt of its shots), so a huge trip stays quick
     final look = [for (final (i, s) in all.indexed) if (!s.isVideo && !isScreenshot(s)) i];
-    final measuredIdx = look.length <= maxMeasure ? look : [for (var k = 0; k < maxMeasure; k++) look[k * look.length ~/ maxMeasure]];
+    final measuredIdx = [
+      for (final m in momentsBy<int>(look, (i) => all[i].utc, (i) => all[i].lat == null || all[i].lng == null ? null : (all[i].lat!, all[i].lng!)))
+        for (var k = 0, n = math.min(m.length, (40 + 6 * math.sqrt(m.length)).round()); k < n; k++) m[k * m.length ~/ n],
+    ]..sort();
     final thinned = look.length - measuredIdx.length;
     var p = PickProgress(
       inRange: inRange,
@@ -157,7 +198,7 @@ class Pipeline {
       albumPhotos: all.length,
       must: must.length,
       toMeasure: measuredIdx.length,
-      strip: [for (var k = 0; k < 12 && look.isNotEmpty; k++) (all[look[k * look.length ~/ 12]].id, false)],
+      sample: [for (var k = 0; k < math.min(160, look.length); k++) all[look[k * look.length ~/ math.min(160, look.length)]].id],
     );
     onProgress?.call(p);
 
@@ -170,6 +211,12 @@ class Pipeline {
     for (var at = 0; at < measuredIdx.length; at += _chunk) {
       final part = measuredIdx.sublist(at, math.min(at + _chunk, measuredIdx.length));
       final thumbs = await Future.wait([for (final i in part) src.jpeg(all[i].id, 256, quality: 70)]);
+      if (lab != null) {
+        await Future.wait([
+          for (final (k, i) in part.indexed)
+            if (thumbs[k] != null) File('${lab.path}/thumbs/${fileId(all[i].id)}.jpg').writeAsBytes(thumbs[k]!),
+        ]);
+      }
       await measuring;
       measuring = _measureAll(thumbs).then((r) {
         for (final (k, i) in part.indexed) {
@@ -193,7 +240,9 @@ class Pipeline {
       final c = at(s);
       if (c != null) cells.putIfAbsent('${c.$1.toStringAsFixed(2)},${c.$2.toStringAsFixed(2)}', () => c);
     }
+    lap('measured');
     await Future.wait([for (final (la, ln) in cells.values) _place(la, ln)]);
+    lap('places');
 
     final photos = all.where((s) => !s.isVideo).toList();
     final cands = <Candidate>[];
@@ -217,22 +266,86 @@ class Pipeline {
     final capture = free.length - vids.length - shotsOnly.length;
     final good = shotsOnly.where((c) => !skippedIds.contains(c.id) && !isBad(c)).toList();
     final blurDark = shotsOnly.length - thinned - good.length;
-    final deduped = dedupeBursts(good);
-    final similar = good.length - deduped.length + thinned;
 
+    // the trip as moments over every photo: the shots taken in a moment say how much that place mattered
+    final photoCands = [...shotsOnly, ...mustC.where((c) => !c.shot.isVideo)];
+    final moments = momentsBy(photoCands, (c) => c.local, posOf);
+    final momentOf = <String, int>{}, momentSize = <int, int>{};
+    for (final (i, m) in moments.indexed) {
+      momentSize[i] = m.length;
+      for (final c in m) {
+        momentOf[c.id] = i;
+      }
+    }
+    // per moment: same-frame bursts become one frame, pose series stay whole
+    final keepIds = {for (final c in good) c.id, for (final c in mustC) c.id};
+    final frames = <List<Candidate>>[], series = <String, int>{};
+    for (final m in moments) {
+      final r = collapse([for (final c in m) if (keepIds.contains(c.id)) c], firstSeries: series.values.fold(0, math.max) + 1);
+      frames.add(r.frames);
+      series.addAll(r.series);
+    }
+    final goodIds = {for (final c in good) c.id};
+    final kept = frames.fold(0, (n, f) => n + f.where((c) => goodIds.contains(c.id)).length);
+    final similar = math.max(0, good.length - kept) + thinned;
+    final found = <String>[];
+    if (moments.isNotEmpty) {
+      final top = moments.reduce((a, x) => x.length > a.length ? x : a);
+      final place = scenesOf(top).firstOrNull?.place ?? '';
+      found.add('가장 많이 찍은 곳 · ${place.isNotEmpty ? place : '${top.first.local.month}월 ${top.first.local.day}일 ${top.first.local.hour}시쯤'} ${fmtCount(top.length)}장');
+    }
+    final nSeries = series.values.toSet().length;
+    if (nSeries > 0) found.add('포즈만 다른 연속 사진 $nSeries묶음');
+    final wide = shortlist(frames, [for (final m in moments) m.length], series, maxScout, must: must);
+    p = p.copyWith(blurDark: blurDark, similar: similar, capture: capture, scoutTotal: wide.length, found: [...found]);
+    onProgress?.call(p);
+    lap('shortlist');
+
+    // the first, wide look: small previews in batches at once; a small model tags each one
+    final tags = <String, Tag>{};
+    var scouted = 0;
+    Future<void> look1(List<Candidate> batch) async {
+      final ims = <AiImage>[], ids = <String>[];
+      for (final c in batch) {
+        final j = await src.jpeg(c.id, 256, quality: 70);
+        if (j == null) continue;
+        ims.add(AiImage(c.id, j));
+        ids.add(c.id);
+      }
+      if (ims.isNotEmpty) {
+        final r = await ai.scout(ims, [for (final c in batch) _aiShot(c, scene: momentOf[c.id] ?? -1)], opts: opts.toJson());
+        if (r is AiOk) tags.addAll(parseScout(r.body, ids));
+      }
+      scouted += batch.length;
+      onProgress?.call(p = p.copyWith(scouted: scouted));
+    }
+
+    await Future.wait([for (var k = 0; k < wide.length; k += scoutBatch) look1(wide.sublist(k, math.min(k + scoutBatch, wide.length)))]);
+    lap('scout');
+    if (tags.isNotEmpty) {
+      int n(String k) => tags.values.where((t) => t.kind == k).length;
+      final bits = [
+        if (n('같이') > 0) '같이 찍은 사진 ${n('같이')}장',
+        if (n('음식') > 0) '음식 ${n('음식')}장',
+        if (n('명소') > 0) '명소 ${n('명소')}장',
+        if (n('동물') + n('신기') > 0) '동물·신기한 장면 ${n('동물') + n('신기')}장',
+      ];
+      if (bits.isNotEmpty) found.add(bits.join(' · '));
+    }
+
+    // the finalists by the recipe, then the final look at a larger size
+    final target = lengthTarget[opts.length] ?? 32;
     final sentVids = capEvenly(vids, maxPickVideos);
     final refImages = [for (final n in notes) if (n.image != null) n.image!];
-    final room = math.max(0, maxAiImages - sentVids.length * sceneAt.length - refImages.length - mustC.length);
-    final sentPhotos = capEvenly(deduped, room);
-    final sent = [...mustC, ...sentPhotos, ...sentVids]..sort((a, b) => a.local.compareTo(b.local));
+    final room = math.max(0, maxAiImages - sentVids.length * sceneAt.length - refImages.length);
+    final fin = finalists(wide, tags, momentOf, momentSize, series, math.min(room, (target * 2.6).round()), must: must, people: opts.people);
+    final ranked = [...fin]..sort((a, b) {
+        final d = (tags[b.id]?.score ?? 3) - (tags[a.id]?.score ?? 3);
+        return d != 0 ? d : b.sharp.compareTo(a.sharp);
+      });
+    final sent = {...fin, ...sentVids, ...mustC}.toList()..sort((a, b) => a.local.compareTo(b.local));
     final sentIds = {for (final c in sent) c.id};
-    p = p.copyWith(
-      blurDark: blurDark,
-      similar: similar,
-      capture: capture,
-      sent: sent.length,
-      strip: [for (final (id, _) in p.strip) (id, sentIds.contains(id))],
-    );
+    p = p.copyWith(sent: sent.length, sentIds: [for (final c in sent) if (!c.shot.isVideo) c.id], found: [...found]);
     onProgress?.call(p);
 
     final images = <AiImage>[];
@@ -243,7 +356,7 @@ class Pipeline {
           images.add(AiImage(c.id, fs[i], atMs: (c.shot.durationMs * sceneAt[i]).round()));
         }
       } else {
-        final j = await src.jpeg(c.id, 512);
+        final j = await src.jpeg(c.id, finalPx);
         if (j != null) images.add(AiImage(c.id, j));
       }
     }
@@ -252,14 +365,21 @@ class Pipeline {
     }
     final noteList = _notes(notes);
     final recommended = recommendTheme(byDay(sent), hasDiaryNotes: noteList.isNotEmpty);
-    final r = await ai.pick(images, [for (final c in sent) _aiShot(c)],
-        notes: noteList, opts: opts.toJson(), mustInclude: [for (final c in mustC) c.id]);
+    lap('previews');
+    AiShot shot(Candidate c) => _aiShot(c,
+        tag: tags[c.id]?.kind ?? '', people: tags[c.id]?.people ?? 0, busy: momentSize[momentOf[c.id]] ?? 0, series: series[c.id] ?? 0);
+    final r = await ai.pick(images, [for (final c in sent) shot(c)],
+        notes: noteList, opts: opts.toJson(), mustInclude: [for (final c in mustC) c.id], target: target);
+    // no answer: the recipe's own order is the book (best first), as many as the length asks for
     final plan = r is AiOk
         ? checkPick(r.body, sent, opts, recommended: recommended, must: sentIds.intersection(must))
-        : fallbackPlan(sent, opts, theme: recommended, must: sentIds.intersection(must));
+        : fallbackPlan([...ranked, ...sentVids, ...mustC.where((c) => c.shot.isVideo)], opts,
+            theme: recommended, must: sentIds.intersection(must), ranked: true, limit: target);
 
     final picks = plan.picks;
-    final theme = await _hasTheme(plan.theme) ? plan.theme : 'a'; // M1 ships theme a only
+    // the person's theme (chosen before picking, operator 11-27) wins over the AI's suggestion
+    final want = opts.theme ?? plan.theme;
+    final theme = await _hasTheme(want) ? want : 'a';
     final book = Book(
       id: newId(),
       from: from,
@@ -271,10 +391,43 @@ class Pipeline {
       clips: plan.clips,
       pickLines: plan.chapterLines,
       mustInclude: must,
-      cover: _bestPhoto(picks, {for (final c in cands) c.id: c}),
+      cover: plan.covers.firstOrNull ?? _bestPhoto(picks, {for (final c in cands) c.id: c}),
+      groups: plan.groups,
     );
+    lap('ai');
     await store.save(book); // the answer is kept at once: a crash after this never pays twice
-    onProgress?.call(p.copyWith(picked: picks.length));
+    if (lab != null) {
+      final picked = {for (final x in picks) x.id: x};
+      await File('${lab.path}/pick.json').writeAsString(jsonEncode({
+        'from': ymd(from),
+        'to': ymd(to),
+        'opts': opts.toJson(),
+        'ai': stateOf(r).name,
+        'ms': times,
+        'counts': {
+          'all': all.length, 'measured': measuredIdx.length, 'blurDark': blurDark, 'similar': similar, 'capture': capture,
+          'moments': moments.length, 'series': nSeries, 'shortlist': wide.length, 'tagged': tags.length, 'sent': sent.length, 'picked': picks.length,
+        },
+        'groups': [for (final (k, ids) in plan.groups) {'kind': k, 'ids': ids}],
+        'covers': plan.covers,
+        'shots': [
+          for (final c in cands)
+            {
+              ...c.toJson(),
+              'file': fileId(c.id),
+              'shot_ms': c.shot.utc.millisecondsSinceEpoch,
+              'screenshot': isScreenshot(c.shot),
+              'sent': sentIds.contains(c.id),
+              'moment': momentOf[c.id],
+              if (series[c.id] != null) 'series': series[c.id],
+              'wide': wide.any((x) => x.id == c.id),
+              if (tags[c.id] != null) 'tag': tags[c.id]!.toJson(),
+              if (picked[c.id] != null) 'pick': picked[c.id]!.toJson(),
+            },
+        ],
+      }));
+    }
+    onProgress?.call(p.copyWith(picked: picks.length, pickedIds: {for (final x in picks) x.id}, found: [...found]));
     return PickResult(book, plan.ask, stateOf(r));
   }
 
@@ -367,10 +520,23 @@ class Pipeline {
     final rules = layoutRules[theme]!;
     final byId = {for (final c in picked) c.id: c};
     final tags = {for (final p in b.picks) p.id: p};
+    // /pick's page groups go to the editor as "연속 1", "음식 1": one page each
+    final groupOf = <String, String>{};
+    for (final (i, (k, ids)) in b.groups.indexed) {
+      for (final id in ids) {
+        groupOf.putIfAbsent(id, () => '$k ${i + 1}');
+      }
+    }
     final shots = [
       for (final c in picked)
         AiShot(c.id, _localIso(c.local), c.place,
-            video: c.shot.isVideo, durMs: c.shot.durationMs, w: c.shot.w, h: c.shot.h, kind: tags[c.id]?.kind ?? '', what: tags[c.id]?.what ?? ''),
+            video: c.shot.isVideo,
+            durMs: c.shot.durationMs,
+            w: c.shot.w,
+            h: c.shot.h,
+            kind: tags[c.id]?.kind ?? '',
+            what: tags[c.id]?.what ?? '',
+            group: groupOf[c.id] ?? ''),
     ];
     final scenes = scenesOf(picked);
     final order = sceneIndex(scenes);
@@ -573,8 +739,9 @@ class Pipeline {
       p.text.entries.where((e) => e.value.isNotEmpty && !const {'title', 'period', 'stamp', 'colophon', 'dayline', 'day', 'date'}.contains(e.key)).firstOrNull?.key ??
       'caption0';
 
-  AiShot _aiShot(Candidate c) =>
-      AiShot(c.id, _localIso(c.local), c.place, video: c.shot.isVideo, durMs: c.shot.durationMs, w: c.shot.w, h: c.shot.h);
+  AiShot _aiShot(Candidate c, {String tag = '', int people = 0, int busy = 0, int series = 0, int scene = -1}) => AiShot(
+      c.id, _localIso(c.local), c.place,
+      video: c.shot.isVideo, durMs: c.shot.durationMs, w: c.shot.w, h: c.shot.h, tag: tag, people: people, busy: busy, series: series, scene: scene);
 
   List<Map<String, String?>> _notes(List<NoteInput> ns) =>
       [for (final p in trimForAi([for (final n in ns) ...n.pieces])) {'day': p.day, 'text': p.text}];

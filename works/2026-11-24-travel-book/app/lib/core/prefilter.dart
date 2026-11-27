@@ -48,7 +48,7 @@ int _dhash(img.Image grey) {
   return bits;
 }
 
-int _hamming(int a, int b) {
+int hamming(int a, int b) {
   var v = a ^ b, c = 0;
   while (v != 0) {
     v &= v - 1;
@@ -74,7 +74,7 @@ List<Candidate> dedupeBursts(List<Candidate> xs) {
         !c.shot.isVideo &&
         !last.shot.isVideo &&
         c.local.difference(last.local).inMilliseconds.abs() <= 4000 &&
-        _hamming(c.dhash, last.dhash) <= 10) {
+        hamming(c.dhash, last.dhash) <= 10) {
       if (c.sharp > last.sharp) out[out.length - 1] = c;
       continue;
     }

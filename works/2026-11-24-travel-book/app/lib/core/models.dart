@@ -132,6 +132,8 @@ class BookPlan {
   final String essay;
   final List<Clip> clips;
   final bool aiText;
+  final List<(String kind, List<String> ids)> groups; // /pick: "연속" pose series, "음식" food — one page each
+  final List<String> covers; // /pick: cover candidates, best first
   const BookPlan({
     required this.titles,
     required this.theme,
@@ -141,6 +143,8 @@ class BookPlan {
     this.essay = '',
     this.clips = const [],
     this.aiText = false,
+    this.groups = const [],
+    this.covers = const [],
   });
 }
 

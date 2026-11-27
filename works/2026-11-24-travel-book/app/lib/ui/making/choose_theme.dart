@@ -1,4 +1,4 @@
-// 어떤 책으로 만들까요? (mockup r12 A1): after the photo review, always. A fan of three pages of one theme made from
+// 어떤 책으로 만들까요? (mockup r12 A1): before the picking (operator 11-27: length sets the photo count). A fan of three pages of one theme made from
 // the picked photos; 7 theme chips, ‹ › and swipe to change it; length and text amount below.
 import 'dart:async';
 import 'dart:math' as math;
@@ -127,6 +127,7 @@ class ChooseThemeScreen extends StatefulWidget {
   final String title; // the place on the cover page
   final PickStats stats;
   final String? price; // "1,500원" on a paid book
+  final String? lead, action; // before the picking: what the previews are made from, and what the button starts
   final VoidCallback onBack, onMake;
   final Future<void> Function()? onMore; // the other options (tone, format, …) on the old book-shape screen
   const ChooseThemeScreen({
@@ -137,6 +138,8 @@ class ChooseThemeScreen extends StatefulWidget {
     required this.title,
     required this.stats,
     this.price,
+    this.lead,
+    this.action,
     required this.onBack,
     required this.onMake,
     this.onMore,
@@ -286,7 +289,7 @@ class _ChooseThemeScreenState extends State<ChooseThemeScreen> {
     return NbScaffold(
       onBack: widget.onBack,
       title: '어떤 책으로 만들까요?',
-      lead: '고른 ${fmtInt(s.photos)}장으로 미리 만들어 봤어요',
+      lead: widget.lead ?? '고른 ${fmtInt(s.photos)}장으로 미리 만들어 봤어요',
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         SizedBox(
           height: 32,
@@ -369,7 +372,7 @@ class _ChooseThemeScreenState extends State<ChooseThemeScreen> {
             ),
           ),
       ]),
-      foot: [Btn(widget.price == null ? '이 모양으로 책 만들기' : '이 모양으로 책 만들기 · ${widget.price}', onTap: widget.onMake)],
+      foot: [Btn(widget.action ?? (widget.price == null ? '이 모양으로 책 만들기' : '이 모양으로 책 만들기 · ${widget.price}'), onTap: widget.onMake)],
     );
   }
 }

@@ -15,6 +15,7 @@ class SettingsScreen extends StatelessWidget {
   final ValueChanged<ShelfView> onView;
   final ValueChanged<String> onQuality;
   final VoidCallback onBack, onAccess, onTerms;
+  final VoidCallback? onLab; // test builds only: share the last pick's previews and numbers
   const SettingsScreen({
     super.key,
     required this.view,
@@ -28,6 +29,7 @@ class SettingsScreen extends StatelessWidget {
     required this.onBack,
     required this.onAccess,
     required this.onTerms,
+    this.onLab,
   });
 
   @override
@@ -64,6 +66,7 @@ class SettingsScreen extends StatelessWidget {
         row('만든 책', freeLeft == 0 ? '무료 $freeBooks권 중 $used권 씀 · 다음 책부터 1권 1,500원' : '무료 $freeBooks권 중 $used권 씀', '$books권'),
         row('사진 접근', access, '›', onTap: onAccess),
         row('이용 약관 · 개인정보', '원본은 폰에만. 작은 미리보기만 AI로 보내고 저장하지 않아요', '›', onTap: onTerms),
+        if (onLab != null) row('실험용 기록 보내기', '마지막 사진 고르기의 미리보기·숫자 (시험판에만)', '›', onTap: onLab),
         row('버전', '개인용 빌드 · 결제 없음', version),
       ]),
     );

@@ -84,7 +84,7 @@ class FakeAi implements AiClient {
 
   @override
   Future<AiResult> pick(List<AiImage> images, List<AiShot> shots,
-      {List<Map<String, String?>> notes = const [], Map<String, Object?> opts = const {}, List<String> mustInclude = const []}) async {
+      {List<Map<String, String?>> notes = const [], Map<String, Object?> opts = const {}, List<String> mustInclude = const [], int target = 0}) async {
     picked.add(images);
     if (onPick != null) return onPick!(images);
     final ids = {for (final i in images) if (!i.id.startsWith('ref')) i.id}.toList();
@@ -95,6 +95,15 @@ class FakeAi implements AiClient {
       'chapters': [{'day': '2026-06-12', 'line': '바다'}],
       'clips': [for (final id in ids) if (id.startsWith('v')) {'id': id, 'startMs': 1000, 'endMs': 4000}],
     });
+  }
+
+  AiResult Function(List<AiImage> images)? onScout;
+  final scouted = <List<AiImage>>[];
+  @override
+  Future<AiResult> scout(List<AiImage> images, List<AiShot> shots, {Map<String, Object?> opts = const {}}) async {
+    scouted.add(images);
+    if (onScout != null) return onScout!(images);
+    return AiOk({'tags': [for (var n = 0; n < images.length; n++) {'n': n, 'k': '풍경', 'p': 0, 's': 4, 'e': false}]});
   }
 
   @override
@@ -245,7 +254,7 @@ void main() {
     expect(saved!.stage, 'picked');
   });
 
-  test('pick: never more than 60 images to the AI', () async {
+  test('pick: the final look carries ~2.6x the book photos (normal: 32 -> 83) plus 4 scenes per video', () async {
     final shots = [
       for (var i = 0; i < 90; i++) _shot('p$i', 12 + i % 3, i % 60),
       _shot('v1', 12, 1, video: true),
@@ -254,8 +263,11 @@ void main() {
     await pipe(FakeSource()).pick(
         from: DateTime(2026, 6, 12), to: DateTime(2026, 6, 14), shots: shots, inRange: 92, albums: 1, opts: BookOptions(), must: {'p5'});
     final imgs = ai.picked.single;
-    expect(imgs.length, 60); // 2 videos x 4 scenes + must 1 + 51 photos
+    expect(imgs.where((i) => i.atMs == null).length, 83);
     expect(imgs.where((i) => i.atMs != null).length, 8);
+    expect(imgs.length, lessThanOrEqualTo(maxAiImages));
+    expect(imgs.map((i) => i.id), contains('p5'));
+    expect(ai.scouted.expand((b) => b).length, 90); // the first look saw every photo of this small trip
   });
 
   test('pick with the AI off: a fallback book (no text), still saved', () async {

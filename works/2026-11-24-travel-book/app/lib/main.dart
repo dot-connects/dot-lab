@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:material_ui/material_ui.dart';
+import 'package:archive/archive_io.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'ai/client.dart';
 import 'book/phone_source.dart';
@@ -184,8 +187,17 @@ class _RootState extends State<_Root> {
           onBack: Navigator.of(c).pop,
           onAccess: g.openSettings,
           onTerms: () {},
+          onLab: kLab ? _shareLab : null,
         ),
       ));
+
+  /// Test builds: the last pick's lab folder as one zip on the share sheet (to the PC, for tuning the picker).
+  Future<void> _shareLab() async {
+    final cache = await getTemporaryDirectory(), dir = await labDir(cache), out = '${cache.path}/lab.zip';
+    if (!await dir.exists()) return;
+    await Isolate.run(() => ZipFileEncoder().zipDirectory(dir, filename: out, level: ZipFileEncoder.store));
+    await SharePlus.instance.share(ShareParams(files: [XFile(out)], title: '여행 한 권 실험 기록'));
+  }
 
   Future<void> _new() async {
     final partial = app.limited ? await app.src.visibleCount() : null;

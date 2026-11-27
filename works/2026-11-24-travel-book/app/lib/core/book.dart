@@ -25,6 +25,7 @@ class Book {
   List<PageSpec> original;
   List<String> spare;
   String? job; // the AI editor's server job while it runs (survives the app being closed); null when idle
+  List<(String kind, List<String> ids)> groups; // /pick's page groups (연속 · 음식), handed to the layout editor
 
   Book({
     required this.id,
@@ -49,6 +50,7 @@ class Book {
     this.original = const [],
     this.spare = const [],
     this.job,
+    this.groups = const [],
   })  : mustInclude = mustInclude ?? {},
         texts = texts ?? {};
 
@@ -61,6 +63,7 @@ class Book {
         'texts': {for (final e in texts.entries) e.key: e.value.toJson()}, 'rewrites': rewrites, 'cover': cover,
           'coverColor': coverColor, 'font': font, 'size': textSize, 'pages': [for (final p in pages) p.toJson()],
         'original': [for (final p in original) p.toJson()], 'spare': spare, 'job': job,
+        'groups': [for (final (k, ids) in groups) {'kind': k, 'ids': ids}],
       };
 
   factory Book.fromJson(Map<String, dynamic> j) => Book(
@@ -88,5 +91,9 @@ class Book {
         original: [for (final p in j['original'] as List) PageSpec.fromJson(p as Map<String, dynamic>)],
         spare: (j['spare'] as List).cast<String>(),
         job: j['job'] as String?,
+        groups: [
+          for (final g in (j['groups'] as List? ?? const []))
+            if (g is Map) (g['kind'] as String, (g['ids'] as List).cast<String>()),
+        ],
       );
 }

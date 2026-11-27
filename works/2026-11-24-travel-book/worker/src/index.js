@@ -6,14 +6,16 @@
 // Model: OpenAI Responses API (operator 11-25: use the GPT key already on hand); the MODEL var picks the model.
 // Money unit = mills (1/10 cent, integers). Reserve the worst case before the call, settle the real cost after.
 import { MemoryCounts, D1Counts } from "./counts.js";
-import { SYSTEM_PICK, systemWrite, systemRewrite, PICK_SCHEMA, WRITE_SCHEMA, REWRITE_SCHEMA,
+import { SYSTEM_PICK, SYSTEM_SCOUT, SCOUT_SCHEMA, systemWrite, systemRewrite, PICK_SCHEMA, WRITE_SCHEMA, REWRITE_SCHEMA,
   THEMES, systemLayout, LAYOUT_SCHEMA } from "./prompt.js";
 
 export { MemoryCounts, D1Counts };
 
 // per route: image cap, output budget (reasoning included), day counter key + var + default
 const ROUTES = {
-  "/pick": { images: 60, tokens: () => 12000, day: ["dp", "DAY_BOOKS", 20] },
+  "/pick": { images: 130, tokens: () => 16000, day: ["dp", "DAY_BOOKS", 20] },
+  // the first, wide look (operator 11-27): up to 480 small previews per book in 5-6 parallel batches, a small model tags them
+  "/scout": { images: 100, tokens: () => 9000, day: ["ds", "SCOUT_DAY", 200] },
   "/write": { images: 48, tokens: shape => (shape === "short" ? 8000 : 16000), day: ["dw", "WRITE_DAY", 60] },
   "/rewrite": { images: 4, tokens: () => 1000, day: ["dr", "REWRITE_DAY", 200] },
   // the whole-book page plan; shares the /write day counter (it replaces /write for book making)
@@ -24,6 +26,8 @@ const SHAPES = ["short", "diary", "mag"];
 const MAX_B64 = 400_000;           // one 512 px JPEG is ~40-80 KB as base64
 // gpt-5.4: $2.50 / M input = 0.0025 mills a token, $15 / M output (reasoning included) = 0.015 mills a token
 const IN_MILLS = 0.0025, OUT_MILLS = 0.015;
+// gpt-5.4-mini (assumed $0.75 / $4.50 per M, check against the OpenAI price page): /scout settles at these
+const MINI_IN = 0.00075, MINI_OUT = 0.0045;
 const IMG_TOKENS = 400;            // a 512 px preview at detail "low" is well under this; rounded up for the reservation
 const KEEPALIVE_MS = 10_000;
 const OPENAI_URL = "https://api.openai.com/v1/responses";
@@ -39,10 +43,10 @@ const json = (o, status = 200) => new Response(JSON.stringify(o), { status, head
 export function reserveMills(images, chars, maxTokens) {
   return Math.ceil((images * IMG_TOKENS + Math.ceil(chars / 2) + 2500) * IN_MILLS + maxTokens * OUT_MILLS);
 }
-export function realMills(usage) {
+export function realMills(usage, mini = false) {
   const cached = usage?.input_tokens_details?.cached_tokens || 0;
   const inp = (usage?.input_tokens || 0) - cached + cached * 0.1;
-  return Math.ceil(inp * IN_MILLS + (usage?.output_tokens || 0) * OUT_MILLS);
+  return Math.ceil(inp * (mini ? MINI_IN : IN_MILLS) + (usage?.output_tokens || 0) * (mini ? MINI_OUT : OUT_MILLS));
 }
 
 const goodB64 = s => typeof s === "string" && s.length > 0 && s.length <= MAX_B64 && /^[A-Za-z0-9+/=]+$/.test(s);
@@ -57,18 +61,35 @@ export function bookContent(body, pick = true) {
   for (const im of body.images) {
     const s = shots.get(im.id) || {};
     const video = s.video ? `영상 ${Math.round((s.durMs || 0) / 100) / 10}초` + (im.atMs != null ? `, 장면 ${im.atMs}ms` : "") : "";
-    const label = [`[${clean(im.id, 64)}]`, clean(s.local, 20), clean(s.place, 40), video].filter(Boolean).join(" ");
+    // what the phone and the first look found: kind tag, people, how busy the scene was, which pose series
+    const seen = [s.tag ? `꼬리표 ${clean(s.tag, 4)}` : "", s.people ? `사람 ${clean(String(s.people), 2)}` : "",
+      s.busy ? `이 장면 ${clean(String(s.busy), 6)}장` : "", s.series ? `연속${clean(String(s.series), 4)}` : ""].filter(Boolean).join(" · ");
+    const label = [`[${clean(im.id, 64)}]`, clean(s.local, 20), clean(s.place, 40), video, seen].filter(Boolean).join(" ");
     content.push(txt(label), jpeg(im.b64));
   }
   const notes = (body.notes || []).map(n => `${clean(n.day, 10) || "날짜 없음"}: ${clean(n.text, 12000)}`).join("\n\n");
   const o = body.opts || {};
   const must = (body.mustInclude || []).filter(x => typeof x === "string").slice(0, 10);
   if (pick && must.length) content.push(txt(`꼭 넣을 사진: ${must.map(x => clean(x, 64)).join(", ")}`));
+  if (pick && Number.isInteger(body.target) && body.target > 0) content.push(txt(`책에 넣을 사진 수: 약 ${Math.min(body.target, 60)}장 (영상 포함)`));
   content.push(txt(
     `메모:\n${notes || "(없음)"}\n\n옵션: 말투=${clean(o.tone, 20) || "auto"}, 글의 양=${clean(o.textAmount, 20) || "caption_essay"}, ` +
     `사람 사진=${clean(o.people, 20) || "mix"}, 길이=${clean(o.length, 20) || "normal"}
 ` +
     `여행 성격: 누구랑=${clean(o.who, 40) || "없음"}, ${clean(o.about, 200) || "없음"} (같이 간 사람이 나온 사진을 아낀다)`));
+  return content;
+}
+
+/** /scout user turn: each small preview after "[n] 시각 · 장소 · 장면 k" (n = its place in this batch), then the trip's shape. */
+export function scoutContent(body) {
+  const shots = new Map((body.shots || []).map(s => [s.id, s]));
+  const content = [];
+  for (const [n, im] of body.images.entries()) {
+    const s = shots.get(im.id) || {};
+    content.push(txt([`[${n}]`, clean(s.local, 20), clean(s.place, 40), s.scene != null ? `장면 ${clean(String(s.scene), 6)}` : ""].filter(Boolean).join(" ")), jpeg(im.b64));
+  }
+  const o = body.opts || {};
+  content.push(txt(`여행 성격: 누구랑=${clean(o.who, 40) || "없음"}, ${clean(o.about, 200) || "없음"}. 답은 스키마 JSON 만.`));
   return content;
 }
 
@@ -89,7 +110,8 @@ export function layoutContent(body) {
     const orient = ar ? `${ar < 0.95 ? "P" : ar > 1.05 ? "L" : "S"} ${ar.toFixed(2)}` : "";
     const video = s.video ? `영상 ${Math.round((s.durMs || 0) / 100) / 10}초` + (im.atMs != null ? `, 장면 ${im.atMs}ms` : "") : "";
     const tag = s.kind ? `${clean(s.kind, 4)}: ${clean(s.what, 30)}` : "";
-    content.push(txt([`[${clean(im.id, 64)}]`, clean(s.local, 20), clean(s.place, 40), orient, video, tag].filter(Boolean).join(" ")), jpeg(im.b64));
+    const group = s.group ? `묶음 ${clean(s.group, 8)}` : "";
+    content.push(txt([`[${clean(im.id, 64)}]`, clean(s.local, 20), clean(s.place, 40), orient, video, tag, group].filter(Boolean).join(" ")), jpeg(im.b64));
   }
   const flow = outline(body.scenes, shots);
   if (flow) content.push(txt(flow));
@@ -217,7 +239,9 @@ export async function handle(req, env, ctx, counts) {
     if (!JOB.test(b?.job)) return json({ error: "body" }, 400);
     return json(await jobState(env, counts, await getJob(env.DB, b.job)));
   }
-  if (env.LIMIT && !(await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" })).success) return json({ error: "slow" }, 429);
+  // /scout comes in parallel batches: a limiter of its own, so a book's look never eats the 4-a-minute of the rest
+  const limiter = url.pathname === "/scout" ? env.SCOUT_LIMIT : env.LIMIT;
+  if (limiter && !(await limiter.limit({ key: req.headers.get("cf-connecting-ip") || "?" })).success) return json({ error: "slow" }, 429);
   let body;
   try { body = await req.json(); } catch { return json({ error: "body" }, 400); }
   const images = Array.isArray(body?.images) ? body.images : [];
@@ -240,7 +264,7 @@ export async function handle(req, env, ctx, counts) {
   const cap = num(env.MONTH_CENTS, 1000) * 10;
   if (!(await counts.take(kDay, num(env[dvar], ddef)))) return json({ error: "off" }, 503);
   const maxTokens = route.tokens(shape);
-  const system = kind === "pick" ? SYSTEM_PICK : kind === "write" ? systemWrite(shape) : kind === "rewrite" ? systemRewrite(shape)
+  const system = kind === "pick" ? SYSTEM_PICK : kind === "scout" ? SYSTEM_SCOUT : kind === "write" ? systemWrite(shape) : kind === "rewrite" ? systemRewrite(shape)
     : systemLayout(body.theme, body.catalog, body.rules, new Set(images.map(i => i.id)).size);
   const reserved = reserveMills(images.length, chars(body) + (kind === "layout" ? system.length : 0), maxTokens);
   if (cap <= 0 || !(await counts.add(kMonth, reserved, cap))) {
@@ -248,15 +272,19 @@ export async function handle(req, env, ctx, counts) {
     return json({ error: "off" }, 503);
   }
 
-  const schema = { pick: PICK_SCHEMA, write: WRITE_SCHEMA, rewrite: REWRITE_SCHEMA, layout: LAYOUT_SCHEMA }[kind];
-  const content = kind === "rewrite" ? rewriteContent(body, images) : kind === "layout" ? layoutContent(body) : bookContent(body, kind === "pick");
+  const schema = { pick: PICK_SCHEMA, scout: SCOUT_SCHEMA, write: WRITE_SCHEMA, rewrite: REWRITE_SCHEMA, layout: LAYOUT_SCHEMA }[kind];
+  const content = kind === "rewrite" ? rewriteContent(body, images) : kind === "layout" ? layoutContent(body)
+    : kind === "scout" ? scoutContent(body) : bookContent(body, kind === "pick");
   // /layout's model and effort can differ (LAYOUT_MODEL / LAYOUT_EFFORT); with ALLOW_TEST=1 a request may ask for others (model comparison)
   // the override needs the operator's TEST_KEY secret (the app token ships inside the APK) and an allowed model
   const test = kind === "layout" && env.ALLOW_TEST === "1" && env.TEST_KEY && req.headers.get("x-test-key") === env.TEST_KEY &&
     body.test && typeof body.test === "object" ? body.test : {};
   const TEST_MODELS = ["gpt-5.4", "gpt-5.4-mini", "gpt-5.5"];
-  const model = kind === "layout" ? (TEST_MODELS.includes(test.model) ? test.model : env.LAYOUT_MODEL || env.MODEL || "gpt-5.4") : env.MODEL || "gpt-5.4";
-  const effort = kind === "layout" ? (["low", "medium", "high"].includes(test.effort) ? test.effort : env.LAYOUT_EFFORT || "medium") : "medium";
+  const model = kind === "layout" ? (TEST_MODELS.includes(test.model) ? test.model : env.LAYOUT_MODEL || env.MODEL || "gpt-5.4")
+    : kind === "scout" ? env.SCOUT_MODEL || "gpt-5.4-mini" : env.MODEL || "gpt-5.4";
+  const effort = kind === "layout" ? (["low", "medium", "high"].includes(test.effort) ? test.effort : env.LAYOUT_EFFORT || "medium")
+    : kind === "scout" ? "low" : "medium";
+  const mini = model.endsWith("-mini");
   const payload = {
     model, max_output_tokens: maxTokens, reasoning: { effort }, store: false,
     input: [{ role: "system", content: system }, { role: "user", content }],
@@ -284,7 +312,7 @@ export async function handle(req, env, ctx, counts) {
         spent = 0;   // rejected: not billed
       } else {
         const data = await r.json();
-        spent = realMills(data.usage);
+        spent = realMills(data.usage, mini);
         console.log("model", data.status, data.usage?.input_tokens, data.usage?.output_tokens);   // counts only, never text
         const msg = (data.output || []).find(o => o.type === "message");
         const text = msg?.content?.find(c => c.type === "output_text")?.text;

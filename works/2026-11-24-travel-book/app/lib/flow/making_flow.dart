@@ -3,6 +3,7 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../core/book.dart';
 import '../core/library.dart' show freeBooks;
@@ -50,7 +51,7 @@ class MakingFlow extends StatefulWidget {
   State<MakingFlow> createState() => _MakingFlowState();
 }
 
-enum _Phase { picking, pairs, review, writing }
+enum _Phase { picking, review, writing }
 
 class _MakingFlowState extends State<MakingFlow> {
   late var _phase = widget.book == null ? _Phase.picking : _Phase.review;
@@ -95,6 +96,7 @@ class _MakingFlowState extends State<MakingFlow> {
       notes: _notes,
       timeline: widget.timeline,
       onProgress: (p) => mounted ? setState(() => _p = p) : null,
+      lab: kLab ? await labDir(await getTemporaryDirectory()) : null,
     );
     if (!mounted) return;
     _book = r.book;
@@ -110,13 +112,13 @@ class _MakingFlowState extends State<MakingFlow> {
       });
       return;
     }
-    await Future<void>.delayed(const Duration(milliseconds: 1600)); // let the count ease down to "38" and be seen
+    await Future<void>.delayed(const Duration(milliseconds: 2200)); // let the picked ones gather into their grid and be seen
     if (!mounted) return;
     // the picker is done; the review screen waits on the person, so the screen may sleep again (battery)
     unawaited(mc.keepScreenOn(false).catchError((_) {}));
     setState(() {
       _ask = r.ask;
-      _phase = _ask.isEmpty ? _Phase.review : _Phase.pairs;
+      _phase = _Phase.review; // "둘 중 하나" is a card on the review now (operator 11-27), not a screen in the way
     });
   }
 
@@ -156,6 +158,49 @@ class _MakingFlowState extends State<MakingFlow> {
       MaterialPageRoute<void>(builder: (_) => BookScreen(app: app, book: _book!, failed: failed, tip: tip, notes: _notes)),
       (r) => r.isFirst,
     );
+  }
+
+  Future<void> _writeNew() async {
+    await _settlePairs();
+    final b = _book!, o = widget.draft!.opts;
+    b
+      ..opts = o
+      ..theme = o.theme ?? b.theme;
+    await app.store.save(b);
+    if (mounted) _write();
+  }
+
+  /// The look-alike pairs, asked one by one; an answer (or leaving) settles them all.
+  void _pairs() {
+    final nav = Navigator.of(context);
+    String hm(Candidate? c) => c == null ? '' : '${two(c.local.hour)}:${two(c.local.minute)}';
+    Future<void> settle(Map<String, String> chosen) async {
+      nav.pop();
+      await app.pipe.applyPairs(_book!, _ask, chosen);
+      if (mounted) setState(() => _ask = []);
+    }
+
+    nav.push(MaterialPageRoute<void>(
+      builder: (_) => PairsScreen(
+        pairs: [
+          for (final (a, x) in _ask)
+            PairAsk(PhotoRef(a, 'gallery:$a'), PhotoRef(x, 'gallery:$x'),
+                aTime: hm(_cand(a)),
+                bTime: hm(_cand(x)),
+                label: [_cand(a)?.place, if (_cand(a) != null) '${_cand(a)!.local.month}월 ${_cand(a)!.local.day}일'].nonNulls.join(' · ')),
+        ],
+        onBack: nav.pop,
+        onLeaveToApp: () => settle(const {}),
+        onDone: (kept) => settle({for (final (i, (a, x)) in _ask.indexed) '$a|$x': kept[i]}),
+      ),
+    ));
+  }
+
+  /// Pairs nobody answered keep the higher score before the book is made.
+  Future<void> _settlePairs() async {
+    if (_ask.isEmpty) return;
+    await app.pipe.applyPairs(_book!, _ask, const {});
+    _ask = [];
   }
 
   Candidate? _cand(String id) => _book!.pool.where((c) => c.id == id).firstOrNull;
@@ -210,7 +255,9 @@ class _MakingFlowState extends State<MakingFlow> {
   }
 
   /// 어떤 책으로 만들까요? — always between the photo review and the making.
-  void _choose() {
+  Future<void> _choose() async {
+    await _settlePairs();
+    if (!mounted) return;
     final b = _book!, cs = _photos, nav = Navigator.of(context);
     final d = NewBookDraft()
       ..start = b.from
@@ -268,35 +315,20 @@ class _MakingFlowState extends State<MakingFlow> {
       case _Phase.picking:
         final p = _p;
         return PickingScreen(
-          thumbs: [for (final (id, kept) in p?.strip ?? const <(String, bool)>[]) ('gallery:$id', kept)],
+          sample: [for (final id in p?.sample ?? const <String>[]) 'gallery:$id'],
+          measured: p?.measured ?? 0,
+          toMeasure: p?.toMeasure ?? 0,
+          scoutTotal: p?.scoutTotal ?? 0,
+          scouted: p?.scouted ?? 0,
+          found: p?.found ?? const [],
           inRange: p?.inRange ?? widget.inRange,
           albums: p?.albums ?? widget.draft!.albums.length,
           albumPhotos: p?.albumPhotos ?? widget.albumPhotos,
           filtered: (blurDark: p?.blurDark ?? 0, similar: p?.similar ?? 0, capture: p?.capture ?? 0),
-          sent: p?.sent ?? 0,
-          picked: p?.picked,
+          sent: [for (final id in p?.sentIds ?? const <String>[]) 'gallery:$id'],
+          picked: p?.pickedIds == null ? null : {for (final id in p!.pickedIds!) 'gallery:$id'},
           must: p?.must ?? 0,
           onClose: nav.pop,
-        );
-      case _Phase.pairs:
-        String hm(Candidate? c) => c == null ? '' : '${two(c.local.hour)}:${two(c.local.minute)}';
-        return PairsScreen(
-          pairs: [
-            for (final (a, x) in _ask)
-              PairAsk(PhotoRef(a, 'gallery:$a'), PhotoRef(x, 'gallery:$x'),
-                  aTime: hm(_cand(a)),
-                  bTime: hm(_cand(x)),
-                  label: [_cand(a)?.place, if (_cand(a) != null) '${_cand(a)!.local.month}월 ${_cand(a)!.local.day}일'].nonNulls.join(' · ')),
-          ],
-          onBack: nav.pop,
-          onLeaveToApp: () async {
-            await app.pipe.applyPairs(_book!, _ask, const {});
-            setState(() => _phase = _Phase.review);
-          },
-          onDone: (kept) async {
-            await app.pipe.applyPairs(_book!, _ask, {for (final (i, (a, x)) in _ask.indexed) '$a|$x': kept[i]});
-            setState(() => _phase = _Phase.review);
-          },
         );
       case _Phase.review:
         final b = _book!;
@@ -310,13 +342,17 @@ class _MakingFlowState extends State<MakingFlow> {
           from: widget.albumPhotos > 0 ? widget.albumPhotos : b.pool.length,
           videos: [for (final (_, cs) in days) ...cs].where((c) => c.shot.isVideo).length,
           notice: _notice,
+          pairs: _ask.length,
+          onPairs: _ask.isEmpty ? null : _pairs,
           onTapPhoto: _tapPhoto,
           onAdd: (day) async {
             await app.pipe.addOne(b, day);
             setState(() {});
           },
           onBack: nav.pop, // the book stays "picked" on the shelf and resumes here
-          onMake: _choose,
+          // a new book chose its theme and length before the picking (operator 11-27): straight on to making;
+          // a book picked by an older version still asks here
+          onMake: widget.draft == null ? _choose : _writeNew,
         );
       case _Phase.writing:
         final b = _book!, cs = _photos, o = b.opts;

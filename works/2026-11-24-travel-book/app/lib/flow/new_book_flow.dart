@@ -1,11 +1,14 @@
 // D3 host: dates (real per-day counts) -> trip scan -> albums -> extras (must-include, notes, timeline) -> pick.
 // The book's theme and length are chosen after the photos (making_flow -> choose_theme).
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart' show Clipboard;
 import 'package:image/image.dart' as img;
 import 'package:material_ui/material_ui.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:read_pdf_text/read_pdf_text.dart';
 
 import '../core/chapters.dart';
@@ -15,7 +18,9 @@ import '../core/timeline.dart';
 import '../device/gallery.dart' as g;
 import '../pipeline.dart';
 import '../ui/failures.dart';
+import '../ui/making/choose_theme.dart';
 import '../ui/new_book/albums.dart';
+import '../ui/new_book/book_shape.dart';
 import '../ui/new_book/dates.dart';
 import '../ui/new_book/draft.dart';
 import '../ui/new_book/extras.dart';
@@ -49,7 +54,16 @@ class _NewBookFlowState extends State<NewBookFlow> {
     _load(_month);
   }
 
+  /// The shown month, then the ones on either side in the background: a swipe lands on counts already read.
   Future<void> _load(DateTime m) async {
+    await _read(m);
+    for (final o in [-1, 1]) {
+      final x = DateTime(m.year, m.month + o);
+      if (!x.isAfter(_month)) unawaited(_read(x));
+    }
+  }
+
+  Future<void> _read(DateTime m) async {
     if (!_loaded.add(m)) return;
     try {
       final c = await app.src.monthCounts(m);
@@ -66,7 +80,15 @@ class _NewBookFlowState extends State<NewBookFlow> {
   }
 
   Future<void> _next(DateTime s, DateTime e) async {
+    final sw = Stopwatch()..start();
     final albums = await busy(context, () => app.src.scan(s, e));
+    if (kLab) {
+      // a new trip: the previous lab files go, this scan's time is the first number of the new set
+      final d = await labDir(await getTemporaryDirectory());
+      if (await d.exists()) await d.delete(recursive: true);
+      await d.create(recursive: true);
+      await File('${d.path}/scan.json').writeAsString(jsonEncode({'ms': sw.elapsedMilliseconds, 'albums': [for (final a in albums) {'name': a.name, 'inRange': a.inRange.length}]}));
+    }
     if (!mounted) return;
     final photos = {for (final a in albums) for (final x in a.inRange) if (!x.isVideo) x.id};
     if (photos.length < 5) return _few(s, e, albums);
@@ -283,9 +305,58 @@ class _ExtrasState extends State<_Extras> {
       );
       if (go != true || !mounted) return;
     }
+    // 어떤 책으로 만들까요? comes before the picking (operator 11-27): the length sets how many photos are picked
+    // and the people share moves the mix, so the picker has to know them first. The theme must be chosen.
+    final nav = Navigator.of(context), photos = widget.shots.where((s) => !s.isVideo).toList();
+    final sample = [for (var k = 0; k < 8 && photos.isNotEmpty; k++) photos[k * photos.length ~/ 8]];
+    // the recommendation reads "how many photos will the book have": about 1 in 25 shots, 5..60
+    final est = (photos.length ~/ 25).clamp(5, 60), tall = photos.where((s) => s.portrait).length;
+    final stats = (
+      photos: est,
+      portrait: photos.isEmpty ? 0 : tall * est ~/ photos.length,
+      days: d.end!.difference(d.start!).inDays + 1,
+      notes: d.notes.any((n) => !n.bad && n.input != null),
+    );
+    final rec = stats.notes ? 'diary' : 'a';
+    Future<void> start() async {
+      d.opts.theme ??= rec;
+      nav.pushReplacement(MaterialPageRoute<void>(builder: (_) => _making(paid)));
+    }
+
+    nav.push(MaterialPageRoute<void>(
+      builder: (_) => ChooseThemeScreen(
+        draft: d,
+        recommended: rec,
+        photos: [for (final s in sample) 'gallery:${s.id}'],
+        title: '${d.start!.month}월의 여행',
+        stats: stats,
+        lead: '이 여행 사진으로 미리 만들어 봤어요. 고른 모양과 길이에 맞춰 사진을 골라요.',
+        action: '이 모양으로 사진 고르기',
+        onBack: nav.pop,
+        onMake: start,
+        onMore: () => nav.push(MaterialPageRoute<void>(
+          builder: (_) => BookShapeScreen(
+            draft: d,
+            recommended: d.opts.theme ?? rec,
+            reason: '고른 앨범에 맞춰',
+            photos: stats.photos, // about how many go in the book, not the trip's whole count
+            days: stats.days,
+            videos: widget.shots.length - photos.length,
+            placesHint: '',
+            onBack: nav.pop,
+            onMake: () {
+              nav.pop();
+              start();
+            },
+          ),
+        )),
+      ),
+    ));
+  }
+
+  Widget _making(bool paid) {
     final chosen = widget.shots.length;
-    Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => MakingFlow(
+    return MakingFlow(
         app: app,
         draft: d,
         shots: widget.shots,
@@ -294,8 +365,7 @@ class _ExtrasState extends State<_Extras> {
         timeline: _timeline,
         paid: paid,
         freeLeftBefore: widget.freeLeft,
-      ),
-    ));
+      );
   }
 
   @override

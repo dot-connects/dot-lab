@@ -17,6 +17,8 @@ REWRITE_DAY = "200"
 ALLOW_TEST = "0"
 # /layout reasoning effort: low took 66 s vs medium 128 s on the same 20-photo trip (11-27), plain captions either way
 LAYOUT_EFFORT = "low"
+SCOUT_MODEL = "gpt-5.4-mini"
+SCOUT_DAY = "200"
 
 # finishes queued /layout jobs, times out stuck ones, prunes rows older than 24 h
 [triggers]
@@ -32,6 +34,12 @@ database_id = "33bf654f-96be-4d9a-9a30-854daaacab6d"
 name = "LIMIT"
 namespace_id = "2613"
 simple = { limit = 4, period = 60 }
+
+# /scout: one book sends its first look as 5-6 batches at once (a few books a minute at most)
+[[ratelimits]]
+name = "SCOUT_LIMIT"
+namespace_id = "2614"
+simple = { limit = 30, period = 60 }
 
 # theme guides for /layout (src/themes/*.md) are imported as strings
 [[rules]]

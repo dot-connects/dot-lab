@@ -42,10 +42,14 @@ List<Pick> capPicks(List<Pick> picks, Map<String, Candidate> byId, Set<String> m
   return [for (final p in picks) if (keep.contains(p.id)) p];
 }
 
-BookPlan fallbackPlan(List<Candidate> sent, BookOptions o, {String theme = 'a', Set<String> must = const {}}) {
-  final ranked = [...sent]..sort((a, b) => b.sharp.compareTo(a.sharp));
-  final n = ranked.length;
-  final picks = [for (var i = 0; i < n; i++) Pick(ranked[i].id, '', n == 1 ? 100 : 100 - (i * 100 ~/ (n - 1)))];
+/// [ranked]: [sent] is already best first (the phone's recipe order), so that order stays instead of sharpness;
+/// [limit]: photos the book aims for (videos and must ids on top).
+BookPlan fallbackPlan(List<Candidate> sent, BookOptions o, {String theme = 'a', Set<String> must = const {}, bool ranked = false, int? limit}) {
+  final all = ranked ? sent : ([...sent]..sort((a, b) => b.sharp.compareTo(a.sharp)));
+  final keep = {for (final c in all.where((c) => !c.shot.isVideo).take(limit ?? all.length)) c.id};
+  final r = [for (final c in all) if (c.shot.isVideo || keep.contains(c.id) || must.contains(c.id)) c];
+  final n = r.length;
+  final picks = [for (var i = 0; i < n; i++) Pick(r[i].id, '', n == 1 ? 100 : 100 - (i * 100 ~/ (n - 1)))];
   return BookPlan(
     titles: const ['', '', ''],
     theme: o.theme ?? theme,
@@ -96,6 +100,15 @@ BookPlan checkPick(Map<String, dynamic>? ai, List<Candidate> sent, BookOptions o
     clips.add(ok ? Clip(shot.id, s, e) : Clip(shot.id, 0, shot.durationMs < 4000 ? shot.durationMs : 4000));
   }
 
+  final groups = <(String, List<String>)>[];
+  for (final g in (ai['groups'] as List? ?? const [])) {
+    if (g is! Map || groups.length == 4) continue;
+    final k = g['kind'], ids = [for (final x in (g['ids'] as List? ?? const [])) if (x is String && picked.contains(x)) x];
+    final fresh = ids.toSet().where((x) => groups.every((o) => !o.$2.contains(x))).toList();
+    if ((k == '연속' || k == '음식') && fresh.length >= 2) groups.add((k as String, fresh.take(6).toList()));
+  }
+  final covers = [for (final x in (ai['covers'] as List? ?? const [])) if (x is String && picked.contains(x)) x].take(3).toList();
+
   final aiTheme = ai['theme'];
   return BookPlan(
     titles: const ['', '', ''],
@@ -105,6 +118,8 @@ BookPlan checkPick(Map<String, dynamic>? ai, List<Candidate> sent, BookOptions o
     chapterLines: _lines(ai['chapters']),
     clips: clips,
     aiText: false,
+    groups: groups,
+    covers: covers,
   );
 }
 
