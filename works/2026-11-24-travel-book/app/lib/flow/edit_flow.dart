@@ -30,8 +30,11 @@ class _EditFlowState extends State<EditFlow> {
   Future<void> _save() async {
     final e = _edit!;
     try {
+      // saved first as a copy: the book the app holds changes only once the file is written
+      final out = BookEdit.copyBook(widget.book);
+      e.applyTo(out);
+      await widget.app.store.save(out);
       e.applyTo(widget.book);
-      await widget.app.store.save(widget.book);
       if (mounted) Navigator.of(context).pop(true);
     } catch (_) {
       if (mounted) toast(context, '저장하지 못했어요. 다시 해 주세요');

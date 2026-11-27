@@ -122,6 +122,41 @@ void main() {
     expect(e.b.pages[2].text['cap'], '바다');
   });
 
+  test('undo is only for the last photo change: typing words or another step forgets it', () {
+    final e = BookEdit(_book(), _defs);
+    e.setCrop(1, 0, '10% 50%');
+    e.setText(3, 'cap', '파도');
+    expect(e.canUndo, isFalse);
+    e.swap(3, 0, 'p8');
+    e.setCoverLayout('a/c-paper');
+    expect(e.canUndo, isFalse);
+    expect(e.b.pages[3].text['cap'], ''); // the old photo's caption left with it
+  });
+
+  test("closing up moves the later photos' numbered words with them", () {
+    final e = BookEdit(_book(), _defs);
+    e.b.pages[1].text.addAll({'cap': 'a', 'cap2': 'b', 'cap3': 'c', 'day': '6.12'});
+    e.remove(1, 0, []);
+    expect(e.b.pages[1].text, {'cap': 'b', 'cap2': 'c', 'cap3': '', 'day': '6.12'});
+  });
+
+  test('applyTo hands over a copy: edits after a failed save never reach the book', () {
+    final real = _book(), e = BookEdit(real, _defs);
+    e.applyTo(real);
+    e.setText(3, 'cap', '파도');
+    e.setCrop(1, 0, '0% 0%');
+    expect(real.pages[3].text['cap'], '바다');
+    expect(real.pages[1].crop[0], '50% 50%');
+  });
+
+  test('a page whose words were all cleared stays in the words step', () {
+    final e = BookEdit(_book(), _defs);
+    e.setText(3, 'cap', '');
+    e.setText(3, 'body', '');
+    expect(e.hasWords(3), isTrue);
+    expect(e.hasWords(2), isFalse);
+  });
+
   test('every theme offers three fonts, its own first', () {
     for (final t in ['a', 'b', 'c', 'diary', 'mag', 'photo', 'album']) {
       expect(fontsOf(t).length, 3, reason: t);

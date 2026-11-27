@@ -69,13 +69,14 @@ class _EditScreenState extends State<EditScreen> {
   int _slot = 0, _version = 0;
   bool _swapMode = false, _coverPaper = true, _custom = false, _saving = false;
   String? _snack;
+  bool _undoable = false; // the snack's change is the one undo() takes back
 
   List<int> get _pages {
     final ps = e.b.pages;
     return switch (_step) {
       EditStep.cover || EditStep.check => [0],
       EditStep.type => [for (var i = 0; i < ps.length; i++) i],
-      EditStep.words => [for (var i = 0; i < ps.length; i++) if (i == 0 || ps[i].text.values.any((v) => v.trim().isNotEmpty)) i],
+      EditStep.words => [for (var i = 0; i < ps.length; i++) if (e.hasWords(i)) i],
       EditStep.photos => [for (var i = 0; i < ps.length; i++) if (ps[i].ids.isNotEmpty) i],
     };
   }
@@ -93,6 +94,7 @@ class _EditScreenState extends State<EditScreen> {
       });
 
   void _go(EditStep s, {bool fromSum = false}) => setState(() {
+        if (_step == EditStep.photos && s != EditStep.photos) e.forgetUndo();
         _step = s;
         _fromSum = fromSum;
         _slot = 0;
@@ -143,27 +145,41 @@ class _EditScreenState extends State<EditScreen> {
     return c?.place ?? '사진';
   }
 
+  /// Copies files in, then redraws whatever happened (a failed copy still leaves page and data in step).
+  Future<void> _withMedia(Set<String> ids, VoidCallback after) async {
+    try {
+      await widget.copyMedia(ids);
+    } finally {
+      if (mounted) _redraw(after);
+    }
+  }
+
   Future<void> _swapTo(String id) async {
-    await widget.copyMedia({id});
-    _redraw(() {
-      e.swap(_page, _slot, id);
+    final page = _page, slot = _slot; // the person may turn the page while the file copies
+    await _withMedia({id}, () {
+      e.swap(page, slot, id);
       _snack = '사진을 바꿨어요';
+      _undoable = true;
     });
   }
 
   Future<void> _remove() async {
-    final p = e.b.pages[_page];
+    final page = _page, p = e.b.pages[page];
     if (_slot >= p.ids.length) return;
     final old = p.ids[_slot];
     final alts = [for (final c in widget.alternatives(old)) c.id];
-    final before = e.b.pages[_page].ids.toSet();
-    final r = e.remove(_page, _slot, alts);
+    final before = p.ids.toSet();
+    final r = e.remove(page, _slot, alts);
     if (r == RemoveResult.kept) {
-      setState(() => _snack = '이 쪽에서는 뺄 수 없어요');
+      setState(() {
+        _snack = '이 쪽에서는 뺄 수 없어요';
+        _undoable = false;
+      });
       return;
     }
-    if (r == RemoveResult.filled) await widget.copyMedia(e.b.pages[_page].ids.toSet().difference(before));
-    _redraw(() {
+    final added = r == RemoveResult.filled ? e.b.pages[page].ids.toSet().difference(before) : <String>{};
+    await _withMedia(added, () {
+      _undoable = true;
       _slot = 0;
       _swapMode = false;
       _snack = switch (r) {
@@ -187,6 +203,7 @@ class _EditScreenState extends State<EditScreen> {
       (page, slot, pos) => setState(() {
         e.setCrop(page, slot, pos);
         _snack = '보이는 부분을 옮겼어요';
+        _undoable = e.canUndo;
       }),
       (paper) {
         if (paper != _coverPaper && mounted) setState(() => _coverPaper = paper);
@@ -278,11 +295,12 @@ class _EditScreenState extends State<EditScreen> {
         decoration: BoxDecoration(color: C.ink, borderRadius: BorderRadius.circular(12)),
         child: Row(children: [
           Expanded(child: Text(_snack!, style: ui(13, color: C.paper))),
-          if (e.canUndo && _step == EditStep.photos)
+          if (_undoable && e.canUndo && _step == EditStep.photos)
             TextButton(
               onPressed: () => _redraw(() {
                 e.undo();
                 _snack = null;
+                _undoable = false;
                 _slot = 0;
               }),
               child: Text('되돌리기', style: ui(13, w: FontWeight.w700, color: C.oak1)),
@@ -308,10 +326,10 @@ class _EditScreenState extends State<EditScreen> {
           ),
         ));
     final prev = out('이전', _step.index > 0 ? () => _go(EditStep.values[_step.index - 1]) : null);
-    final orig = out('원본', e.changed(_step) ? () => _redraw(() {
+    final orig = out('원본', e.changed(_step) ? () {
           e.reset(_step);
-          _snack = null;
-        }) : null);
+          _withMedia(e.b.pages.first.ids.toSet(), () => _snack = null);
+        } : null);
     if (last) return Row(children: [prev, const SizedBox(width: 8), Expanded(child: Btn(_saving ? '저장하는 중…' : '저장하기', onTap: _saving ? null : _save))]);
     final next = _fromSum ? Btn('요약으로', onTap: () => _go(EditStep.check)) : Btn('다음', onTap: () => _go(EditStep.values[_step.index + 1]));
     return Row(children: [if (!_fromSum) ...[prev, const SizedBox(width: 8)], orig, const SizedBox(width: 8), Expanded(child: next)]);
@@ -334,7 +352,10 @@ class _EditScreenState extends State<EditScreen> {
     final covers = e.coverLayouts, now = e.b.pages.first.layout, c = e.b.coverColor;
     return [
       _h('표지', '모양과 색을 골라요. 글자색은 알아서 맞춰요.'),
-      Sg([for (final (i, d) in covers.indexed) SgItem(d.id, '표지 ${i + 1}')], now, (id) => _redraw(() => e.setCoverLayout(id))),
+      Sg([for (final (i, d) in covers.indexed) SgItem(d.id, '표지 ${i + 1}')], now, (id) {
+        e.setCoverLayout(id);
+        _withMedia(e.b.pages.first.ids.toSet(), () {});
+      }),
       const OptLabel('표지 색'),
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final (hex, name) in coverSwatches) _swatch(hex, name, on: !_custom && c == hex),

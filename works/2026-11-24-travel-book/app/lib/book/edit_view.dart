@@ -22,14 +22,21 @@ class _EditWebViewState extends State<EditWebView> {
   InAppWebViewController? _c;
   bool _loaded = false;
   int _drawn = -1; // the version the runtime holds
+  Future<void> _queue = Future.value();
 
-  Future<void> _sync({bool force = false}) async {
-    final c = _c, a = widget.args;
-    if (c == null || !_loaded) return;
-    if (force || a.version != _drawn) {
-      _drawn = a.version;
+  /// One sync at a time, each reading the newest args when it runs: a page turned during a slow render ends on
+  /// the page the app shows, never on the one the render started with.
+  void _sync() => _queue = _queue.then((_) => _run()).catchError((Object _) {});
+
+  Future<void> _run() async {
+    final c = _c;
+    if (c == null || !_loaded || !mounted) return;
+    while (widget.args.version != _drawn) {
+      _drawn = widget.args.version;
       await c.callAsyncJavaScript(functionBody: 'await window.renderBook(${jsonEncode(widget.book())});');
+      if (!mounted) return;
     }
+    final a = widget.args;
     await c.callAsyncJavaScript(functionBody: 'await window.showPage(${a.page}); window.editMode("${a.mode.name}", ${a.page}, ${a.slot});');
   }
 
@@ -67,7 +74,8 @@ class _EditWebViewState extends State<EditWebView> {
         },
         onLoadStop: (c, _) async {
           _loaded = true;
-          await _sync(force: true);
+          _drawn = -1;
+          _sync();
         },
       );
 }

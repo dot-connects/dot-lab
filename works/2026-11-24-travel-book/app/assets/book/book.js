@@ -80,7 +80,9 @@
     // a one-line title the person typed longer than the AI's (or in a wider font) shrinks to end inside the page
     for (const el of pg.querySelectorAll('[data-text="title"]')) {
       if (!pg.clientWidth || el.classList.contains("big")) continue; // .big has its own fit above
-      el.style.fontSize = "";
+      // start from the size before any fit (sizeText's, or the theme's), kept on the element
+      if (el.dataset.fs0 === undefined) el.dataset.fs0 = el.style.fontSize;
+      el.style.fontSize = el.dataset.fs0;
       let fs = parseFloat(getComputedStyle(el).fontSize);
       const pr = pg.getBoundingClientRect(), pad = pr.width * 0.03;
       // one-line titles must end inside the page; wrapping ones may take two lines at most
@@ -147,6 +149,8 @@
   }, { threshold: 0.6 });
 
   window.renderBook = async function (book, opts = {}) {
+    // the old pages stop taking edits now: their events would land on a page that is about to change
+    if (window.editMode) window.editMode(null);
     current = book;
     await loadTheme(book.theme);
     document.body.classList.toggle("export", !!opts.exportMode);
@@ -179,8 +183,8 @@
     const st = book.style || {};
     const pgs = [...root.querySelectorAll(".pg")];
     if (pgs[0]) coverColor(pgs[0], st.cover);
+    pgs.slice(1).forEach(pg => sizeText(pg, st.size)); // before the fit: a larger size must still fit
     pgs.forEach(fitBig);
-    pgs.slice(1).forEach(pg => sizeText(pg, st.size));
     edit = null;
     bridge("rendered", { pages: book.pages.length, coverPaper: pgs[0] ? paperShows(pgs[0]) : false });
   };
@@ -236,7 +240,7 @@
     if (!edit || edit.mode !== "photo") return;
     const im = e.target.closest && e.target.closest("[data-slot]");
     if (!im || !edit.pg.contains(im)) return;
-    const slot = +im.dataset.slot;
+    const slot = +im.dataset.slot, n = edit.n;
     if (slot !== edit.slot) { edit.slot = slot; window.editMode("photo", edit.n, slot); bridge("slot", { page: edit.n, slot }); return; }
     e.preventDefault();
     im.setPointerCapture(e.pointerId);
@@ -248,7 +252,7 @@
     };
     im.onpointerup = im.onpointercancel = m => {
       im.onpointermove = im.onpointerup = im.onpointercancel = null;
-      if (Math.abs(m.clientX - sx) + Math.abs(m.clientY - sy) > 3) bridge("crop", { page: edit.n, slot, pos: im.style.objectPosition });
+      if (Math.abs(m.clientX - sx) + Math.abs(m.clientY - sy) > 3) bridge("crop", { page: n, slot, pos: im.style.objectPosition });
     };
   });
 })();

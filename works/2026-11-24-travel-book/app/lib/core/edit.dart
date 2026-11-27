@@ -69,6 +69,7 @@ class BookEdit {
         start = _copy(book);
 
   // toJson hands out the book's own lists: a JSON round trip is the deep copy
+  static Book copyBook(Book x) => _copy(x);
   static Book _copy(Book x) => Book.fromJson(jsonDecode(jsonEncode(x.toJson())) as Map<String, dynamic>);
 
   // ----- 표지 -----
@@ -79,21 +80,28 @@ class BookEdit {
     if (d == null || p == null) return;
     final photo = p.ids.firstOrNull ?? b.cover ?? start.pages.first.ids.firstOrNull;
     final ids = [if (d.slots.isNotEmpty && photo != null) photo];
+    _undo = null;
     b.pages[0] = PageSpec(id, ids, crop: [for (final _ in ids) p.crop.firstOrNull ?? '50% 50%'], text: {...p.text});
   }
 
   // ----- 제목·한 줄 -----
   void setText(int page, String key, String value) {
     if (page >= b.pages.length) return;
+    _undo = null;
     b.pages[page].text[key] = value;
     if (page == 0 && key == 'title') b.title = value;
     typedPages.add(page);
   }
 
+  /// Pages the words step walks: the cover and every page that had words or has them now (emptied ones stay).
+  bool hasWords(int i) =>
+      i == 0 || typedPages.contains(i) || [b.pages[i].text, start.pages[origin[i]].text].any((t) => t.values.any((v) => v.trim().isNotEmpty));
+
   List<String> get titleIdeas => {for (final t in b.texts.values) ...t.titles}.toList();
 
   // ----- 사진 -----
   void setCrop(int page, int slot, String pos) {
+    if (page >= b.pages.length) return;
     final p = b.pages[page];
     if (slot >= p.crop.length || p.crop[slot] == pos) return;
     _remember();
@@ -121,7 +129,7 @@ class BookEdit {
     final old = p.ids[slot];
     if (fit != null) {
       _remember();
-      b.pages[page] = PageSpec(fit.id, [...p.ids]..removeAt(slot), crop: [...p.crop]..removeAt(slot), text: {...p.text});
+      b.pages[page] = PageSpec(fit.id, [...p.ids]..removeAt(slot), crop: [...p.crop]..removeAt(slot), text: _closeUp(p.text, slot, p.ids.length));
       _drop(old);
       removed++;
       return RemoveResult.closedUp;
@@ -145,6 +153,7 @@ class BookEdit {
   }
 
   bool get canUndo => _undo != null;
+  void forgetUndo() => _undo = null;
   void undo() {
     final u = _undo;
     if (u == null) return;
@@ -154,6 +163,7 @@ class BookEdit {
 
   // ----- 원본 -----
   void reset(EditStep s) {
+    _undo = null;
     switch (s) {
       case EditStep.cover:
         b.coverColor = start.coverColor;
@@ -184,6 +194,7 @@ class BookEdit {
         b.picks = [...start.picks];
         b.cover = start.cover;
         b.spare = [...start.spare];
+        setCoverLayout(cover.layout); // the cover's slots follow its design, not the start cover's
         moved = swapped = removed = 0;
         _undo = null;
       case EditStep.check:
@@ -199,18 +210,19 @@ class BookEdit {
       };
   bool get anyChange => EditStep.values.any(changed);
 
-  /// Copies the edit into [into] (the book the app holds) — the caller saves it.
+  /// Copies the edit into [into] — a copy of it, so later edits never reach [into] (a failed save + 버리기).
   void applyTo(Book into) {
+    final c = _copy(b);
     into
-      ..title = b.title
-      ..coverColor = b.coverColor
-      ..font = b.font
-      ..textSize = b.textSize
-      ..pages = b.pages
-      ..picks = b.picks
-      ..cover = b.cover
-      ..spare = b.spare
-      ..texts = b.texts;
+      ..title = c.title
+      ..coverColor = c.coverColor
+      ..font = c.font
+      ..textSize = c.textSize
+      ..pages = c.pages
+      ..picks = c.picks
+      ..cover = c.cover
+      ..spare = c.spare
+      ..texts = c.texts;
   }
 
   // ----- helpers -----
@@ -219,6 +231,9 @@ class BookEdit {
 
   void _replace(int page, int slot, String newId) {
     final p = b.pages[page], old = p.ids[slot];
+    for (final k in _slotKeys(p.text, slot, p.ids.length)) {
+      p.text[k] = ''; // the old photo's caption / time would sit under the new one
+    }
     p.ids[slot] = newId;
     p.crop[slot] = '50% 50%';
     b.picks = [for (final x in b.picks) x.id == old ? Pick(newId, '', x.score) : x];
@@ -230,6 +245,49 @@ class BookEdit {
     if (_onPages(id)) return;
     b.picks = [for (final x in b.picks) if (x.id != id) x];
     if (b.cover == id) b.cover = b.pages.first.ids.firstOrNull;
+  }
+
+  /// Text keys that belong to photo [slot]: numbered families (cap, cap2, cap3 / cap1..cap4) by number; on a
+  /// one-photo page every caption-like key. A single key shared by several photos belongs to the page.
+  static List<String> _slotKeys(Map<String, String> text, int slot, int photos) {
+    final re = RegExp(r'^(.*?)(\d*)$');
+    final fam = <String, List<(String, int)>>{};
+    for (final k in text.keys) {
+      final m = re.firstMatch(k)!;
+      fam.putIfAbsent(m.group(1)!, () => []).add((k, m.group(2)!.isEmpty ? 0 : int.parse(m.group(2)!)));
+    }
+    const pageWide = {'title', 'period', 'dayline', 'day', 'date', 'index', 'mast', 'stamp', 'colophon'};
+    final out = <String>[];
+    for (final e in fam.entries) {
+      if (pageWide.contains(e.key)) continue;
+      if (e.value.length == 1 && e.value.first.$2 == 0) {
+        if (photos == 1) out.add(e.value.first.$1);
+        continue;
+      }
+      final one = e.value.any((x) => x.$2 == 1); // cap1..capN vs cap, cap2..
+      for (final (k, n) in e.value) {
+        if ((one ? n - 1 : (n == 0 ? 0 : n - 1)) == slot) out.add(k);
+      }
+    }
+    return out;
+  }
+
+  /// Photo [slot] left the page: its numbered words go and the later photos' words move up one.
+  static Map<String, String> _closeUp(Map<String, String> text, int slot, int photos) {
+    final out = {...text};
+    final keyAt = <int, Map<String, String>>{}; // slot -> family -> key
+    for (var i = 0; i < photos; i++) {
+      for (final k in _slotKeys(text, i, photos)) {
+        keyAt.putIfAbsent(i, () => {})[RegExp(r'^(.*?)\d*$').firstMatch(k)!.group(1)!] = k;
+      }
+    }
+    for (var i = slot; i < photos; i++) {
+      for (final e in (keyAt[i] ?? const <String, String>{}).entries) {
+        final next = keyAt[i + 1]?[e.key];
+        out[e.value] = next == null ? '' : text[next] ?? '';
+      }
+    }
+    return out;
   }
 
   void _remember() => _undo = _Snap(this);
