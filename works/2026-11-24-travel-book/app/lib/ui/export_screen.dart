@@ -5,7 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'tokens.dart';
 import 'widgets.dart';
 
-enum ExportKind { images, pdf, video }
+enum ExportKind { images, pdf }
 
 enum PagePick { all, few, own }
 
@@ -19,9 +19,8 @@ class ExportScreen extends StatefulWidget {
   /// Does the work for the chosen pages (in page order), calling [tick] with how many are done.
   final Future<void> Function(List<int> pages, ExportKind kind, ValueChanged<int> tick) onGo;
   final Future<void> Function(List<int> pages) onShare;
-  final VoidCallback onVideo; // highlight video is not built yet: says so
   const ExportScreen(
-      {super.key, required this.title, required this.thumbs, required this.onBack, required this.onGo, required this.onShare, required this.onVideo});
+      {super.key, required this.title, required this.thumbs, required this.onBack, required this.onGo, required this.onShare});
   @override
   State<ExportScreen> createState() => _ExportScreenState();
 }
@@ -127,10 +126,8 @@ class _ExportScreenState extends State<ExportScreen> {
         Sg([
           const SgItem(ExportKind.images, '이미지', sub: '갤러리'),
           const SgItem(ExportKind.pdf, 'PDF', sub: '인쇄용'),
-          const SgItem(ExportKind.video, '영상', sub: '준비 중'),
         ], _kind, (k) {
           if (busy) return;
-          if (k == ExportKind.video) return widget.onVideo();
           _changed(() => _kind = k);
         }),
         Container(

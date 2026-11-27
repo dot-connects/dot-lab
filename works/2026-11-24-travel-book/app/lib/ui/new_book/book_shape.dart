@@ -61,7 +61,6 @@ class _BookShapeScreenState extends State<BookShapeScreen> {
       o.format != d.format,
       o.quality != d.quality,
       o.toneMatch != d.toneMatch,
-      o.highlightSec != d.highlightSec || o.music != d.music,
     ].where((x) => x).length;
   }
 
@@ -227,21 +226,5 @@ class _BookShapeScreenState extends State<BookShapeScreen> {
         const SizedBox(height: 8),
         _toggleRow('사진 톤 맞추기', '끄면 찍은 색 그대로. 켜면 한 권을 같은 느낌으로 (원본 파일은 안 바뀌어요)', o.toneMatch, (v) => _set(() => o.toneMatch = v),
             first: true),
-        const OptLabel('하이라이트 영상', note: '내보낼 때 만들어요'),
-        Sg(const [SgItem(30, '30초'), SgItem(45, '45초', rec: true), SgItem(60, '60초')], o.highlightSec, (v) => _set(() => o.highlightSec = v)),
-        const SizedBox(height: 8),
-        Wrap(spacing: 6, runSpacing: 6, children: [
-          for (final (k, l) in const [('calm', '잔잔한'), ('bright', '밝은'), ('slow', '느긋한'), ('none', '음악 없음')])
-            GestureDetector(
-              onTap: () => _set(() => o.music = k),
-              child: Container(
-                height: 30,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(color: o.music == k ? C.ink : C.card, borderRadius: BorderRadius.circular(15)),
-                child: Text(l, style: ui(12, w: FontWeight.w600, color: o.music == k ? C.paper : C.ink)),
-              ),
-            ),
-        ]),
       ];
 }

@@ -18,14 +18,13 @@ void main() {
     expect(fewPages(3), [0, 1, 2]);
   });
 
-  Widget screen(List<String?> thumbs, {Future<void> Function(List<int>, ExportKind, ValueChanged<int>)? onGo, VoidCallback? onVideo}) =>
+  Widget screen(List<String?> thumbs, {Future<void> Function(List<int>, ExportKind, ValueChanged<int>)? onGo}) =>
       ExportScreen(
         title: '간사이',
         thumbs: thumbs,
         onBack: () {},
         onGo: onGo ?? (_, _, _) async {},
         onShare: (_) async {},
-        onVideo: onVideo ?? () {},
       );
 
   for (final (size, tag) in [(const Size(360, 740), '360x740'), (const Size(412, 915), '412x915'), (const Size(360, 640), '360x640')]) {
@@ -43,10 +42,9 @@ void main() {
     List<int>? gotPages;
     ExportKind? gotKind;
     final step = Completer<void>();
-    var video = 0;
     await pump(
         t,
-        screen(thumbs, onVideo: () => video++, onGo: (p, k, tick) async {
+        screen(thumbs, onGo: (p, k, tick) async {
           gotPages = p;
           gotKind = k;
           tick(2);
@@ -55,10 +53,6 @@ void main() {
     await t.tap(find.text('대표 4쪽'));
     await t.pump();
     expect(find.text('4장 갤러리에 저장'), findsOneWidget);
-    await t.tap(find.text('영상'));
-    await t.pump();
-    expect(video, 1);
-    expect(find.text('4장 갤러리에 저장'), findsOneWidget); // the video tab does not take the choice
     await t.tap(find.text('PDF'));
     await t.pump();
     await t.tap(find.text('4쪽 PDF 만들기'));

@@ -93,15 +93,13 @@ class BookOptions {
   String format = 'phone'; // phone|a5|square
   String quality = 'reduced'; // reduced|original
   bool toneMatch = false;
-  int highlightSec = 45;
-  String music = 'calm';
   String? who; // 혼자|연인·부부|친구|가족|부모님 or the user's own words; null = skipped
   String about = ''; // one free line: what kind of trip it was
 
   Map<String, dynamic> toJson() => {
         'length': length, 'theme': theme, 'textAmount': textAmount, 'tone': tone, 'chapterBy': chapterBy,
         'people': people, 'extras': extras.toList(), 'format': format, 'quality': quality,
-        'toneMatch': toneMatch, 'highlightSec': highlightSec, 'music': music, 'who': who, 'about': about,
+        'toneMatch': toneMatch, 'who': who, 'about': about,
       };
   static BookOptions fromJson(Map<String, dynamic> j) => BookOptions()
     ..length = j['length'] as String
@@ -114,8 +112,6 @@ class BookOptions {
     ..format = j['format'] as String
     ..quality = j['quality'] as String
     ..toneMatch = j['toneMatch'] as bool
-    ..highlightSec = j['highlightSec'] as int
-    ..music = j['music'] as String
     ..who = j['who'] as String?
     ..about = j['about'] as String? ?? '';
 }

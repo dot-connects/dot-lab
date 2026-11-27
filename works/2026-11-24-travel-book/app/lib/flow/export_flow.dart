@@ -80,6 +80,5 @@ class _ExportFlowState extends State<ExportFlow> {
         onBack: Navigator.of(context).pop,
         onGo: _go,
         onShare: _share,
-        onVideo: () => toast(context, '하이라이트 영상은 준비 중이에요'),
       );
 }

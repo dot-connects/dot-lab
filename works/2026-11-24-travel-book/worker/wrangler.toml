@@ -13,8 +13,8 @@ MONTH_CENTS = "1000"
 DAY_BOOKS = "20"
 WRITE_DAY = "60"
 REWRITE_DAY = "200"
-# /layout may ask for another model/effort (body.test) while models are compared (11-27); set "0" after
-ALLOW_TEST = "1"
+# /layout may ask for another model/effort (body.test) while models are compared; off since 11-27 (comparison done)
+ALLOW_TEST = "0"
 # /layout reasoning effort: low took 66 s vs medium 128 s on the same 20-photo trip (11-27), plain captions either way
 LAYOUT_EFFORT = "low"
 

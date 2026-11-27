@@ -41,6 +41,7 @@ class _WritingScreenState extends State<WritingScreen> {
   final _rnd = math.Random();
   int _ticks = 0, _in = 0, _making = 0;
   final _slot = [0, 1, 2, 3, 4, 5]; // tile i sits at _slot[i]
+  Set<int> _last = {};
 
   @override
   void initState() {
@@ -55,8 +56,14 @@ class _WritingScreenState extends State<WritingScreen> {
       _making = _in++;
       return;
     }
-    // all six are down: swap two of them, and make the moved one "the one being made"
-    final a = _rnd.nextInt(6), b = (a + 1 + _rnd.nextInt(5)) % 6;
+    // all six are down: swap two of them, and make the moved one "the one being made" — never the same two twice in a
+    // row, which would just put them back
+    int a, b;
+    do {
+      a = _rnd.nextInt(6);
+      b = (a + 1 + _rnd.nextInt(5)) % 6;
+    } while ({a, b}.containsAll(_last) && _last.length == 2);
+    _last = {a, b};
     final x = _slot[a];
     _slot[a] = _slot[b];
     _slot[b] = x;
