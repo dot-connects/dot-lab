@@ -357,7 +357,8 @@ export function drawCutout(ctx, video, w, h, mirror) {
 // warmStill was not called). When anything fails, the picked stills keep the live matte (stats.still.path = "live").
 // MODNet's alpha already follows hair, so refine.js runs with guide 0 (linear levels + edge colour decontamination).
 // 512x384 input (short side 384): 0.81-0.9 s per still instead of 1.33-1.5 s at 672x512, same look (research/cutout-speed/)
-const STILL_MODEL = { url: new URL("../models/modnet.onnx", import.meta.url).href, cache: "booth-modnet-v1",
+// MODELS.modnet: the Play app fetches it on first use (keeps the install small, platform-play.js); others ship it
+const STILL_MODEL = { url: MODELS.modnet || new URL("../models/modnet.onnx", import.meta.url).href, cache: "booth-modnet-v1",
   size: { short: +QS.get("sshort") || 384, div: 32 }, mean: [0.5, 0.5, 0.5], std: [0.5, 0.5, 0.5], out: "alpha", ort: ORT_LOAD };   // ?sshort= bench only
 // No WebGPU (many Android phones, in-app browsers) or a WebGPU error: WASM instead of the live matte (Round 5: the phone's
 // stills all had the live matte's leftover background, lost hands and rough hair). Same fp32 model (Xenova's int8 export is

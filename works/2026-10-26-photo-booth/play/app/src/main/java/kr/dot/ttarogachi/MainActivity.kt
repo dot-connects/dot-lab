@@ -79,6 +79,19 @@ class MainActivity : ComponentActivity() {
         })
     }
 
+    // in the background the page stops: no JS timers, no rendering (battery and heat, operator 11-27)
+    override fun onPause() {
+        super.onPause()
+        web.onPause()
+        web.pauseTimers()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        web.resumeTimers()
+        web.onResume()
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         web.saveState(outState)

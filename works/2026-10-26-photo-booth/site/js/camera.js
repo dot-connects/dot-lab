@@ -7,7 +7,7 @@ export async function startCam(video, facing = "user") {
   if (stream) stream.getTracks().forEach(t => t.stop());
   stream = null;
   const req = navigator.mediaDevices.getUserMedia({ audio: false,
-    video: { facingMode: { ideal: facing }, aspectRatio: { ideal: 4 / 3 }, width: { ideal: 1280 } } });
+    video: { facingMode: { ideal: facing }, aspectRatio: { ideal: 4 / 3 }, width: { ideal: 1280 }, frameRate: { ideal: 30, max: 30 } } });   // clips are 30 fps: a 60 fps camera only heats the phone
   let timer, timedOut = false;
   const stall = new Promise((_, rej) => { timer = setTimeout(() => rej(new Error("stall")), 5000); });
   // a late answer after the stall must not leave the camera on

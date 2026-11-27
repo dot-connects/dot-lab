@@ -39,8 +39,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    // models (.tflite) and wasm ship as they are: no point compressing them, and the WebView streams them faster raw
-    androidResources { noCompress += listOf("tflite", "wasm") }
 }
 
 dependencies {

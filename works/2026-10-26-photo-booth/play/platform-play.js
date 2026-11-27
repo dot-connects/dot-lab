@@ -14,7 +14,10 @@ export const ORT_LOAD = {
   webgpu: { url: ORT + "ort.webgpu.min.js", paths: { mjs: ORT + "ort-wasm-simd-threaded.jsep.js", wasm: ORT + "ort-wasm-simd-threaded.jsep.wasm" } },
   wasm: { url: ORT + "ort.wasm.min.js", paths: { mjs: ORT + "ort-wasm-simd-threaded.js", wasm: ORT + "ort-wasm-simd-threaded.wasm" } },
 };
-export const MODELS = { selfie: base + "models/selfie_segmenter.tflite", deeplab: base + "models/deeplab_v3.tflite" };
+// MODNet (26 MB, the HQ still cut) is data, not code: fetched once from the web build on first use and kept in Cache
+// Storage (segment.js), so the install stays under 30 MB (operator 11-27). Offline before that = the live matte.
+export const MODELS = { selfie: base + "models/selfie_segmenter.tflite", deeplab: base + "models/deeplab_v3.tflite",
+  modnet: "https://dot-connects.github.io/dot-lab/works/2026-10-26-photo-booth/site/models/modnet.onnx" };
 export const WORKER = "https://dot-lab-booth.dotconnects.workers.dev";
 export const debugWebLink = false, stub = !A;
 // the friend (B) opens the web build: it needs no install, and the link works for anyone
