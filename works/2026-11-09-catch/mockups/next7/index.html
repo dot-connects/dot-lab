@@ -1,0 +1,493 @@
+<meta charset="utf-8">
+<title>리얼뽑기 다음 시안 7</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+:root{
+  --sky:#BFE6FF; --grass:#D9F2C9; --paper:#FFFDF6; --ink:#24331F; --muted:#5D6B57; --sun:#FFD84D;
+  --leaf:#7CC46B; --field:#E6F0DC; --warn:#B3261E; --pink:#F7B9C4; --page:#F4F1E6;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:16px/1.6 "Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 64px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3,.jua{font-family:"Jua","Gowun Dodum",sans-serif;font-weight:400;letter-spacing:-.01em;text-wrap:balance}
+h1{font-size:clamp(28px,6vw,44px);line-height:1.15;margin:0}
+h1 em{font-style:normal;background:var(--sun);padding:0 .25em;border-radius:12px}
+.lead{margin:6px 0 0;color:var(--muted);max-width:60ch}
+.toc{display:flex;flex-wrap:wrap;gap:8px}
+.toc a{text-decoration:none;color:var(--ink);background:var(--paper);border:2px solid var(--ink);border-radius:999px;padding:4px 12px;font-family:Jua,sans-serif;box-shadow:0 3px 0 var(--ink)}
+.src{display:inline-block;font-size:12px;letter-spacing:.04em;border-radius:999px;padding:1px 8px;border:1.5px solid var(--muted);color:var(--muted);vertical-align:middle;margin-left:6px;font-family:"Gowun Dodum",sans-serif}
+section.item{background:var(--paper);border:3px solid var(--ink);border-radius:28px;box-shadow:0 6px 0 var(--ink);padding:22px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:22px;align-items:start}
+@media (max-width:760px){section.item{grid-template-columns:minmax(0,1fr)}}
+.num{display:inline-grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--sun);border:2.5px solid var(--ink);font-family:Jua;font-size:20px;margin-right:8px}
+.item h2{font-size:26px;margin:0;display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.what{margin:10px 0 0;max-width:60ch}
+.facts{margin:12px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted);max-width:60ch}
+.facts li::before{content:"· ";color:var(--ink)}
+.size{display:inline-block;margin-top:12px;font-family:Jua;font-size:14px;background:var(--field);border-radius:8px;padding:2px 10px}
+.stage{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;min-width:0}
+.cap{font-size:13px;color:var(--muted);text-align:center;margin-top:8px}
+
+/* phone */
+.phone{width:260px;aspect-ratio:9/19;border:9px solid var(--ink);border-radius:38px;overflow:hidden;position:relative;background:var(--paper);flex:none;max-width:100%}
+.phone .notch{position:absolute;top:8px;left:50%;width:70px;height:18px;margin-left:-35px;background:var(--ink);border-radius:10px;z-index:20}
+.book{position:absolute;inset:0;background:linear-gradient(var(--sky) 0 34%,var(--grass) 34%);padding:38px 14px 14px;display:flex;flex-direction:column;gap:10px}
+.pill{font-family:Jua;font-size:13px;border:2px solid var(--ink);border-radius:999px;padding:2px 10px;background:var(--paper);display:inline-block}
+.pill.sun{background:var(--sun)}
+.card{background:var(--paper);border:2.5px solid var(--ink);border-radius:18px;box-shadow:0 4px 0 var(--ink);padding:10px}
+.btn{display:block;width:100%;font-family:Jua;font-size:15px;border:2.5px solid var(--ink);border-radius:999px;padding:8px 10px;background:var(--sun);color:var(--ink);box-shadow:0 4px 0 var(--ink);text-align:center;cursor:pointer}
+.btn.ghost{background:var(--paper)}
+.tlink{display:block;text-align:center;font-size:13px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;background:none;border:0;width:100%;cursor:pointer;font-family:inherit}
+.ctl{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px;max-width:260px}
+.ctl button{font-family:Jua;font-size:14px;border:2px solid var(--ink);background:var(--paper);border-radius:999px;padding:3px 11px;cursor:pointer;color:var(--ink)}
+.ctl button[aria-pressed="true"]{background:var(--sun)}
+
+/* 1 weather */
+.home{position:absolute;inset:0;background:#7d8fa6 url(img/wall.jpg) center/cover}
+.home .clock{position:absolute;top:44px;width:100%;text-align:center;color:#fff;font:600 44px/1 system-ui,sans-serif;text-shadow:0 2px 8px #0005}
+.home .dock{position:absolute;bottom:18px;left:18px;right:18px;height:54px;border-radius:20px;background:#ffffff40;backdrop-filter:blur(6px);display:flex;justify-content:space-around;align-items:center}
+.home .dock i{width:36px;height:36px;border-radius:11px;background:#ffffffb0}
+.wx{position:absolute;inset:0;pointer-events:none;transition:opacity .4s}
+.rain{opacity:0;background:repeating-linear-gradient(105deg,transparent 0 14px,#d8ecff99 14px 15.5px,transparent 15.5px 30px);background-size:60px 60px;animation:rain .35s linear infinite}
+@keyframes rain{to{background-position:-16px 60px}}
+.snow{opacity:0;background-image:radial-gradient(#fff 2px,transparent 2.6px),radial-gradient(#fff 1.4px,transparent 2px);background-size:46px 46px,30px 30px;background-position:0 0,15px 12px;animation:snow 3s linear infinite}
+@keyframes snow{to{background-position:10px 46px,5px 42px}}
+.night{opacity:0;background:#0d1838b8}
+.flash{opacity:0;background:#fff}
+.flash.on{animation:flash 2.6s infinite}
+@keyframes flash{0%,80%,100%{opacity:0}82%{opacity:.85}84%{opacity:0}86%{opacity:.6}88%{opacity:0}}
+.pet{position:absolute;width:86px;height:86px;bottom:84px;left:40%;transition:left 1.6s linear}
+.pet img{width:100%;height:100%;object-fit:contain;display:block}
+.pet.hop img{animation:hop .7s ease-in-out infinite}
+@keyframes hop{0%,100%{transform:translateY(0)}50%{transform:translateY(-26px)}}
+.pet.shiver img{animation:shiver .18s linear infinite}
+@keyframes shiver{50%{transform:translateX(1.5px)}}
+.zzz{position:absolute;bottom:160px;left:52%;font-family:Jua;color:#fff;font-size:20px;opacity:0;animation:zz 2.4s ease-in infinite}
+@keyframes zz{0%{opacity:0;transform:translate(0,0)}30%{opacity:1}100%{opacity:0;transform:translate(18px,-34px)}}
+.bubble{position:absolute;bottom:176px;left:28%;background:#fff;border:2px solid var(--ink);border-radius:14px;padding:3px 9px;font-family:Jua;font-size:13px;white-space:nowrap}
+.bubble::after{content:"";position:absolute;left:22px;bottom:-8px;border:6px solid transparent;border-top-color:var(--ink)}
+
+/* 2 ad */
+.mk{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mk figure{margin:0;text-align:center;font-family:Jua;font-size:13px}
+.mk .im{border:2px solid var(--ink);border-radius:12px;aspect-ratio:1;background:#f1ebe2 center/80% no-repeat}
+.left{font-size:12px;color:var(--muted);text-align:center}
+.toast{position:absolute;left:14px;right:14px;bottom:18px;background:var(--ink);color:#fff;border-radius:14px;padding:8px 12px;font-size:13px;text-align:center;opacity:0;transition:opacity .3s}
+.toast.on{opacity:1}
+.adsheet{position:absolute;inset:0;background:#000d;color:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;font-family:Jua;z-index:30}
+.adsheet.on{display:flex}
+.adsheet .bar{width:160px;height:8px;border-radius:4px;background:#fff3;overflow:hidden}
+.adsheet .bar i{display:block;height:100%;width:0;background:var(--sun)}
+
+/* 3 copy */
+.shot{width:260px;aspect-ratio:9/16;border-radius:18px;overflow:hidden;position:relative;background:var(--paper);border:2px solid #0002;flex:none;max-width:100%}
+.shot h3{margin:0;position:absolute;top:18px;left:0;right:0;text-align:center;font-size:21px;line-height:1.3}
+.shot h3 em{font-style:normal;background:var(--sun);padding:0 .2em;border-radius:8px}
+.shot .before{position:absolute;left:16px;top:130px;width:120px;height:170px;border-radius:14px;border:2.5px solid var(--ink);background:url(img/calico.jpg) center/cover;box-shadow:0 4px 0 var(--ink)}
+.shot .before span{position:absolute;bottom:-26px;left:0;right:0;text-align:center;font-size:12px;color:var(--muted)}
+.shot .arrow{position:absolute;left:128px;top:200px;font-family:Jua;font-size:34px}
+.shot .after{position:absolute;right:6px;top:170px;width:130px}
+.shot .after span{display:block;text-align:center;font-size:12px;color:var(--muted)}
+.shot .phone-mini{position:absolute;left:50%;bottom:-70px;margin-left:-70px;width:140px;height:190px;border:6px solid var(--ink);border-radius:22px;background:#8aa0b8 url(img/wall.jpg) center/cover}
+.shot .phone-mini img{position:absolute;width:56px;bottom:84px;left:44px}
+.old{opacity:.9}
+.old h3{font-family:Jua}
+
+/* 4 card */
+.dexcard{background:var(--paper);border:2.5px solid var(--ink);border-radius:16px;box-shadow:0 4px 0 var(--ink);padding:10px 12px;font-size:12.5px;position:relative}
+.dexcard::before{content:"";position:absolute;inset:5px;border:1.5px dashed #24331f55;border-radius:11px;pointer-events:none}
+.dexcard .hd{display:flex;justify-content:space-between;font-family:Jua;font-size:13px;color:var(--warn)}
+.dexcard dl{margin:6px 0 0;display:grid;grid-template-columns:40px minmax(0,1fr);gap:3px 8px;font-size:11.5px}
+.dexcard dt{color:var(--muted)} .dexcard dd{margin:0}
+.dexcard .nm{font-family:Jua;font-size:20px;line-height:1.2}
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.tags span{border:1.5px solid #24331f66;border-radius:8px;padding:0 5px;font-size:11px;color:var(--muted)}
+.tags span.on{background:var(--sun);border-color:var(--ink);color:var(--ink);font-family:Jua}
+.sets{display:flex;flex-direction:column;gap:3px}
+.sets div{display:flex;align-items:center;gap:6px}
+.sets b{font-weight:400;flex:1;white-space:nowrap}
+.meter{width:34px;height:7px;border-radius:4px;background:#24331f1a;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--leaf)}
+.pedestal{height:92px;position:relative;display:grid;place-items:center}
+.pedestal::after{content:"";position:absolute;bottom:8px;width:110px;height:22px;border-radius:50%;background:radial-gradient(#fff6c4,#ffd84d 60%,#e9b733);box-shadow:0 0 24px 6px #ffe48a}
+.pedestal img{width:78px;position:relative;z-index:1;margin-bottom:12px;animation:pop .6s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes pop{from{transform:scale(.2);opacity:0}}
+.new{position:absolute;top:36px;left:0;right:0;text-align:center;font-family:Jua;font-size:24px;color:#e07a1f;text-shadow:0 2px 0 #fff}
+
+/* 5 making */
+.make{position:absolute;inset:0;background:radial-gradient(circle at 50% 58%,#fff7d6,#ffe9a8 30%,#f6c56a 70%,#d99a3a);display:flex;flex-direction:column;align-items:center;padding-top:56px}
+.make h3{margin:0;font-size:24px}
+.make p{margin:2px 0 0;font-size:12.5px;color:#5b4320}
+.caps{display:flex;gap:6px;margin-top:10px}
+.caps i{width:18px;height:22px;border-radius:9px;border:2px solid var(--ink);background:linear-gradient(#fff 0 50%,#ffffff55 50%);transition:background .3s}
+.caps i.on{background:linear-gradient(var(--pink) 0 50%,#fff 50%)}
+.field{position:absolute;left:0;right:0;top:150px;height:260px}
+.tuft{position:absolute;width:20px;height:20px;border-radius:50%;filter:blur(1.2px);opacity:0}
+.glass{position:absolute;left:50%;top:330px;width:150px;margin-left:-75px;height:30px;border-radius:50%;background:radial-gradient(#fff,#ffe48a 60%,#e8b23c);box-shadow:0 0 26px 8px #fff3b0}
+.born{position:absolute;left:50%;top:200px;width:150px;margin-left:-75px;opacity:0;transform:scale(.3);transition:transform .6s cubic-bezier(.3,1.6,.5,1),opacity .4s}
+.born.on{opacity:1;transform:scale(1)}
+.make .done{position:absolute;bottom:40px;font-family:Jua;font-size:15px;opacity:0;transition:opacity .4s}
+.make .done.on{opacity:1}
+.make .src-photo{position:absolute;top:150px;left:50%;width:84px;height:112px;margin-left:-42px;border-radius:10px;border:2px solid #fff;background:url(img/calico.jpg) center/cover;box-shadow:0 4px 12px #0003;transition:opacity .6s,transform .8s}
+
+/* 6 style */
+.dex{position:absolute;inset:0;padding:36px 12px 12px;background:linear-gradient(var(--sky) 0 30%,var(--grass) 30%);display:flex;flex-direction:column;gap:8px}
+.dex .top{display:flex;justify-content:space-between;align-items:center}
+.dex .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.dex .c{background:var(--paper);border:2px solid var(--ink);border-radius:12px;text-align:center;padding:5px 2px;font-size:11px;line-height:1.25}
+.dex .c img{width:100%;aspect-ratio:1;object-fit:contain}
+.dex .c.q{border-style:dashed;color:var(--muted);display:grid;place-items:center;min-height:86px;font-size:20px}
+.dex.before{font-family:system-ui,sans-serif}
+.dex.before .ttl{font-size:26px}
+.dex.before .pill{font-family:system-ui;font-weight:400}
+.dex.after .ttl{font-family:Jua;font-size:28px}
+.dex.after .c{border-width:2.5px;box-shadow:0 3px 0 var(--ink);position:relative;font-family:Jua;font-size:12px}
+.dex.after .c::before{content:"";position:absolute;inset:3px;border:1.2px dashed #24331f40;border-radius:9px}
+.dex.after .c small{display:block;font-family:"Gowun Dodum";color:var(--muted);font-size:10.5px}
+.dex.after .c.q{background:repeating-linear-gradient(45deg,#fffdf6 0 8px,#f5f0e2 8px 16px)}
+.capsule{display:inline-flex;align-items:center;border:2.5px solid var(--ink);border-radius:999px;overflow:hidden;font-family:Jua;font-size:13px;box-shadow:0 3px 0 var(--ink)}
+.capsule b{font-weight:400;padding:2px 9px;background:var(--sun)}
+.capsule span{padding:2px 9px;background:var(--paper);border-left:2px solid var(--ink)}
+.kit{display:flex;flex-direction:column;gap:8px;width:220px;max-width:100%}
+.kit h4{margin:0;font-family:Jua;font-weight:400;font-size:15px}
+.swatch{display:flex;gap:6px}
+.swatch i{flex:1;height:26px;border-radius:8px;border:2px solid var(--ink)}
+
+/* 7 reel */
+.reel{width:250px;aspect-ratio:9/16;border-radius:16px;overflow:hidden;position:relative;background:#555 url(img/calico.jpg) center/cover;flex:none;max-width:100%}
+.reel .fl{position:absolute;width:118px;right:10px;bottom:118px;opacity:0;transform:scale(.2) translateY(40px);filter:drop-shadow(0 8px 6px #0006)}
+.reel .fl.on{animation:popin .7s cubic-bezier(.3,1.6,.5,1) forwards}
+@keyframes popin{to{opacity:1;transform:none}}
+.reel .spark{position:absolute;right:58px;bottom:190px;font-size:22px;opacity:0}
+.reel .spark.on{animation:spark 1s ease-out forwards}
+@keyframes spark{0%{opacity:0;transform:scale(.4)}30%{opacity:1}100%{opacity:0;transform:scale(1.6)}}
+.reel .sub{position:absolute;left:12px;right:12px;bottom:34px;font-family:Jua;color:#fff;font-size:19px;line-height:1.35;text-shadow:0 2px 0 #000,0 0 8px #000a;min-height:52px}
+.reel .tag{position:absolute;top:14px;left:12px;font-family:Jua;color:#fff;font-size:12px;background:#0006;border-radius:8px;padding:1px 8px}
+.replay{margin-top:8px}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>리얼뽑기 다음 업데이트<br><em>시안 7개</em></h1>
+  <p class="lead">릴펫과 CUBU에서 가져올 만한 것 7가지를 지금 앱 모습(하늘·풀밭, 굵은 잉크 테두리, Jua·고운돋움) 위에 올렸어요. 그림은 실제 앱의 녀석들과 털뭉치 결과물이에요. 버튼은 지난번 규칙대로 화면마다 강조 하나만 뒀어요.</p>
+</header>
+<nav class="toc" aria-label="시안 목록">
+  <a href="#s1">1 날씨</a><a href="#s2">2 광고로 1장 더</a><a href="#s3">3 "우리 아이" 문구</a><a href="#s4">4 도감 카드</a><a href="#s5">5 만드는 중 연출</a><a href="#s6">6 화풍 통일</a><a href="#s7">7 릴스 첫 장면</a>
+</nav>
+
+<!-- 1 -->
+<section class="item" id="s1">
+  <div>
+    <h2><span class="num">1</span>날씨 따라 다르게 노는 펫 <span class="src">릴펫</span></h2>
+    <p class="what">밖에 비가 오면 홈 화면의 녀석도 웅크리고, 눈이 오면 통통 뛰고, 밤엔 잠들어요. 같은 펫이 매일 조금씩 달라서 폰을 켤 때마다 들여다볼 이유가 생겨요.</p>
+    <ul class="facts">
+      <li>자세는 이미 있는 그림을 써요: 비 = 웅크림(curl), 천둥 = 엎드림(fall), 눈 = 웃으며 뛰기, 밤 = 잠(sleep). 새 그림이 필요 없어요.</li>
+      <li>날씨는 대략 위치가 필요해요. 기본은 꺼 두고, 펫 설정 "더 보기" 안에 "바깥 날씨 따라가기" 스위치 하나.</li>
+      <li>밤은 위치 없이 폰 시각만으로 돼요. 밤 잠자기만 먼저 켜도 돼요.</li>
+    </ul>
+    <span class="size">크기 M · 날씨 API 1곳 + 자세 바꾸기</span>
+  </div>
+  <div>
+    <div class="phone" id="wxPhone"><div class="notch"></div>
+      <div class="home"><div class="clock" id="wxClock">2:47</div>
+        <div class="wx night" id="wxNight"></div>
+        <div class="wx rain" id="wxRain"></div>
+        <div class="wx snow" id="wxSnow"></div>
+        <div class="wx flash" id="wxFlash"></div>
+        <div class="bubble" id="wxBub" hidden>비 온다… 꼭 붙어 있을래</div>
+        <div class="zzz" id="wxZ" hidden>z Z</div>
+        <div class="pet" id="wxPet"><img id="wxImg" src="img/monggeul-walk1.webp" alt="몽글"></div>
+        <div class="dock"><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+    <div class="ctl" role="group" aria-label="날씨">
+      <button data-wx="sun" aria-pressed="true">맑음</button><button data-wx="rain" aria-pressed="false">비</button><button data-wx="snow" aria-pressed="false">눈</button><button data-wx="thunder" aria-pressed="false">천둥</button><button data-wx="night" aria-pressed="false">밤</button>
+    </div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="item" id="s2">
+  <div>
+    <h2><span class="num">2</span>광고 보고 1장 더 <span class="src">릴펫</span></h2>
+    <p class="what">무료 5장을 다 쓴 사람에게 돈 말고 다른 길을 하나 열어요. 지금은 "구매는 다음 버전에서"라는 막힌 버튼만 있는데, 그 자리를 "광고 보고 1장 더"로 바꿔요.</p>
+    <ul class="facts">
+      <li>강조 버튼은 광고 하나. 500원 구매가 열리면 그 밑에 글자 링크로만.</li>
+      <li>하루 3번까지. 광고 1번 수익이 펫 그림 1장 원가보다 낮으면 "광고 2번에 1장"으로 바꿔요 — AdMob 보상형 단가를 먼저 재 봐야 해요.</li>
+      <li>무료 미리보기(10번)는 그대로 두고, 광고는 실제 펫 그림에만.</li>
+    </ul>
+    <span class="size">크기 M · AdMob 보상형 + Worker 1장 지급</span>
+  </div>
+  <div style="text-align:center">
+    <div class="phone" id="adPhone"><div class="notch"></div>
+      <div class="book">
+        <div><span class="pill">‹ 도감</span></div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <div style="width:58px;height:58px;border:2px solid var(--ink);border-radius:12px;background:#f1ebe2 url(img/calico-fluff.png) center/86% no-repeat"></div>
+          <div><div class="jua" style="font-size:22px;line-height:1.1">삼색이</div><div style="font-size:11px;color:var(--muted)">고양이 · No.8 · 11.27 뽑음</div></div>
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;gap:8px">
+          <div class="jua" style="font-size:15px">펫으로 만들기</div>
+          <div class="mk"><figure><div class="im" style="background-image:url(img/calico-fluff.png)"></div>털뭉치</figure><figure><div class="im" style="background-image:url(img/calico-fluff.png);filter:saturate(1.2) contrast(1.05)"></div>피규어</figure></div>
+          <div class="left" id="adLeft">무료 펫 그림 0/5장 남음</div>
+          <button class="btn" id="adBtn">▶ 광고 보고 1장 더 받기</button>
+          <div class="left">오늘 광고로 받은 것 <b id="adCount">0</b>/3</div>
+        </div>
+        <button class="tlink" disabled>500원으로 바로 만들기 (다음 버전)</button>
+      </div>
+      <div class="adsheet" id="adSheet">광고 보는 중<div class="bar"><i id="adBar"></i></div><span style="font-size:12px;font-family:'Gowun Dodum'">끝까지 보면 1장 받아요</span></div>
+      <div class="toast" id="adToast">1장 받았어요! 털뭉치·피규어 중에 골라요</div>
+    </div>
+    <p class="cap">버튼을 눌러 보세요 (광고는 3초로 줄임)</p>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="item" id="s3">
+  <div>
+    <h2><span class="num">3</span>"우리 아이 사진 한 장" 문구 <span class="src">릴펫</span></h2>
+    <p class="what">반려동물 주인이 바로 알아듣는 말로 첫 장을 바꿔요. 지금 첫 문구는 기능 설명("찍힌 모습 그대로")인데, 이걸 "내 고양이가 된다"는 기대로 바꿔요.</p>
+    <ul class="facts">
+      <li>바뀌는 곳: 스토어 스크린샷 1·2장, 짧은 설명, 릴스 캡션 첫 줄.</li>
+      <li>짧은 설명 안: <b>우리 아이 사진 한 장으로 털뭉치 펫을 만들어 홈 화면에 데려와요. 인형뽑기로 뽑는 녀석들도 함께.</b></li>
+      <li>뽑기 재미(펫이 없는 사람도 즐김)는 두 번째 장에 그대로 둬요 — 릴펫과 다른 점이라 지켜요.</li>
+    </ul>
+    <span class="size">크기 S · 그림·문구만</span>
+  </div>
+  <div class="stage">
+    <div><div class="shot old"><h3>찍힌 모습 그대로<br><em>털뭉치가 돼요</em></h3>
+      <div style="position:absolute;inset:110px 26px 0;border:6px solid var(--ink);border-bottom:0;border-radius:26px 26px 0 0;background:linear-gradient(var(--sky) 0 30%,var(--grass) 30%)"><div class="card" style="margin:46px 10px;display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px"><div style="aspect-ratio:1;border:2px solid var(--ink);border-radius:8px;background:#f1ebe2 url(img/calico-fluff.png) center/86% no-repeat"></div><div style="aspect-ratio:1;border:2px solid var(--ink);border-radius:8px;background:#f8d6b8 url(img/calico-fluff.png) center/86% no-repeat"></div></div></div>
+    </div><p class="cap">지금 (2번째 스크린샷)</p></div>
+    <div><div class="shot"><h3>우리 아이 사진 한 장이<br><em>털뭉치 펫이 돼요</em></h3>
+      <div class="before"><span>우리 집 삼색이</span></div><div class="arrow">→</div>
+      <div class="after"><img src="img/calico-fluff.png" alt="털뭉치가 된 삼색이" style="width:100%"><span>털뭉치 삼색이</span></div>
+      <div class="phone-mini"><img src="img/calico-fluff.png" alt=""></div>
+    </div><p class="cap">바꾼 1번째 스크린샷</p></div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="item" id="s4">
+  <div>
+    <h2><span class="num">4</span>도감 카드를 수집품처럼 <span class="src">CUBU</span></h2>
+    <p class="what">뽑은 녀석마다 신분증 같은 카드가 생겨요. 뽑은 시각, 성격 두 개, 모음 진행("고양이 모임 2/4")이 붙으니 한 마리가 "모으는 것"이 돼요.</p>
+    <ul class="facts">
+      <li>성격 6개 중 2개는 뽑을 때 정해져요. 나중에 혼잣말 구름 말투에 써도 돼요.</li>
+      <li>모음은 이미 있는 분류로 만들어요: 고양이·강아지·털뭉치 종류·첫 뽑기 등. 위치는 권한 때문에 안 넣어요.</li>
+      <li>카드 안쪽 점선 = 펠트 바느질. 6번 화풍과 같은 재료예요.</li>
+    </ul>
+    <span class="size">크기 S~M · 상세 화면 + 모음 표</span>
+  </div>
+  <div class="phone"><div class="notch"></div>
+    <div class="book" style="background:linear-gradient(var(--sky) 0 46%,var(--grass) 46%)">
+      <div class="new">새 녀석!</div>
+      <div class="pedestal" style="margin-top:20px"><img src="img/calico-fluff.png" alt="삼색이 털뭉치"></div>
+      <div class="dexcard">
+        <div class="hd"><span>새 고양이</span><span>No.008</span></div>
+        <dl>
+          <dt>이름</dt><dd class="nm">삼색이</dd>
+          <dt>종류</dt><dd>고양이 · 털뭉치</dd>
+          <dt>뽑은 날</dt><dd>11월 27일 오후 3시</dd>
+          <dt>성격</dt><dd class="tags"><span>느긋함</span><span class="on">잠꾸러기</span><span>호기심</span><span class="on">애교쟁이</span><span>새침</span><span>장난</span></dd>
+          <dt>모음</dt><dd class="sets">
+            <div><b>고양이 모임</b><span class="meter"><i style="width:50%"></i></span>2/4</div>
+            <div><b>삼색 친구</b><span class="meter"><i style="width:50%"></i></span>1/2</div>
+            <div><b>털뭉치</b><span class="meter"><i style="width:44%"></i></span>7/16</div>
+          </dd>
+        </dl>
+      </div>
+      <button class="btn">홈 화면에 데려가기</button>
+    </div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="item" id="s5">
+  <div>
+    <h2><span class="num">5</span>펫 만드는 동안 털이 모여요 <span class="src">CUBU</span></h2>
+    <p class="what">그림이 나오기까지 기다리는 몇 초를 볼거리로 바꿔요. 찍은 사진이 작아지며 털 조각으로 흩어지고, 그 털이 받침 위로 모여 녀석이 퐁 나와요.</p>
+    <ul class="facts">
+      <li>털 조각 색은 결과 그림에서 뽑아요. 서버가 늦으면 털이 계속 맴돌기만 해요(끝이 보이지 않는 진행 막대 대신).</li>
+      <li>진행 칸 5개 = 캡슐 모양. 뽑기 기계와 같은 재료.</li>
+      <li>Compose Canvas 입자 40개 정도라 가벼워요.</li>
+    </ul>
+    <span class="size">크기 M · 화면 하나</span>
+  </div>
+  <div style="text-align:center">
+    <div class="phone"><div class="notch"></div>
+      <div class="make">
+        <h3 id="mkTitle">만드는 중</h3><p id="mkSub">사진 보고 털을 모으는 중이에요</p>
+        <div class="caps" id="mkCaps"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="src-photo" id="mkPhoto"></div>
+        <div class="field" id="mkField"></div>
+        <div class="glass"></div>
+        <img class="born" id="mkBorn" src="img/calico-fluff.png" alt="완성된 털뭉치">
+        <div class="done" id="mkDone">삼색이가 왔어요!</div>
+      </div>
+    </div>
+    <div class="ctl" style="margin-inline:auto"><button id="mkReplay">다시 보기</button></div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="item" id="s6">
+  <div>
+    <h2><span class="num">6</span>화풍 하나로: 캡슐 + 펠트 <span class="src">CUBU</span></h2>
+    <p class="what">CUBU가 비싸 보이는 이유는 그림 실력보다 "모든 게 같은 재료"라서예요. 우리 재료는 두 개로 정해요 — <b>뽑기 캡슐</b>(반반 색 알약)과 <b>펠트</b>(안쪽 바느질 점선). 새 기능 없이 버튼·카드·글꼴만 맞춰요.</p>
+    <ul class="facts">
+      <li>제목·버튼은 전부 Jua, 본문은 고운돋움. 시스템 글꼴이 섞이는 곳을 없애요.</li>
+      <li>카드: 굵은 테두리 + 아래 그림자 + 안쪽 점선. 빈 칸은 점선 대신 줄무늬 천.</li>
+      <li>숫자가 붙는 알약(7마리, 무료 3장)은 캡슐 반반 모양. 누르는 버튼과 모양이 달라져서 헷갈리지 않아요(지난 점검 5번).</li>
+    </ul>
+    <span class="size">크기 M · 공통 컴포넌트 5개 손보기</span>
+  </div>
+  <div class="stage">
+    <div><div class="phone"><div class="notch"></div><div class="dex before">
+      <div class="top"><span class="pill">‹ 뽑기</span><span class="pill sun">펫 설정</span></div>
+      <div class="top"><span class="ttl">도감</span><span class="pill sun">7마리</span></div>
+      <div class="grid">
+        <div class="c"><img src="img/calico-fluff.png" alt="">삼색이<br><span style="color:var(--muted)">고양이</span></div>
+        <div class="c"><img src="img/monggeul-front.webp" alt="">몽글<br><span style="color:var(--muted)">털뭉치</span></div>
+        <div class="c"><img src="img/dalsom-front.webp" alt="">달솜<br><span style="color:var(--muted)">털뭉치</span></div>
+        <div class="c"><img src="img/bamtol-front.webp" alt="">밤톨<br><span style="color:var(--muted)">털뭉치</span></div>
+        <div class="c q">?</div><div class="c q">?</div>
+      </div></div></div><p class="cap">지금</p></div>
+    <div><div class="phone"><div class="notch"></div><div class="dex after">
+      <div class="top"><span class="pill">‹ 뽑기</span><span class="pill" style="box-shadow:0 3px 0 var(--ink)">펫 설정</span></div>
+      <div class="top"><span class="ttl">도감</span><span class="capsule"><b>7</b><span>/ 16</span></span></div>
+      <div class="grid">
+        <div class="c"><img src="img/calico-fluff.png" alt="">삼색이<small>고양이</small></div>
+        <div class="c"><img src="img/monggeul-front.webp" alt="">몽글<small>털뭉치</small></div>
+        <div class="c"><img src="img/dalsom-front.webp" alt="">달솜<small>털뭉치</small></div>
+        <div class="c"><img src="img/bamtol-front.webp" alt="">밤톨<small>털뭉치</small></div>
+        <div class="c q">?</div><div class="c q">?</div>
+      </div></div></div><p class="cap">바꾼 뒤</p></div>
+    <div class="kit">
+      <h4>재료 두 개</h4>
+      <span class="capsule"><b>무료</b><span>3장 남음</span></span>
+      <div class="dexcard" style="font-size:13px">펠트 카드 — 안쪽 바느질 점선</div>
+      <button class="btn">주 버튼은 노랑 하나</button>
+      <button class="btn ghost">보조는 종이색</button>
+      <button class="tlink">드문 일은 글자 링크</button>
+      <div class="swatch" aria-label="색"><i style="background:var(--sky)"></i><i style="background:var(--grass)"></i><i style="background:var(--paper)"></i><i style="background:var(--sun)"></i><i style="background:var(--pink)"></i></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="item" id="s7">
+  <div>
+    <h2><span class="num">7</span>릴스 첫 장면 = 진짜 고양이 옆 털뭉치 <span class="src">CUBU</span></h2>
+    <p class="what">0초에 결과를 보여 줘요. 진짜 고양이 사진 옆에 그 고양이로 만든 털뭉치가 퐁 나타나면, 설명 없이도 "아 이런 앱이구나"가 돼요.</p>
+    <ul class="facts">
+      <li>운영자 촬영 없이 만들어요: 이미 있는 사진(삼색이)과 털뭉치 결과를 합성.</li>
+      <li>그다음은 지금 릴스(framed-v2) 흐름 그대로 — 첫 1.5초만 이 장면으로 바꿔요.</li>
+      <li>자막 첫 줄 = 3번 문구와 같은 말("우리 집 고양이가 털뭉치가 됐어요").</li>
+    </ul>
+    <span class="size">크기 S · 렌더 1.5초 추가</span>
+  </div>
+  <div style="text-align:center">
+    <div class="reel" id="reel"><span class="tag">그냥 시켜봄 · 리얼뽑기</span>
+      <span class="spark" id="rlSpark">✨</span>
+      <img class="fl" id="rlFl" src="img/calico-fluff.png" alt="털뭉치 삼색이">
+      <div class="sub" id="rlSub"></div>
+    </div>
+    <div class="ctl" style="margin-inline:auto"><button id="rlReplay">다시 보기</button></div>
+  </div>
+</section>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+// 1 weather
+const WX = {
+  sun:{img:"walk",walk:true}, rain:{img:"curl",rain:1,bub:"비 온다… 꼭 붙어 있을래",cls:"shiver"},
+  snow:{img:"smile",snow:1,cls:"hop",bub:"눈이다!"}, thunder:{img:"fall",rain:1,flash:1,cls:"shiver",bub:"무서워…"},
+  night:{img:"sleep",night:1,z:1}
+};
+let wxTimer, wxFrame = 1, wxDir = 1, wxX = 40;
+function setWx(k){
+  const w = WX[k];
+  document.querySelectorAll("[data-wx]").forEach(b => b.setAttribute("aria-pressed", b.dataset.wx === k));
+  $("wxRain").style.opacity = w.rain ? 1 : 0; $("wxSnow").style.opacity = w.snow ? 1 : 0;
+  $("wxNight").style.opacity = w.night ? 1 : (w.rain ? .35 : 0);
+  $("wxFlash").classList.toggle("on", !!w.flash);
+  $("wxBub").hidden = !w.bub; if (w.bub) $("wxBub").textContent = w.bub;
+  $("wxZ").hidden = !w.z; $("wxClock").textContent = w.night ? "23:40" : "2:47";
+  $("wxPet").className = "pet " + (w.cls || "");
+  clearInterval(wxTimer);
+  if (w.walk) {
+    wxTimer = setInterval(() => {
+      wxFrame = wxFrame % 4 + 1; $("wxImg").src = `img/monggeul-walk${wxFrame}.webp`;
+      wxX += wxDir * 2; if (wxX > 62 || wxX < 6) wxDir *= -1;
+      $("wxPet").style.left = wxX + "%"; $("wxImg").style.transform = wxDir < 0 ? "scaleX(-1)" : "";
+    }, 160);
+  } else { $("wxImg").src = `img/monggeul-${w.img}.webp`; $("wxImg").style.transform = ""; }
+}
+document.querySelectorAll("[data-wx]").forEach(b => b.onclick = () => setWx(b.dataset.wx));
+setWx("sun");
+
+// 2 ad
+let adN = 0, free = 0;
+$("adBtn").onclick = () => {
+  if (adN >= 3) return;
+  $("adSheet").classList.add("on"); const bar = $("adBar"); bar.style.transition = "none"; bar.style.width = "0";
+  requestAnimationFrame(() => { bar.style.transition = "width 3s linear"; bar.style.width = "100%"; });
+  setTimeout(() => {
+    $("adSheet").classList.remove("on"); adN++; free++;
+    $("adCount").textContent = adN; $("adLeft").textContent = `무료 펫 그림 ${free}장 남음`;
+    $("adToast").classList.add("on"); setTimeout(() => $("adToast").classList.remove("on"), 2200);
+    if (adN >= 3) { $("adBtn").textContent = "오늘 광고는 다 봤어요 · 내일 또"; $("adBtn").classList.add("ghost"); }
+  }, 3100);
+};
+
+// 5 making
+const TUFT = ["#fbfaf6","#f3efe6","#d9a35d","#c98845","#3b302b","#efe6d8","#b77a3c"];
+let mkTimers = [];
+function make(){
+  mkTimers.forEach(clearTimeout); mkTimers = [];
+  const f = $("mkField"); f.innerHTML = "";
+  const photo = $("mkPhoto"); photo.style.transition = "none"; photo.style.opacity = 1; photo.style.transform = "none";
+  $("mkBorn").classList.remove("on"); $("mkDone").classList.remove("on");
+  $("mkTitle").textContent = "만드는 중"; $("mkSub").textContent = "사진 보고 털을 모으는 중이에요";
+  const caps = [...$("mkCaps").children]; caps.forEach(c => c.classList.remove("on"));
+  const t = (ms, fn) => mkTimers.push(setTimeout(fn, ms));
+  t(400, () => { photo.style.transition = "opacity .6s, transform .8s"; photo.style.transform = "scale(.4) rotate(-8deg)"; photo.style.opacity = 0;
+    const W = f.clientWidth;
+    for (let i = 0; i < 44; i++) {
+      const d = document.createElement("i"); d.className = "tuft";
+      const a = Math.random() * Math.PI * 2, r = 90 + Math.random() * 60;
+      const sx = W / 2 + Math.cos(a) * r - 10, sy = 120 + Math.sin(a) * r * .8 - 10;
+      d.style.cssText = `left:${sx}px;top:${sy}px;background:${TUFT[i % TUFT.length]};width:${12 + Math.random() * 14}px;height:${12 + Math.random() * 14}px`;
+      f.appendChild(d);
+      d.animate([{ opacity: 0, transform: "scale(.4)" }, { opacity: 1, transform: "scale(1)" , offset: .2 },
+        { opacity: 1, transform: `translate(${Math.cos(a + 1.2) * 30}px,${Math.sin(a + 1.2) * 30}px)`, offset: .6 },
+        { opacity: 0, transform: `translate(${W / 2 - sx - 10}px,${120 - sy}px) scale(.3)` }],
+        { duration: 2600 + Math.random() * 900, delay: Math.random() * 500, easing: "ease-in", fill: "forwards" });
+    }
+  });
+  caps.forEach((c, i) => t(700 + i * 600, () => c.classList.add("on")));
+  t(3900, () => { $("mkBorn").classList.add("on"); $("mkTitle").textContent = "완성!"; $("mkSub").textContent = "돌려 보려면 끌어 보세요"; });
+  t(4400, () => $("mkDone").classList.add("on"));
+}
+$("mkReplay").onclick = make;
+
+// 7 reel
+let rlTimers = [];
+function reel(){
+  rlTimers.forEach(clearTimeout); rlTimers = [];
+  const fl = $("rlFl"), sp = $("rlSpark"), sub = $("rlSub");
+  fl.classList.remove("on"); sp.classList.remove("on"); sub.textContent = ""; void fl.offsetWidth;
+  const text = "우리 집 고양이가\n털뭉치가 됐어요";
+  rlTimers.push(setTimeout(() => { fl.classList.add("on"); sp.classList.add("on"); }, 700));
+  [...text].forEach((ch, i) => rlTimers.push(setTimeout(() => { sub.innerHTML = text.slice(0, i + 1).replace("\n", "<br>"); }, 200 + i * 70)));
+}
+$("rlReplay").onclick = reel;
+
+// play 5 and 7 when they scroll into view
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.id === "s5" ? make() : reel(); io.unobserve(e.target); } }), { threshold: .4 });
+io.observe($("s5")); io.observe($("s7"));
+</script>
