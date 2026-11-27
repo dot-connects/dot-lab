@@ -84,6 +84,26 @@ h1 em{font-style:normal;display:inline-block;padding:0 .3em;border-radius:14px;b
 .toast.on{opacity:1;transform:translateX(-50%) scale(1)}
 .camoff{width:16px;height:16px}
 
+
+/* S1b camera */
+#cam{background:#777}
+.camw{position:absolute;left:-40px;top:-6px;width:440px;height:792px;animation:hand 6s ease-in-out infinite}
+@keyframes hand{0%,100%{transform:translate(0,0) rotate(0)}25%{transform:translate(2px,-3px) rotate(.25deg)}50%{transform:translate(-2px,2px) rotate(-.2deg)}75%{transform:translate(1px,3px) rotate(.15deg)}}
+.camw .bg{position:absolute;left:0;top:0;width:440px;height:782px;object-fit:cover}
+.camw .cat{position:absolute;left:28px;top:150px;width:379px}
+.camw .ring{position:absolute;left:19px;top:142px;width:396px;animation:ring 1.6s ease-in-out infinite;filter:drop-shadow(0 0 4px #fff6c0)}
+@keyframes ring{50%{opacity:.55}}
+.camw.taken .ring{animation:none;opacity:0;transition:opacity .2s}
+.vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,#0000 55%,#0005);pointer-events:none;z-index:2}
+.found{position:absolute;left:24px;top:118px;z-index:12;font:15px Jua;padding:5px 12px 5px 8px;display:flex;align-items:center;gap:5px;--c:#fffaf0;animation:pop .4s .3s both;transition:opacity .2s}
+.found img{width:26px;height:26px;object-fit:contain}
+.ar{position:absolute;left:44px;top:596px;width:86px;z-index:11}
+.ar img{width:100%;display:block;animation:arw 2.8s ease-in-out infinite}
+.ar::after{content:"";position:absolute;left:14%;right:14%;bottom:1px;height:9px;border-radius:50%;background:#0006;filter:blur(3px);z-index:-1}
+@keyframes arw{50%{transform:translateX(-14px)}}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:40}
+.ghost{position:absolute;left:-12px;top:144px;width:379px;z-index:22;pointer-events:none;display:none;transform-origin:50% 40%}
+
 /* S2 new card */
 #newc{background:url(img/bg-claw.jpg) center/cover}
 #newc::before{content:"";position:absolute;inset:-20px;background:inherit;filter:blur(7px) brightness(.9) saturate(1.05)}
@@ -196,8 +216,8 @@ h1 em{font-style:normal;display:inline-block;padding:0 .3em;border-radius:14px;b
 .prop{position:absolute;pointer-events:none;transition:opacity .3s}
 .p-umb{width:104px;left:2px;top:-62px;transform-origin:50% 100%;animation:umb 2.6s ease-in-out infinite}
 @keyframes umb{50%{transform:rotate(-5deg)}}
-.p-scarf{width:70px;left:22px;top:62px}
-.p-mask{width:56px;left:28px;top:42px}
+.p-scarf{width:44px;left:35px;top:70px}
+.p-mask{width:46px;left:33px;top:50px}
 .p-sun{width:52px;left:84px;top:-34px;animation:bob 2.2s ease-in-out infinite}
 .p-cloud{width:80px;left:16px;top:-70px;animation:bob 3s ease-in-out infinite}
 @keyframes bob{50%{transform:translateY(-5px)}}
@@ -208,9 +228,12 @@ h1 em{font-style:normal;display:inline-block;padding:0 .3em;border-radius:14px;b
 .zz{position:absolute;left:100px;top:10px;font:18px Jua;color:#fff;text-shadow:0 1px 4px #0008;animation:zz 2.4s ease-in infinite;opacity:0}
 @keyframes zz{0%{opacity:0;transform:none}30%{opacity:1}100%{opacity:0;transform:translate(14px,-32px)}}
 /* the app's TalkBubble, felt */
-.talk{position:absolute;right:auto;left:0;top:0;max-width:180px;padding:8px 12px;font:600 13px/1.35 "Gowun Dodum",sans-serif;--c:#fffdf6;--r:18px;white-space:normal;text-align:center;
+.talk{position:absolute;right:auto;left:0;top:28px;max-width:200px;display:flex;align-items:center;gap:7px;text-align:left;transition:opacity .5s;padding:8px 12px;font:600 13px/1.35 "Gowun Dodum",sans-serif;--c:#fffdf6;--r:18px;white-space:normal;text-align:center;
   animation:pop .35s cubic-bezier(.3,1.6,.5,1) both}
 .talk b{font-family:Jua;font-weight:400;font-size:14px}
+.talk .ic{width:30px;height:30px;object-fit:contain;flex:none}
+#fx{transition:opacity .5s}
+.store .mini .talk{display:block;transition:none}
 .talk .t{display:block;font:12px Jua;color:#b5662a;margin-top:1px}
 .talk::before,.talk::after{content:"";position:absolute;border-radius:50%;background:#fffdf6;box-shadow:0 2px 4px #4a321c33}
 .talk::before{width:12px;height:12px;left:22px;bottom:-14px}
@@ -252,11 +275,11 @@ h1 em{font-style:normal;display:inline-block;padding:0 .3em;border-radius:14px;b
 
 <div class="wrap">
 <header>
-  <h1>리얼뽑기, 펠트로 다시<br><em>시안 8화면</em></h1>
+  <h1>리얼뽑기, 펠트로 다시<br><em>시안 9화면</em></h1>
   <p class="lead">고르신 A(펠트 미니어처)로 앱 화면을 360×780 실제 크기로 다시 짰어요. 배경·집게·버튼·캡슐·날씨 소품·작업대는 새로 그린 그림이고, 털뭉치 녀석들은 지금 앱에 들어 있는 그림 그대로예요. 버튼·카드는 전부 같은 펠트 천과 바느질선으로 맞췄어요.</p>
 </header>
 <nav class="toc" aria-label="화면 목록">
-  <a class="chip felt stitch" href="#s1">1 뽑기</a><a class="chip felt stitch" href="#s2">2 새 녀석 카드</a><a class="chip felt stitch" href="#s3">3 도감</a><a class="chip felt stitch" href="#s4">4 광고로 1장 더</a><a class="chip felt stitch" href="#s5">5 만드는 중</a><a class="chip felt stitch" href="#s6">6 날씨 말풍선</a><a class="chip felt stitch" href="#s7">7 스토어 첫 장</a><a class="chip felt stitch" href="#s8">8 릴스 첫 장면</a>
+  <a class="chip felt stitch" href="#s1">1 뽑기</a><a class="chip felt stitch" href="#s1b">1+ 카메라로 뽑기</a><a class="chip felt stitch" href="#s2">2 새 녀석 카드</a><a class="chip felt stitch" href="#s3">3 도감</a><a class="chip felt stitch" href="#s4">4 광고로 1장 더</a><a class="chip felt stitch" href="#s5">5 만드는 중</a><a class="chip felt stitch" href="#s6">6 날씨 말풍선</a><a class="chip felt stitch" href="#s7">7 스토어 첫 장</a><a class="chip felt stitch" href="#s8">8 릴스 첫 장면</a>
 </nav>
 
 <!-- 1 claw -->
@@ -266,7 +289,7 @@ h1 em{font-style:normal;display:inline-block;padding:0 .3em;border-radius:14px;b
     <p class="what">하늘·풀밭·울타리 구성은 그대로 두고, 전부 펠트 미니어처로 바꿨어요. 집게는 나무+양모, 버튼은 펠트 받침 위 빨간 단추라서 털뭉치 녀석들과 같은 세상처럼 보여요.</p>
     <ul class="facts">
       <li>화면을 끌어 집게를 맞추고 빨간 버튼을 눌러 보세요. 잡히면 캡슐에 싸여 통통 튀고 굴러가요(지금 앱 흐름 그대로).</li>
-      <li>카메라를 켜면 배경 대신 카메라 화면이고, 레일·집게·버튼·캡슐만 같은 그림으로 남아요.</li>
+      <li>카메라를 켠 화면은 바로 아래 1+ 에.</li>
       <li>앱에는 그림 4장(배경·집게·버튼·캡슐)만 바꿔 넣으면 돼요. 판정·움직임 코드는 그대로.</li>
     </ul>
     <span class="size felt">크기 M · 그림 교체 + 레일·라벨 다듬기</span>
@@ -286,6 +309,42 @@ h1 em{font-style:normal;display:inline-block;padding:0 .3em;border-radius:14px;b
       <button class="gobtn" id="go" aria-label="집기"><img src="img/button.png" alt=""><span class="lbl felt">집기</span></button>
       <div class="toast felt stitch" id="toast"></div>
     </div></div><p class="cap">펠트 (끌고 눌러 보세요)</p></div>
+  </div>
+</section>
+
+
+<!-- 1b camera -->
+<section class="item felt stitch" id="s1b">
+  <div>
+    <h2><span class="no felt">1+</span>카메라로 진짜 녀석 뽑기 <span class="tag">우리 집 고양이</span></h2>
+    <p class="what">카메라를 켜면 배경 그림 대신 진짜 방이에요. 여기서 화풍을 지키는 건 <b>레일·집게·버튼·캡슐·라벨</b>뿐이라, 이것들과 윤곽선을 같은 펠트 재료로 맞췄어요.</p>
+    <ul class="facts">
+      <li>찾은 녀석 둘레에 <b>바느질 점선 윤곽</b>(지금 앱의 실시간 누끼를 따라감)이 숨 쉬듯 깜빡이고, 위에 "고양이 찾았다!" 펠트 라벨이 붙어요.</li>
+      <li>바닥엔 털뭉치 녀석이 AR로 함께 놀아요(그림자 포함). 뽑으면 반짝 하고 오린 사진이 작아지며 캡슐에 쏙 — 진짜 고양이는 화면에 그대로.</li>
+      <li>사진과 윤곽은 앱이 실제로 오린 삼색이 누끼 그대로예요. 손에 든 폰처럼 살짝 흔들려요.</li>
+    </ul>
+    <span class="size felt">크기 M · 윤곽선 그리기 + 라벨·플래시</span>
+  </div>
+  <div class="stage">
+    <div><div class="dev"><div class="scr" id="cam">
+      <div class="camw" id="camw"><img class="bg" src="img/cam.jpg" alt="카메라 화면"><img class="cat" src="img/cam-cat.png" alt=""><img class="ring" src="img/cam-ring.png" alt=""></div>
+      <div class="vig"></div>
+      <div class="sb" style="color:#fff"><span>9:41</span><span>●●● ▮</span></div><div class="punch"></div>
+      <div class="rail"></div>
+      <div class="top">
+        <button class="chip felt stitch"><svg class="camoff" viewBox="0 0 24 24" fill="none" stroke="#3b2e22" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="18" height="13" rx="3"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/><path d="M3 3l18 18"/></svg>카메라 끄기</button>
+        <button class="chip felt stitch" id="dexn2">도감 8</button>
+      </div>
+      <div class="found felt stitch" id="found"><img src="img/calico-fluff.png" alt="">고양이 찾았다!</div>
+      <div class="ar"><img src="img/monggeul-walk2.webp" alt="몽글"></div>
+      <img class="ghost" id="ghost" src="img/cam-cat.png" alt="">
+      <div class="clawbox" id="cb2" style="transform:translateX(132px)"><div class="str" id="str2"></div><img class="c" src="img/claw.png" alt="집게"></div>
+      <div class="capwrap" id="capw2"><img class="in" src="img/cam-cat.png" alt="" style="inset:20%;width:60%;height:60%"><img src="img/cap-closed.png" alt="" style="opacity:.82"></div>
+      <div class="flash" id="flash"></div>
+      <div class="hint felt stitch">집게를 녀석 위로, 꾹!</div>
+      <button class="gobtn" id="go2" aria-label="집기"><img src="img/button.png" alt=""><span class="lbl felt">집기</span></button>
+      <div class="toast felt stitch" id="toast2"></div>
+    </div></div><p class="cap">카메라 켠 화면 (끌고 눌러 보세요)</p></div>
   </div>
 </section>
 
@@ -407,10 +466,10 @@ h1 em{font-style:normal;display:inline-block;padding:0 .3em;border-radius:14px;b
 <section class="item felt stitch" id="s6">
   <div>
     <h2><span class="no felt">6</span>펫이 날씨를 알려 줘요 <span class="tag">릴펫</span></h2>
-    <p class="what">화면 전체가 아니라 <b>펫이 서 있는 작은 칸만</b> 써요. 펫이 우산을 쓰거나 목도리를 하고, 지금 쓰는 혼잣말 말풍선에 날씨 한 줄을 말해요.</p>
+    <p class="what">화면 전체가 아니라 <b>펫이 서 있는 작은 칸만</b> 써요. 해·우산·구름 같은 날씨 그림은 <b>말풍선 안 작은 아이콘</b>으로만 두고, 펫 몸에는 목도리·마스크처럼 몸 안에 들어가는 것만 입혀서 펫 크기가 그대로예요. 말풍선은 4초 뒤 사라져요.</p>
     <ul class="facts">
       <li>말하는 때는 지금 혼잣말 규칙 그대로(잠금 해제·홈 복귀, 10분 간격, 하루 12번). 아침 첫 잠금 해제엔 날씨를 먼저.</li>
-      <li>상태별 소품: 맑음 해님 · 비 우산(이 칸 안에만 빗방울) · 눈 목도리+눈송이 · 미세먼지 나쁨 마스크 · 밤엔 자면서 내일 날씨만.</li>
+      <li>상태별: 맑음 = 웃으며 흔들흔들 · 비 = 웅크리고 빗방울 몇 개(말풍선 있는 동안만) · 눈 = 목도리 + 작은 눈송이 · 미세먼지 = 마스크 · 밤 = 자면서 내일 날씨만.</li>
       <li>날씨는 대략 위치가 필요해요. 기본 꺼짐, 펫 설정 "더 보기"의 "날씨 알려 주기" 하나. 기상청 단기예보(무료)로 3시간마다.</li>
     </ul>
     <span class="size felt">크기 M · Talk 에 날씨 줄 + 소품 그림 6장</span>
@@ -430,7 +489,7 @@ h1 em{font-style:normal;display:inline-block;padding:0 .3em;border-radius:14px;b
     <div class="ctl" style="margin-inline:auto" role="group" aria-label="날씨">
       <button class="chip felt stitch" data-w="sun" aria-pressed="false">맑음</button><button class="chip felt stitch" data-w="rain" aria-pressed="true">비</button><button class="chip felt stitch" data-w="snow" aria-pressed="false">눈</button><button class="chip felt stitch" data-w="dust" aria-pressed="false">미세먼지</button><button class="chip felt stitch" data-w="night" aria-pressed="false">밤</button>
     </div>
-    <label class="cap" style="display:block"><input type="checkbox" id="zoneT"> 펫이 쓰는 칸 보기</label>
+    <label class="cap" style="display:block"><input type="checkbox" id="zoneT"> 펫이 쓰는 칸 보기</label><p class="cap">날씨 버튼을 누를 때마다 말풍선이 다시 떠요</p>
   </div>
 </section>
 
@@ -548,6 +607,44 @@ $("go").onclick = async () => {
   busy = false;
 };
 
+
+/* ---------- 1b camera claw ---------- */
+{
+  const cb2 = $("cb2"), str2 = $("str2"), capw2 = $("capw2"), cam = $("cam"); let x2 = 132, busy2 = false, dex2 = 8, drag2 = null;
+  const place2 = () => cb2.style.transform = `translateX(${x2}px)`;
+  cam.addEventListener("pointerdown", e => { if (busy2 || e.target.closest("button")) return; drag2 = e.clientX; cam.setPointerCapture(e.pointerId); });
+  cam.addEventListener("pointermove", e => { if (drag2 == null) return; const k = cam.getBoundingClientRect().width / 360;
+    x2 = Math.max(0, Math.min(264, x2 + (e.clientX - drag2) / k)); drag2 = e.clientX; place2(); });
+  cam.addEventListener("pointerup", () => drag2 = null);
+  const toast2 = t => { const el = $("toast2"); el.textContent = t; el.classList.add("on"); setTimeout(() => el.classList.remove("on"), 1600); };
+  $("go2").onclick = async () => {
+    if (busy2) return; busy2 = true;
+    const img = cb2.querySelector("img.c"), cx = x2 + 48, onCat = cx > 30 && cx < 330, depth = onCat ? 210 : 470;
+    await Promise.all([anim(str2, [{ height: "40px" }, { height: depth + "px" }], { duration: 850 }), anim(img, [{ top: "40px" }, { top: depth + "px" }], { duration: 850 })]);
+    cb2.classList.add("shut"); await wait(250);
+    if (!onCat) { toast2("아깝다! 녀석 위로 맞춰 봐"); cb2.classList.remove("shut");
+      await Promise.all([anim(str2, [{ height: depth + "px" }, { height: "40px" }], { duration: 650 }), anim(img, [{ top: depth + "px" }, { top: "40px" }], { duration: 650 })]);
+      [str2, img].forEach(e => e.getAnimations().forEach(a => a.cancel())); busy2 = false; return; }
+    $("flash").animate([{ opacity: .85 }, { opacity: 0 }], { duration: 320 });
+    $("camw").classList.add("taken"); $("found").style.opacity = 0;
+    const g = $("ghost"); g.style.display = "block";
+    const capTop = 48 + depth + 70, capLeft = x2;
+    // cut-out (box 379 wide, top-left -12,144) shrinks to the capsule centre
+    const tx = capLeft + 48 - (-12 + 189.5), ty = capTop + 48 - (144 + 0.4 * 410);
+    await anim(g, [{ transform: "none", opacity: 1 }, { transform: `translate(${tx}px,${ty}px) scale(.17)`, opacity: .9 }], { duration: 560, easing: "cubic-bezier(.5,0,.3,1)" });
+    g.style.display = "none"; g.getAnimations().forEach(a => a.cancel());
+    capw2.style.display = "block"; capw2.style.left = capLeft + "px";
+    await Promise.all([anim(str2, [{ height: depth + "px" }, { height: "60px" }], { duration: 900 }), anim(img, [{ top: depth + "px" }, { top: "60px" }], { duration: 900 }),
+      anim(capw2, [{ top: capTop + "px", transform: "scale(.7)" }, { top: (48 + 60 + 70) + "px", transform: "scale(1)" }], { duration: 900 })]);
+    cb2.classList.remove("shut"); await wait(150);
+    await anim(capw2, [{ top: "178px" }, { top: "600px", offset: .55 }, { top: "540px", offset: .72 }, { top: "600px", offset: .86 }, { top: "585px", offset: .93 }, { top: "600px" }], { duration: 1100, easing: "linear" });
+    dex2++; $("dexn2").textContent = `도감 ${dex2}`; toast2("삼색이 뽑았다! 진짜 녀석 +1");
+    await anim(capw2, [{ top: "600px", left: capLeft + "px", transform: "rotate(0)" }, { top: "600px", left: "380px", transform: "rotate(400deg)" }], { duration: 1000, easing: "ease-in" });
+    [capw2, str2, img].forEach(e => e.getAnimations().forEach(a => a.cancel())); capw2.style.display = "none";
+    $("camw").classList.remove("taken"); $("found").style.opacity = ""; busy2 = false;
+  };
+}
+
 /* ---------- 3 dex grid ---------- */
 const CELLS = [["calico-fluff.png", "삼색이", "고양이", 1], ["kkam-fluff.jpg", "까망이", "고양이", 1, 1], ["monggeul-front.webp", "몽글", "털뭉치"],
   ["ppiyak-front.webp", "삐약", "털뭉치"], ["dalsom-front.webp", "달솜", "털뭉치"], ["bamtol-front.webp", "밤톨", "털뭉치"],
@@ -607,13 +704,15 @@ function make(){
 $("mkRe").onclick = make;
 
 /* ---------- 6 weather ---------- */
+// props stay inside the pet's own box (scarf, mask); the weather picture lives in the bubble, which leaves after 4 s
 const WXS = {
-  sun:   { pose: "smile", cls: "sway", props: [["wx-sun", "p-sun"]], say: "오늘 맑아! 산책 가자", t: "맑음 18°", clock: "8:12" },
-  rain:  { pose: "curl", props: [["wx-umbrella", "p-umb"]], drops: 1, say: "비 와! 우산 꼭 챙겨", t: "비 12° · 오후까지", clock: "8:12" },
-  snow:  { pose: "smile", cls: "hop", props: [["wx-scarf", "p-scarf"]], flakes: 1, say: "눈 온다! 따뜻하게 입어", t: "눈 −2°", clock: "8:12" },
-  dust:  { pose: "front", props: [["wx-mask", "p-mask"]], say: "미세먼지 나빠… 마스크!", t: "미세먼지 나쁨", clock: "8:12" },
-  night: { pose: "sleep", z: 1, props: [["wx-rain", "p-cloud"]], say: "내일 아침 비 온대… 쿨", t: "내일 비 · 6시부터", clock: "23:40" },
+  sun:   { pose: "smile", cls: "sway", props: [], icon: "wx-sun", say: "오늘 맑아! 산책 가자", t: "맑음 18°", clock: "8:12" },
+  rain:  { pose: "curl", props: [], drops: 1, icon: "wx-umbrella", say: "비 와! 우산 꼭 챙겨", t: "비 12° · 오후까지", clock: "8:12" },
+  snow:  { pose: "smile", props: [["wx-scarf", "p-scarf"]], flakes: 1, icon: "wx-snow", say: "눈 온다! 따뜻하게 입어", t: "눈 −2°", clock: "8:12" },
+  dust:  { pose: "front", props: [["wx-mask", "p-mask"]], icon: "wx-mask", say: "미세먼지 나빠… 마스크!", t: "미세먼지 나쁨", clock: "8:12" },
+  night: { pose: "sleep", z: 1, props: [], icon: "wx-rain", say: "내일 아침 비 온대", t: "내일 비 · 6시부터", clock: "23:40" },
 };
+let wxHide;
 function setW(k){
   const w = WXS[k];
   document.querySelectorAll("[data-w]").forEach(b => b.setAttribute("aria-pressed", b.dataset.w === k));
@@ -623,13 +722,15 @@ function setW(k){
   const pet = $("wpet"); pet.querySelectorAll(".prop").forEach(p => p.remove());
   for (const [img, cls] of w.props) { const p = document.createElement("img"); p.src = `img/${img}.png`; p.className = "prop " + cls; p.alt = "";
     (cls === "p-umb" ? pet.prepend(p) : pet.appendChild(p)); }
-  if (w.drops) for (let i = 0; i < 14; i++) { const d = document.createElement("i"); d.className = "drop";
-    d.style.cssText = `left:${60 + Math.random() * 130}px;top:${70 + Math.random() * 40}px;animation-delay:${Math.random()}s`; fx.appendChild(d); }
-  if (w.flakes) for (let i = 0; i < 7; i++) { const f = document.createElement("img"); f.src = "img/wx-snow.png"; f.className = "flake"; f.alt = "";
-    f.style.cssText = `left:${40 + Math.random() * 150}px;top:${50 + Math.random() * 40}px;width:${10 + Math.random() * 10}px;animation-delay:${Math.random() * 3}s`; fx.appendChild(f); }
+  if (w.drops) for (let i = 0; i < 5; i++) { const d = document.createElement("i"); d.className = "drop";
+    d.style.cssText = `left:${74 + Math.random() * 90}px;top:${96 + Math.random() * 30}px;animation-delay:${Math.random()}s`; fx.appendChild(d); }
+  if (w.flakes) for (let i = 0; i < 4; i++) { const f = document.createElement("img"); f.src = "img/wx-snow.png"; f.className = "flake"; f.alt = "";
+    f.style.cssText = `left:${60 + Math.random() * 110}px;top:${90 + Math.random() * 30}px;width:${8 + Math.random() * 6}px;animation-delay:${Math.random() * 3}s`; fx.appendChild(f); }
   if (w.z) { const z = document.createElement("span"); z.className = "zz"; z.textContent = "z Z"; pet.appendChild(z); }
   const talk = $("talk"); talk.style.animation = "none"; void talk.offsetWidth; talk.style.animation = "";
-  talk.innerHTML = `<b>${w.say}</b><span class="t">${w.t}</span>`;
+  talk.innerHTML = `<img class="ic" src="img/${w.icon}.png" alt=""><span><b>${w.say}</b><span class="t">${w.t}</span></span>`;
+  talk.style.opacity = 1; fx.style.opacity = 1; clearTimeout(wxHide);
+  wxHide = setTimeout(() => { talk.style.opacity = 0; fx.style.opacity = 0; }, 4000);
 }
 document.querySelectorAll("[data-w]").forEach(b => b.onclick = () => setW(b.dataset.w));
 $("zoneT").onchange = e => $("zone").classList.toggle("show", e.target.checked);
