@@ -913,10 +913,10 @@ body[data-ui="film"] #hoStrip .ministrip.real { box-shadow: none; outline: 3px s
 .tosshint .tossbox ul { margin: 0; padding-left: 18px; font-size: 14px; color: #2b3a55; }
 .tosshint .tosssearch { margin: 0; font-weight: 900; font-size: 15px; color: #1b64da; }
 
-/* Toss build (body[data-platform="toss"], set by toss/scripts/assemble.mjs): the ad note, and no web-only controls */
+/* App builds (body[data-platform="toss" / "play"], set by toss/scripts/assemble.mjs and play/assemble.mjs): the ad note, and no web-only controls */
 .adnote { display: grid; gap: 6px; padding: 14px; margin-top: 10px; background: #0d0d0d; color: #fff; text-align: center; }
 .adnote b { font-size: 17px; line-height: 1.35; }
 .adnote span { font-size: 13px; line-height: 1.45; color: #e6e6e6; }
 .adnote .cta { margin-top: 6px; }
 .adretry { margin: 8px 0 0; text-align: center; font-size: 14px; font-weight: 700; color: #0d0d0d; }
-body[data-platform="toss"] :is(.morelink, #inappSave, #openTab, #saveLink, [data-act="toTheme"], #linkBox) { display: none !important; }
+body:is([data-platform="toss"], [data-platform="play"]) :is(.morelink, #inappSave, #openTab, #saveLink, [data-act="toTheme"], #linkBox) { display: none !important; }

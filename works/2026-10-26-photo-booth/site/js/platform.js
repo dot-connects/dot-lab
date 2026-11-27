@@ -1,7 +1,7 @@
 // Web <-> Toss seam (PLAN-toss.md). The Toss build overwrites this file with toss/src/platform-toss.js, which has the same
 // exports plus save/share/ad functions. Workers never import this file (the Toss one bundles the SDK, which needs window).
 const preview = new URLSearchParams(location.search).has("toss");
-export const id = "web";
+export const id = "web", native = false;   // native = an app shell (Toss, Play): saves, shares and goes back through it
 // The mini-app is public (2026-11-01), so the web build carries the Toss watermark.
 // The locks (Toss-only making video, locked themes) stay off (operator 11-01: reach comes first, flip tossLocks to bring them back).
 // ?toss=1 previews the locks too (the flag rides along on share links).

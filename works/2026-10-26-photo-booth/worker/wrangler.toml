@@ -3,7 +3,7 @@ main = "src/index.js"
 compatibility_date = "2026-10-01"
 
 [vars]
-ORIGINS = "https://dot-connects.github.io,http://127.0.0.1:8799,http://127.0.0.1:8803,https://ttarogachi-test.private-web.tossmini.com,https://ttarogachi-test.private-apps.tossmini.com,https://ttarogachi-test.apps.tossmini.com,https://ttarogachi.private-apps.tossmini.com,https://ttarogachi.apps.tossmini.com"
+ORIGINS = "https://dot-connects.github.io,http://127.0.0.1:8799,http://127.0.0.1:8803,https://ttarogachi-test.private-web.tossmini.com,https://ttarogachi-test.private-apps.tossmini.com,https://ttarogachi-test.apps.tossmini.com,https://ttarogachi.private-apps.tossmini.com,https://ttarogachi.apps.tossmini.com,https://appassets.androidplatform.net"
 # Toss mini-app hosts we have not seen yet (test / private / release variants of the app's host)
 ORIGIN_RE = '^https://(ttarogachi(-test)?|duo-4cut)\.[a-z0-9-]+\.tossmini\.com$'
 

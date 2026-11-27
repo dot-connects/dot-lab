@@ -173,7 +173,7 @@ async function route() {
   if (env.framed) { $("openTab").href = location.href; return show("framed"); }
   if (!S.counted) { S.counted = true; count(S.id ? "join" : "open"); }   // join = opened a friend's link
   if (!S.id) {
-    if (P.id === "toss") { setUi("cute"); show("landA"); $("resumeA").hidden = !lastA(); } else show("theme");
+    if (P.native) { setUi("cute"); show("landA"); $("resumeA").hidden = !lastA(); } else show("theme");
     return prefetchHQ();
   }
   let st;
@@ -361,7 +361,7 @@ function liveLoop() {
 }
 function camError(e) {
   console.warn("[booth] camera", e);
-  if (P.id === "toss") return msg({ title: "앗, 카메라가 안 켜져", btn: "다시 해 보기", onBtn: () => startShoot(S.side),
+  if (P.native) return msg({ title: "앗, 카메라가 안 켜져", btn: "다시 해 보기", onBtn: () => startShoot(S.side),
     text: e?.name === "NotAllowedError" ? "토스 앱 설정에서 카메라 권한을 켜 줘. 휴대폰 설정 → 애플리케이션 → 토스 → 권한 → 카메라." : "다른 앱이 카메라를 쓰고 있으면 끄고 다시 해 줘." });
   if (e?.message === "stall" || e?.name === "NotReadableError" && env.inApp)
     return handoff("카메라가 대답을 안 해", "이 앱에서 카메라가 멈췄어. 크롬에서 열면 바로 돼.");
@@ -900,7 +900,7 @@ async function upload() {
       const { id } = await api.create(tk, { shape: S.shape, ui: S.ui });
       S.id = id; S.token = tk;
       api.saveRole(id, "a", tk);
-      if (P.id === "toss") try { localStorage.setItem("booth:lastA", JSON.stringify({ id, at: Date.now() })); } catch {}
+      if (P.native) try { localStorage.setItem("booth:lastA", JSON.stringify({ id, at: Date.now() })); } catch {}
       history.replaceState(null, "", `?s=${id}${uiQ()}${MOCK ? "&mock=1" : ""}`);
     }
     if (S.side === "b" && !S.token) { S.token = api.newToken(); api.saveRole(S.id, "b", S.token); }
@@ -965,7 +965,7 @@ async function pairStrip(box) {
   box.replaceChildren(strip);
 }
 // ponytail: the test button on A's waiting screen (operator pick, ROUND6 #2); set false at launch
-const TEST_B = P.id !== "toss" || P.debugWebLink;
+const TEST_B = !P.native || P.debugWebLink;
 // mode: "wait" = A reopened A's own link before the friend shot, "sent" = A just uploaded, "done" = B finished and
 // sends the 완성됐어 link back to A (Round 6 #3)
 function shareScreen(mode) {
@@ -977,7 +977,7 @@ function shareScreen(mode) {
     : fin ? "이 링크를 보내면 친구도 우리 네컷을 열어 봐.<br>꾸미기는 각자 폰에서 따로, 저장도 각자 해."
     : `친구가 이 링크를 열면 네 옆에 서서 찍어.<br>너는 찍은 자리 그대로 들어가.<br>둘 다 찍으면 사진이랑 영상이 열려.`;
   // Toss has no link to reopen: A checks right here, from the first share screen on (phone test 10-31)
-  $("recheck").hidden = !(waiting || P.id === "toss" && mode === "sent");
+  $("recheck").hidden = !(waiting || P.native && mode === "sent");
   $("testB").hidden = !(TEST_B && waiting);
   $("notMine").hidden = !(waiting && S.mine === "a");     // recognised by the Worker, not by this browser: a way out
   $("goDeco").hidden = !fin; $("decNote").hidden = fin;
@@ -990,7 +990,7 @@ const SHARE_TEXT = tr("내 옆자리 비워 뒀어 · 2분이면 돼 · 가입 �
 const DONE_TEXT = tr("완성됐어! 우리 네컷 열어 봐 · 크롬에서 열면 꾸미고 저장할 수 있어");
 const shareText = () => S.shareMode === "done" ? DONE_TEXT : SHARE_TEXT;
 async function share() {
-  if (P.id === "toss") { if (!await P.shareLink(S.id)) return; return toast(S.shareMode === "done" ? "보냈어! 이제 꾸미러 가자" : "보냈어! 친구가 찍으면 이 링크에서 열려"); }
+  if (P.native) { if (!await P.shareLink(S.id)) return; return toast(S.shareMode === "done" ? "보냈어! 이제 꾸미러 가자" : "보냈어! 친구가 찍으면 이 링크에서 열려"); }
   const url = sendUrl();
   if (navigator.share) {
     try { await navigator.share({ title: tr("따로 같이 네컷"), text: shareText(), url });
@@ -1000,7 +1000,7 @@ async function share() {
   copy();
 }
 async function copy() {
-  if (P.id === "toss") return share();
+  if (P.native) return share();
   const b = $("copyBtn");
   $("linkBox").hidden = false;
   try { await navigator.clipboard.writeText(`${shareText()}\n${sendUrl()}`); }
@@ -1059,7 +1059,7 @@ async function loadClips(onStep = () => {}) {
 let C, FR, FI;
 async function doneScreen(note = "") {
   show("done");
-  if (P.id === "toss") P.loadAd();           // preload: the ad is ready when a video tile is tapped
+  if (P.native) P.loadAd();           // preload: the ad is ready when a video tile is tapped
   $("doneNote").textContent = note; $("doneNote").hidden = !note;
   $("making").hidden = false; $("makingText").textContent = "네컷 만드는 중";
   const inApp = env.inApp;
@@ -1295,7 +1295,7 @@ let tapAt = 0, dlAt = 0;
 addEventListener("pointerdown", () => { tapAt = performance.now(); }, true);
 async function download(...files) {
   count("save");
-  if (P.id === "toss") {
+  if (P.native) {
     if (D.sending) return toast("보내는 중이야, 조금만 기다려 줘");
     D.sending = files[0][1]; setVid();
     try { for (const [blob, name] of files) await P.save(blob, name); }
@@ -1332,7 +1332,7 @@ function setVid(which = "video", p = null) {
     const making = which === kind && p != null, pct = typeof p === "number" ? Math.max(1, Math.round(p * 100)) : 0;
     b.classList.toggle("rendering", making); b.style.setProperty("--p", making ? pct : 0);
     if (making) { span.textContent = typeof p === "string" ? p : `${LINES[Math.floor(performance.now() / 2000) % LINES.length]} ${pct}%`; b.disabled = true; continue; }
-    if (cur && P.id === "toss") { span.textContent = sendingKind() === kind ? "보내는 중…" : adOk(D.ad) ? "보내기·저장" : idle; b.disabled = false; continue; }
+    if (cur && P.native) { span.textContent = sendingKind() === kind ? "보내는 중…" : adOk(D.ad) ? "보내기·저장" : idle; b.disabled = false; continue; }
     if (cur) { span.textContent = ready; b.disabled = false; continue; }
     const want = kind === "video" ? D.wantVideo : D.wantStory;
     span.textContent = want ? wait : idle; b.disabled = !!want;
@@ -1352,7 +1352,7 @@ function hqClips() {
   hqcP = Promise.resolve(navigator.gpu?.requestAdapter()).catch(() => null)
     .then(ad => ad && load("segment").then(G => G.prefetchStill().then(ok => ok && G.stats.still.delegate === "webgpu")))
     .then(gpu => gpu && (D.hqProg = 0, load("clipmatte")).then(M => M.clipMattes(["a", "b"].flatMap(s => media[s].cuts.map(c => c.clip)), p => { D.hqProg = p; hqLine(); })))
-    .then(m => { if (m?.size && D.media === media) { D.mattes = m; if (D.video) D.wantVideo = true; if (P.id === "toss" && D.story) D.wantStory = true; videoJob(); } })
+    .then(m => { if (m?.size && D.media === media) { D.mattes = m; if (D.video) D.wantVideo = true; if (P.native && D.story) D.wantStory = true; videoJob(); } })
     .catch(e => console.warn("[booth] hq clips", e))
     .finally(() => { D.hqProg = null; hqLine(); });
 }
@@ -1402,14 +1402,14 @@ async function videoJob() {
       const auto = D.auto[kind] && tapAt > dlAt;
       D.auto[kind] = false;
       if (auto) { saveKind(kind); toast(`${name} 저장했어!`); }
-      else toast(P.id === "toss" ? (adOk(D.ad) ? `${name} 완성! 보내기·저장을 눌러 줘` : `${name} 완성!`) : `${name} 완성! 버튼을 누르면 저장돼`);
+      else toast(P.native ? (adOk(D.ad) ? `${name} 완성! 보내기·저장을 눌러 줘` : `${name} 완성!`) : `${name} 완성! 버튼을 누르면 저장돼`);
     }
   } catch (e) {
     if (e?.name === "AbortError") return;
     console.warn("[booth] video", e?.name, e?.message, "hidden", document.hidden);
     // hidden (the ad or the share sheet covers the app): always wait and go again; a codec reclaim while visible: once
     const reclaim = e?.name === "QuotaExceededError" || /reclaim/i.test(e?.message || "");
-    if (P.id === "toss" && (document.hidden || (reclaim && !D.vretried))) {
+    if (P.native && (document.hidden || (reclaim && !D.vretried))) {
       if (!document.hidden) D.vretried = true;
       const again = () => { if (document.hidden) return; removeEventListener("visibilitychange", again); videoJob(); };
       addEventListener("visibilitychange", again); queueMicrotask(again);
@@ -1424,7 +1424,7 @@ async function videoJob() {
 // one tap on a video button: saves it if it is made for this look, else starts it and (not on iPhone) saves it when done
 const saveKind = kind => download([D[kind].blob, fileName(extOf(D[kind].type), kind === "story" ? "-making" : "")]);
 function saveVid(kind) {
-  if (P.id === "toss") return tossVid(kind);
+  if (P.native) return tossVid(kind);
   if (D[kind]?.key === vkey()) return saveKind(kind);
   D[kind === "video" ? "wantVideo" : "wantStory"] = true; D.auto[kind] = !env.isIOS; setVid(); videoJob();
 }
@@ -1435,7 +1435,7 @@ function saveSheet() {
   try { $("vidPv").src = $("stripImg").toDataURL("image/jpeg", .7); } catch {}
   const mine = D.media?.[me() || "a"]?.cuts?.[0]?.cut;          // the cut-out: the making video shows no rooms
   if (mine && !P.makingLocked) $("mkPv").src = mine.src;   // web: no preview of the Toss-only video (operator 10-31)
-  if (env.inApp || P.id === "toss") return;   // in-app: the bubble is hidden; Toss: no web links (review item 10)
+  if (env.inApp || P.native) return;   // in-app: the bubble is hidden; Toss: no web links (review item 10)
   const link = location.origin + location.pathname;
   const said = ok => $("saveLink").innerHTML = ok ? "<em>링크 복사했어!</em> 링크도 붙여 주면 더 좋아" : `링크도 붙여 주면 더 좋아 <em>${link.replace(/^https?:\/\//, "")}</em>`;
   try { navigator.clipboard.writeText(link).then(() => said(true), () => said(false)); } catch { said(false); }
@@ -1702,7 +1702,7 @@ const RZ = zoomer({ box: $("stage"), host: $("review"), inner: $("review"), chip
 
 // Toss build: one rewarded ad while both videos are made (PLAN-toss.md Task 8). Tapping a tile asks first (#adNote);
 // the ad and the renders run together; a tile saves once the ad paid out and its render is for the current look.
-D.ad = adStart();
+D.ad = P.ads === false ? adStep(adStart(), "failed") : adStart();   // Play v1 has no ads: saving is open from the start
 const sendingKind = () => !D.sending ? null : D.sending.includes("-making") ? "story" : /\.(mp4|webm)$/.test(D.sending) ? "video" : "photo";
 function adUi() { $("adNote").hidden = true; $("adRetry").hidden = !needsRetry(D.ad); setVid(); }
 function tossVid(kind) {
@@ -1809,7 +1809,7 @@ document.addEventListener("click", e => {
 
 // ---- boot ---------------------------------------------------------------------------------------------------------
 try { env = await import("./env.js"); } catch {}
-if (P.id === "toss") env = { ...env, inApp: false };   // the mini-app is the destination: no hand-off to Chrome, it saves through Toss
+if (P.native) env = { ...env, inApp: false };   // the mini-app is the destination: no hand-off to Chrome, it saves through Toss
 window.__booth = { S, D, MOCK };   // dev handle for the headless checks
 setShape(S.shape);
 route();

@@ -7,7 +7,7 @@ const APP = import.meta.env.VITE_AIT_APP_NAME;
 const base = new URL(".", document.baseURI).href;     // the bundle root (index.html's folder), built at runtime (review r2 #20)
 const sup = f => { try { return !!f.isSupported?.(); } catch { return false; } };
 
-export const id = "toss";
+export const id = "toss", native = true;
 export const tossLive = true, tossQ = "", watermark = false, makingLocked = false, decoLocked = false, tossUrl = "";
 export const MP = base + "vendor/mediapipe";
 export const MP_BUNDLE = MP + "/vision_bundle.js";

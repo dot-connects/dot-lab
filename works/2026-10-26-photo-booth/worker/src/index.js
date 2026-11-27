@@ -50,7 +50,7 @@ async function devOf(req, id) {
 // Visit counter (2026-11-03): links only record people who sent one, so the funnel before that was invisible.
 // One empty object per (KST day, event, visitor); the visitor is a day-salted hash of network + screen string, so a
 // reload is not a second visit and nothing about the person is kept. Count with visits.py.
-const EVENTS = ["open", "join", "shoot", "save"], PLATFORMS = ["web", "toss"];
+const EVENTS = ["open", "join", "shoot", "save"], PLATFORMS = ["web", "toss", "play"];
 const VIAS = ["Instagram", "Threads", "KakaoTalk", "Facebook", "app", "browser"];
 async function visit(req, env, now, json) {
   const q = new URL(req.url).searchParams, e = q.get("e");

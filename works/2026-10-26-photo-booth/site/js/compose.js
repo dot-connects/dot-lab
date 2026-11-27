@@ -833,7 +833,7 @@ async function clipSource(v, phase, fx, hq, fromEnd = null) {
   if (!mp4 || !(await VideoDecoder.isConfigSupported(mp4.config).catch(() => null))?.supported) throw new Error("clip not decodable");
   // Toss: eight clips at once while an ad may hold a hardware decoder; the last cell lost out and froze (phone test 10-31)
   const soft = { ...mp4.config, hardwareAcceleration: "prefer-software" };
-  const dcfg = P.id === "toss" && (await VideoDecoder.isConfigSupported(soft).catch(() => null))?.supported ? soft : mp4.config;
+  const dcfg = P.native && (await VideoDecoder.isConfigSupported(soft).catch(() => null))?.supported ? soft : mp4.config;
   const S = mp4.samples, N = S.length, us = S.map(s => s.us).sort((x, y) => x - y);
   const span = (us[N - 1] - us[0]) * N / Math.max(1, N - 1) / 1e6 || N / FPS, r = N / (span * FPS);
   const step = Math.abs(r - 1) < 0.05 ? 1 : Math.min(2, r);
