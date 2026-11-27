@@ -10,22 +10,25 @@ const q = new URLSearchParams(location.search);
 const ids = q.get("ids").split(","), only = q.get("actions")?.split(",");
 const R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 R.setPixelRatio(1); R.setSize(256, 256, false); R.outputColorSpace = THREE.SRGBColorSpace; R.setClearColor(0x000000, 0);
-const wall = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = "../mockups/next7v2/img/wall.jpg"; });
 const load = url => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = url; });
+const wall = await load("../mockups/next7v4/img/wall.jpg");
+const D = Math.PI / 180;
 
 async function sheet(urls) {
-  const C = 192, S = 112, cols = Math.min(8, urls.length), rows = Math.ceil(urls.length / cols);
-  const cv = document.createElement("canvas"); cv.width = cols * C; cv.height = rows * C + S + 8;
+  const C = 192, S = 112, cols = Math.min(8, urls.length), rows = Math.ceil(urls.length / cols), srow = Math.ceil(urls.length / 13);
+  const cv = document.createElement("canvas"); cv.width = cols * C; cv.height = rows * C + srow * (S + 4) + 8;
   const g = cv.getContext("2d"); g.fillStyle = "#222"; g.fillRect(0, 0, cv.width, cv.height);
   const wy = wall.height * 0.55;   // a strip of the wallpaper behind each cell
   for (const [i, u] of urls.entries()) {
     const im = await load(u), x = (i % cols) * C, y = Math.floor(i / cols) * C;
     g.drawImage(wall, 0, wy, wall.width, wall.width, x, y, C, C); g.drawImage(im, x, y, C, C);
     g.fillStyle = "#fff"; g.font = "12px sans-serif"; g.fillText(String(i), x + 4, y + 14);
-    if (i < cv.width / S) { g.drawImage(wall, 0, wy, wall.width, wall.width, i * S, rows * C + 8, S, S); g.drawImage(im, i * S, rows * C + 8, S, S); }
+    const sx = (i % 13) * (S + 4), sy = rows * C + 8 + Math.floor(i / 13) * (S + 4);
+    g.drawImage(wall, 0, wy, wall.width, wall.width, sx, sy, S, S); g.drawImage(im, sx, sy, S, S);
   }
-  return cv.toDataURL("image/png");
+  return cv.toDataURL("image/jpeg", 0.85);
 }
+const pose = b => ({ sq: 1, roll: 0, pitch: 0, turn: 0, x: 0, y: 0, eye: 1, happy: false, ear: 0, ...b });
 
 const out = {};
 for (const id of ids) {
@@ -33,20 +36,28 @@ for (const id of ids) {
   // the same framing as bake.html, so a weather frame lines up with front.webp / sleep.webp
   const probe = makeCreature(spec); probe.update(0.016);
   const box = new THREE.Box3().setFromObject(probe.object3d), sz = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
-  const frame = { mid, d: Math.max(sz.x, sz.y) * 0.56 / Math.tan(Math.PI / 12) };
+  const frame = { mid, d: Math.max(sz.x, sz.y) * 0.56 / Math.tan(Math.PI / 12) }, H = spec.height || 0.35;
   const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 10);
   cam.position.set(frame.mid.x, frame.mid.y + frame.d * 0.12, frame.mid.z + frame.d); cam.lookAt(frame.mid);
   for (const [name, act] of Object.entries(ACTIONS)) {
-    if (only && !only.includes(name)) continue;
+    if (only && !only.some(o => name.startsWith(o))) continue;
     const c = makeCreature(spec), scene = new THREE.Scene(), holder = new THREE.Group();
     holder.add(c.object3d); scene.add(holder);
     c.object3d.children.forEach(o => { if (o.isMesh && o.renderOrder === -1) o.visible = false; });
     c.setPose("idle"); for (let i = 0; i < 2; i++) c.update(0.016);
-    const r = rig(c, spec), st = act.setup(r), urls = [];
-    for (let f = 0; f < act.frames; f++) {
-      const s = act.at(f, st, r);
-      c.setPose(s.happy ? "caught" : "idle");   // only swaps the eyes; update() is not called again
-      holder.rotation.z = s.roll * Math.PI / 180; holder.scale.set(s.sx, s.sy, s.sx);
+    const r = rig(c, spec), st = act.setup(r), urls = [], N = act.frames;
+    const bodyAt = f => pose(act.body(act.loop ? (f + N) % N : Math.max(0, f)));
+    for (let f = 0; f < N; f++) {
+      const b = bodyAt(f), p1 = bodyAt(f - 1), p2 = bodyAt(f - 2);
+      act.props(f, st, r);
+      holder.rotation.set(b.pitch * D, b.turn * D, b.roll * D);
+      const sx = b.sx ?? 1 / Math.sqrt(b.sq);
+      holder.scale.set(sx, b.sq, sx); holder.position.set(b.x * H, b.y * H, 0);
+      r.eyes.visible = !b.happy; r.happy.visible = b.happy; r.eyes.scale.y = b.eye;
+      // ears and tails follow through: they lag the body's squash, hop and roll (smoothed over two frames)
+      const drive = (q0, q1) => -((q0.sq - q1.sq) * 4 + (q0.y - q1.y) * 6);
+      const v = Math.max(-0.5, Math.min(0.5, 0.65 * drive(b, p1) + 0.35 * drive(p1, p2))), lag = -((b.roll - p1.roll) * 0.65 + (p1.roll - p2.roll) * 0.35) * D * 2;
+      for (const w of r.wob) w.o.rotation.z = w.base + w.k * (v + b.ear) + lag;
       R.render(scene, cam);
       const u = R.domElement.toDataURL("image/png");
       out[`${id}-${name}-${String(f).padStart(2, "0")}`] = u; urls.push(u);
@@ -54,8 +65,8 @@ for (const id of ids) {
     out[`${id}-${name}-sheet`] = await sheet(urls);
     r.dispose();
     c.object3d.traverse(o => { o.geometry?.dispose?.(); });
+    window.__p = Object.keys(out).length;
   }
-  window.__p = (window.__p || 0) + 1;
 }
 window.__out = out;
 </script>

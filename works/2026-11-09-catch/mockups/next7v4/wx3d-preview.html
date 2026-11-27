@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>날씨 동작 미리보기</title>
+<style>
+  :root { --bg: #1d1b19; --ink: #f3ece2; --dim: #a89f94; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 4px; } p { color: var(--dim); margin: 0 0 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .big { grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); margin-top: 24px; }
+  figure { margin: 0; } figcaption { color: var(--dim); font-size: 12px; margin-top: 4px; }
+  .wall { background: url(img/wall.jpg) center 55% / cover; border-radius: 10px; display: grid; place-items: center; }
+  .s112 .wall { height: 140px; } .s112 img { width: 112px; height: 112px; }
+  .s256 .wall { height: 270px; } .s256 img { width: 256px; height: 256px; }
+</style></head>
+<body>
+<h1>날씨 동작 (3D 굽기 v2)</h1>
+<p>각 칸: 동작 한 번 → 대기 루프 3회 → 반복. 12 fps. 위는 112 px, 아래는 256 px.</p>
+<div class="grid s112" id="g112"></div>
+<div class="grid big s256" id="g256"></div>
+<script>
+// ?f=<n> freezes every cell on action frame n (for review screenshots)
+const STATES = [["sun", "맑음", 24, 8], ["hot", "더움", 26, 6], ["cold", "추움", 24, 6], ["snow", "눈", 26, 8], ["rain", "비", 26, 8], ["dust", "미세먼지", 24, 8]];
+const IDS = [["monggeul", "몽글"], ["nyangsom", "냥솜"]];
+const freeze = new URLSearchParams(location.search).get("f");
+const seq = (id, st, kind, n) => Array.from({ length: n }, (_, i) => `img/wx3d/${id}-${st}-${kind}-${String(i).padStart(2, "0")}.webp`);
+const cells = [];
+for (const g of ["g112", "g256"]) for (const [id, idName] of IDS) for (const [st, stName, na, nl] of STATES) {
+  const act = seq(id, st, "act", na), loop = seq(id, st, "loop", nl), frames = [...act, ...loop, ...loop, ...loop];
+  frames.forEach(u => { new Image().src = u; });   // preload
+  const fig = document.createElement("figure");
+  fig.innerHTML = `<div class="wall"><img alt=""></div><figcaption>${idName} · ${stName}</figcaption>`;
+  document.getElementById(g).append(fig);
+  const img = fig.querySelector("img");
+  img.src = freeze != null ? act[Math.min(+freeze, na - 1)] : frames[0];
+  cells.push({ img, frames });
+}
+if (freeze == null) { let t = 0; setInterval(() => { t++; for (const c of cells) c.img.src = c.frames[t % c.frames.length]; }, 1000 / 12); }
+</script>
+</body></html>
