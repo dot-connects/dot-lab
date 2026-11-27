@@ -325,18 +325,32 @@ class _EditScreenState extends State<EditScreen> {
             ),
           ),
         ));
-    final prev = out('이전', _step.index > 0 ? () => _go(EditStep.values[_step.index - 1]) : null);
-    final orig = out('원본', e.changed(_step) ? () {
-          e.reset(_step);
-          _withMedia(e.b.pages.first.ids.toSet(), () => _snack = null);
-        } : null);
-    if (last) return Row(children: [prev, const SizedBox(width: 8), Expanded(child: Btn(_saving ? '저장하는 중…' : '저장하기', onTap: _saving ? null : _save))]);
+    // one main button (다음 / 저장하기); 이전 only where there is a step before, 원본 is a small link by the step title
+    final prev = [if (_step.index > 0 && !_fromSum) ...[out('이전', () => _go(EditStep.values[_step.index - 1])), const SizedBox(width: 8)]];
+    if (last) return Row(children: [...prev, Expanded(child: Btn(_saving ? '저장하는 중…' : '저장하기', onTap: _saving ? null : _save))]);
     final next = _fromSum ? Btn('요약으로', onTap: () => _go(EditStep.check)) : Btn('다음', onTap: () => _go(EditStep.values[_step.index + 1]));
-    return Row(children: [if (!_fromSum) ...[prev, const SizedBox(width: 8)], orig, const SizedBox(width: 8), Expanded(child: next)]);
+    return Row(children: [...prev, Expanded(child: next)]);
   }
 
   Widget _h(String title, String q) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: ui(19, w: FontWeight.w800)),
+        Row(children: [
+          Expanded(child: Text(title, style: ui(19, w: FontWeight.w800))),
+          if (_step != EditStep.check && e.changed(_step))
+            GestureDetector(
+              onTap: () {
+                e.reset(_step);
+                _withMedia(e.b.pages.first.ids.toSet(), () => _snack = null);
+              },
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 6, 0, 6),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  const Icon(Icons.undo_rounded, size: 15, color: C.ink2),
+                  const SizedBox(width: 3),
+                  Text('원본으로', style: ui(12.5, w: FontWeight.w600, color: C.ink2)),
+                ]),
+              ),
+            ),
+        ]),
         Padding(padding: const EdgeInsets.only(top: 3, bottom: 12), child: Text(q, style: ui(13, color: C.body, h: 1.45))),
       ]);
 

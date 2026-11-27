@@ -72,9 +72,10 @@ void main() {
     await t.pump();
     expect(e.b.coverColor, '#1F3A6E');
     expect(find.text('글자는 흰색으로 맞췄어요.'), findsOneWidget);
-    await t.tap(find.text('원본'));
+    await t.tap(find.text('원본으로'));
     await t.pump();
     expect(e.b.coverColor, isNull);
+    expect(find.text('원본으로'), findsNothing); // nothing to put back: the link goes
 
     await t.tap(find.text('다음'));
     await t.pumpAndSettle();

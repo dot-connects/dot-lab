@@ -156,7 +156,7 @@ void main() {
     await t.enterText(find.byType(TextField).last, '먹으러 간 여행');
     expect(d.opts.about, '먹으러 간 여행');
     await shot(t, 'd3-3-extras-who');
-    await t.tap(find.text('건너뛰기'));
+    await t.tap(find.text('둘 다 건너뛰기'));
     await t.pump();
     expect((d.opts.who, d.opts.about), (null, ''));
     expect(find.text('누구랑 · 어떤 여행: 건너뛰었어요'), findsOneWidget);

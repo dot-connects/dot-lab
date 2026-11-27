@@ -194,11 +194,23 @@ class _ConceptBoxState extends State<ConceptBox> {
         ),
       );
     }
-    // compact (operator 11-26: the first version pushed the rows under the buttons): label row, one chip row, one line
+    // compact (operator 11-26: the first version pushed the rows under the buttons). Two questions, each with its own
+    // label (operator 11-27: one label over chips + line read as "the line is for 누구랑" and got skipped)
+    Widget label(String n, String t) => Row(children: [
+          Container(
+            width: 17,
+            height: 17,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(color: C.ink, shape: BoxShape.circle),
+            child: Text(n, style: nm(10, w: FontWeight.w700, color: C.paper, h: 1)),
+          ),
+          const SizedBox(width: 6),
+          Text(t, style: ui(13, w: FontWeight.w700)),
+        ]);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [
-        Expanded(child: Text('누구랑, 어떤 여행이었어요?', style: ui(12, w: FontWeight.w700, color: C.ink2))),
-        GestureDetector(onTap: _skip, child: Padding(padding: const EdgeInsets.all(4), child: Text('건너뛰기', style: ui(12.5, color: C.ink2)))),
+        Expanded(child: label('1', '누구랑 갔어요?')),
+        GestureDetector(onTap: _skip, child: Padding(padding: const EdgeInsets.all(4), child: Text('둘 다 건너뛰기', style: ui(12.5, color: C.ink2)))),
       ]),
       const SizedBox(height: 6),
       Wrap(spacing: 6, runSpacing: 6, children: [
@@ -222,12 +234,14 @@ class _ConceptBoxState extends State<ConceptBox> {
           onChanged: (v) => o.who = v.trim().isEmpty ? null : v.trim(),
         ),
       ],
+      const SizedBox(height: 14),
+      label('2', '어떤 여행이었어요?'),
       const SizedBox(height: 6),
       TextField(
         controller: _about,
         maxLength: 40,
         style: ui(13.5),
-        decoration: _box('어떤 여행? (선택) 예: 먹으러 간 여행 · 엄마 환갑').copyWith(counterText: ''),
+        decoration: _box('한 줄로. 예: 먹으러 간 여행 · 엄마 환갑').copyWith(counterText: ''),
         onChanged: (v) => o.about = v.trim(),
       ),
     ]);
