@@ -789,11 +789,14 @@ Future<List<({double sharp, double luma, int dhash})>> _measureAll(List<Uint8Lis
 }
 
 /// What book.js renders: {id, theme, format, pages, media:{id:{src, video?}}}; files are served under /books/.
-/// The layouts this book may use: 네 컷 only with a pose series of 3+ picked photos, 다닌 길 only with a route.
+/// The layouts this book may use. 네 컷 and 다닌 길 are held back (operator 11-27: the strip and the tile-less line
+/// looked cheap); pose series go into the themes' own multi-photo pages until diary / note versions and a real map
+/// are designed. Flip [_newPages] back on then.
+const _newPages = false;
 List<LayoutDef> offered(List<LayoutDef> defs, Book b) {
   final picked = {for (final p in b.picks) p.id};
-  final series = b.groups.any((g) => g.$1 == '연속' && g.$2.where(picked.contains).length >= 3);
-  final route = routeOf(b.pool) != null;
+  final series = _newPages && b.groups.any((g) => g.$1 == '연속' && g.$2.where(picked.contains).length >= 3);
+  final route = _newPages && routeOf(b.pool) != null;
   return [
     for (final d in defs)
       if ((!d.id.endsWith('/fourcut') || series) && (!d.id.endsWith('/route') || route)) d,
