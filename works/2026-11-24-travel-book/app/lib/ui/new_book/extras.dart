@@ -1,5 +1,5 @@
-// D3 3/3 더 넣을 것: who/what kind of trip (mockup r11 concept C), optional side roads (must-include, notes, timeline)
-// and the estimate before [책 만들기].
+// D3 3/3 더 넣을 것: optional side roads as rows (who/what kind of trip — r12 concept-input A, a row + sheet —
+// must-include, notes, timeline) and the estimate before [책 만들기].
 import 'package:material_ui/material_ui.dart';
 
 import '../tokens.dart';
@@ -36,8 +36,12 @@ class ExtrasScreen extends StatelessWidget {
       title: '더 넣을 게 있어요?',
       titleSmall: '(없어도 돼요)',
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        ConceptBox(opts: o),
-        const SizedBox(height: 12),
+        StatefulBuilder(builder: (context, set) {
+          final said = [if (o.who != null) o.who!, if (o.about.isNotEmpty) o.about];
+          return _row(Icons.favorite_border_rounded, '누구랑 · 어떤 여행', said.isEmpty ? '넣으면 사진 고르기와 글에 써요' : said.join(' · '), said.isNotEmpty,
+              () => showSheet<void>(context, (c) => _ConceptSheet(opts: o)).then((_) => set(() {})));
+        }),
+        const SizedBox(height: 8),
         _row(Icons.check_box_outlined, '꼭 넣을 사진', must > 0 ? '$must장 골랐어요' : '빠지면 안 되는 사진이 있으면 골라 두세요', must > 0, onMust,
             trail: mustThumbs.isEmpty ? null : _stack()),
         const SizedBox(height: 8),
@@ -115,8 +119,27 @@ class ExtrasScreen extends StatelessWidget {
 
 const whoChoices = ['혼자', '연인·부부', '친구', '가족', '부모님'];
 
-/// 누구랑 + 어떤 여행 (r11 concept C): chips, "직접 쓰기" for other company, one free line, and [건너뛰기].
-/// Writes straight into the draft's BookOptions (who / about); skipping clears both.
+class _ConceptSheet extends StatelessWidget {
+  final BookOptions opts;
+  const _ConceptSheet({required this.opts});
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('누구랑, 어떤 여행이었어요?', style: ui(17, w: FontWeight.w700)),
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 14),
+            child: Text(kw('사진 고르기와 글에만 써요. 책에 이 말이 그대로 나오진 않아요'), style: ui(12, color: C.ink2, h: 1.45)),
+          ),
+          ConceptBox(opts: opts),
+          const SizedBox(height: 18),
+          Btn('넣기', onTap: () => Navigator.of(context).pop()),
+        ]),
+      );
+}
+
+/// 누구랑 + 어떤 여행: chips, "직접" for other company, one free line. Writes straight into the draft's BookOptions
+/// (who / about); a chip tapped again or an emptied line clears it.
 class ConceptBox extends StatefulWidget {
   final BookOptions opts;
   const ConceptBox({super.key, required this.opts});
@@ -127,7 +150,6 @@ class ConceptBox extends StatefulWidget {
 class _ConceptBoxState extends State<ConceptBox> {
   late final TextEditingController _who, _about;
   late bool _own = widget.opts.who != null && !whoChoices.contains(widget.opts.who);
-  bool _skipped = false;
 
   @override
   void initState() {
@@ -142,16 +164,6 @@ class _ConceptBoxState extends State<ConceptBox> {
     _about.dispose();
     super.dispose();
   }
-
-  void _skip() => setState(() {
-        _skipped = true;
-        _own = false;
-        _who.clear();
-        _about.clear();
-        widget.opts
-          ..who = null
-          ..about = '';
-      });
 
   Widget _chip(String t, bool on, VoidCallback tap) => GestureDetector(
         onTap: tap,
@@ -181,20 +193,7 @@ class _ConceptBoxState extends State<ConceptBox> {
   @override
   Widget build(BuildContext context) {
     final o = widget.opts;
-    if (_skipped) {
-      return GestureDetector(
-        onTap: () => setState(() => _skipped = false),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(14)),
-          child: Row(children: [
-            Expanded(child: Text('누구랑 · 어떤 여행: 건너뛰었어요', style: ui(13, color: C.ink2))),
-            Text('다시 넣기', style: ui(12.5, w: FontWeight.w700)),
-          ]),
-        ),
-      );
-    }
-    // compact (operator 11-26: the first version pushed the rows under the buttons). Two questions, each with its own
+    // Two questions, each with its own
     // label (operator 11-27: one label over chips + line read as "the line is for 누구랑" and got skipped)
     Widget label(String n, String t) => Row(children: [
           Container(
@@ -208,10 +207,7 @@ class _ConceptBoxState extends State<ConceptBox> {
           Text(t, style: ui(13, w: FontWeight.w700)),
         ]);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Row(children: [
-        Expanded(child: label('1', '누구랑 갔어요?')),
-        GestureDetector(onTap: _skip, child: Padding(padding: const EdgeInsets.all(4), child: Text('둘 다 건너뛰기', style: ui(12.5, color: C.ink2)))),
-      ]),
+      label('1', '누구랑 갔어요?'),
       const SizedBox(height: 6),
       Wrap(spacing: 6, runSpacing: 6, children: [
         for (final w in whoChoices)

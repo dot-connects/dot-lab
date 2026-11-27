@@ -65,7 +65,7 @@ void main() {
     });
   }
 
-  testWidgets('choices change the book; 원본 puts the step back; the summary jumps and comes back', (t) async {
+  testWidgets('choices change the book; 원본 puts the step back; the last step is only the question and the buttons', (t) async {
     final e = BookEdit(_book(), _defs);
     await pump(t, screen(e));
     await t.tap(find.bySemanticsLabel('표지 색 남색'));
@@ -96,14 +96,8 @@ void main() {
     await t.pumpAndSettle();
     await t.tap(find.text('다음'));
     await t.pumpAndSettle();
-    expect(find.text('「바람의 섬」'), findsOneWidget);
-    expect(find.text('바뀜'), findsNWidgets(2));
-    await t.tap(find.text('글자'));
-    await t.pumpAndSettle();
-    expect(find.text('요약으로'), findsOneWidget);
-    await t.tap(find.text('요약으로'));
-    await t.pumpAndSettle();
     expect(find.text('이렇게 저장할까요?'), findsOneWidget);
+    expect(find.text('저장하기'), findsOneWidget);
   });
 
   testWidgets('photo step: pages without photos are skipped, swap shows the same day, remove can be undone', (t) async {

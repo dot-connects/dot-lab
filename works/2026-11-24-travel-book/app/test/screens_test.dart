@@ -145,7 +145,9 @@ void main() {
     expect(find.text(kw('3장 골랐어요')), findsOneWidget);
     expect(find.text('사진 고르기 시작'), findsOneWidget);
     expect(find.text('테마·길이 먼저 고르기'), findsNothing); // the theme comes after the photos now
-    // 누구랑: a chip, own words, skip
+    // 누구랑 · 어떤 여행: a row that opens a sheet; a chip, own words, and the row shows what was said
+    await t.tap(find.text('누구랑 · 어떤 여행'));
+    await t.pumpAndSettle();
     await t.tap(find.text('연인·부부'));
     await t.pump();
     expect(d.opts.who, '연인·부부');
@@ -156,10 +158,9 @@ void main() {
     await t.enterText(find.byType(TextField).last, '먹으러 간 여행');
     expect(d.opts.about, '먹으러 간 여행');
     await shot(t, 'd3-3-extras-who');
-    await t.tap(find.text('둘 다 건너뛰기'));
-    await t.pump();
-    expect((d.opts.who, d.opts.about), (null, ''));
-    expect(find.text('누구랑 · 어떤 여행: 건너뛰었어요'), findsOneWidget);
+    await t.tap(find.text('넣기'));
+    await t.pumpAndSettle();
+    expect(find.text(kw('회사 동기 셋 · 먹으러 간 여행')), findsOneWidget);
   });
 
   testWidgets('must pick: cap at 10', (t) async {

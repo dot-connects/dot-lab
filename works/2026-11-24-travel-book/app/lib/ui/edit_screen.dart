@@ -64,7 +64,6 @@ class EditScreen extends StatefulWidget {
 class _EditScreenState extends State<EditScreen> {
   BookEdit get e => widget.edit;
   EditStep _step = EditStep.cover;
-  bool _fromSum = false; // came from the summary: [요약으로] instead of [다음]
   final Map<EditStep, int> _at = {}; // page shown per step
   int _slot = 0, _version = 0;
   bool _swapMode = false, _coverPaper = true, _custom = false, _saving = false;
@@ -93,10 +92,9 @@ class _EditScreenState extends State<EditScreen> {
         _version++;
       });
 
-  void _go(EditStep s, {bool fromSum = false}) => setState(() {
+  void _go(EditStep s) => setState(() {
         if (_step == EditStep.photos && s != EditStep.photos) e.forgetUndo();
         _step = s;
-        _fromSum = fromSum;
         _slot = 0;
         _swapMode = false;
         _snack = null;
@@ -326,9 +324,9 @@ class _EditScreenState extends State<EditScreen> {
           ),
         ));
     // one main button (다음 / 저장하기); 이전 only where there is a step before, 원본 is a small link by the step title
-    final prev = [if (_step.index > 0 && !_fromSum) ...[out('이전', () => _go(EditStep.values[_step.index - 1])), const SizedBox(width: 8)]];
+    final prev = [if (_step.index > 0) ...[out('이전', () => _go(EditStep.values[_step.index - 1])), const SizedBox(width: 8)]];
     if (last) return Row(children: [...prev, Expanded(child: Btn(_saving ? '저장하는 중…' : '저장하기', onTap: _saving ? null : _save))]);
-    final next = _fromSum ? Btn('요약으로', onTap: () => _go(EditStep.check)) : Btn('다음', onTap: () => _go(EditStep.values[_step.index + 1]));
+    final next = Btn('다음', onTap: () => _go(EditStep.values[_step.index + 1]));
     return Row(children: [...prev, Expanded(child: next)]);
   }
 
@@ -578,40 +576,7 @@ class _EditScreenState extends State<EditScreen> {
     ];
   }
 
-  List<Widget> _checkCard() {
-    final b = e.b, covers = e.coverLayouts;
-    final ci = covers.indexWhere((d) => d.id == b.pages.first.layout);
-    final color = coverSwatches.where((s) => s.$1 == b.coverColor).firstOrNull?.$2 ?? '직접 고른 색';
-    final font = fontsOf(b.theme).where((f) => f.css == b.font).firstOrNull?.label ?? fontsOf(b.theme).first.label;
-    final lines = e.typedPages.where((p) => p > 0).length;
-    final ops = [if (e.moved > 0) '옮김 ${e.moved}', if (e.swapped > 0) '바꿈 ${e.swapped}', if (e.removed > 0) '뺌 ${e.removed}'];
-    final rows = [
-      (EditStep.cover, '표지 ${ci + 1} · $color'),
-      (EditStep.type, '$font · ${textSizeNames[b.textSize]}'),
-      (EditStep.words, '「${b.title}」${lines > 0 ? ' · 한 줄 $lines곳' : ''}'),
-      (EditStep.photos, ops.isEmpty ? '그대로' : ops.join(' · ')),
-    ];
-    return [
-      _h('이렇게 저장할까요?', '줄을 누르면 그 단계로 가요. 고치고 나면 여기로 돌아와요.'),
-      for (final (s, v) in rows)
-        InkWell(
-          onTap: () => _go(s, fromSum: true),
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 50),
-            decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.line, width: .7))),
-            child: Row(children: [
-              SizedBox(width: 82, child: Text(stepNames[s.index], style: ui(14, w: FontWeight.w600))),
-              Expanded(child: Text(v, style: ui(13, color: e.changed(s) ? C.ink : C.ink2))),
-              if (e.changed(s))
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                  decoration: BoxDecoration(color: C.cardOn, borderRadius: BorderRadius.circular(8)),
-                  child: Text('바뀜', style: ui(11, w: FontWeight.w700)),
-                ),
-              const Icon(Icons.chevron_right, color: C.ink2),
-            ]),
-          ),
-        ),
-    ];
-  }
+  // operator 11-27: no summary of the choices here, only the question and the buttons
+  List<Widget> _checkCard() => [_h('이렇게 저장할까요?', '저장하면 책장의 책이 이대로 바뀌어요.')];
+
 }
