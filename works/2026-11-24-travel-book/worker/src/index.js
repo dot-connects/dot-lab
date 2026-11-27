@@ -1,5 +1,7 @@
 // 「여행 책자」 AI relay. The app sends 512 px previews, local times, place names and the user's notes; the model picks
-// photos and writes captions/essay. Keys stay here, a month money ceiling guards the bill, nothing is stored.
+// photos and writes captions/essay. Keys stay here, a month money ceiling guards the bill.
+// Stored: /layout runs as a queued job (the app may leave and come back): its request waits in KV up to 2 h (deleted when
+// the job ends) and the plan text stays in D1 `jobs` up to 24 h. Nothing else is stored.
 // Model: OpenAI Responses API (operator 11-25: use the GPT key already on hand); the MODEL var picks the model.
 // Money unit = mills (1/10 cent, integers). Reserve the worst case before the call, settle the real cost after.
 import { MemoryCounts, D1Counts } from "./counts.js";
@@ -24,6 +26,8 @@ const IN_MILLS = 0.0025, OUT_MILLS = 0.015;
 const IMG_TOKENS = 400;            // a 512 px preview at detail "low" is well under this; rounded up for the reservation
 const KEEPALIVE_MS = 10_000;
 const OPENAI_URL = "https://api.openai.com/v1/responses";
+const JOB = /^[A-Za-z0-9-]{8,64}$/;
+const JOB_MAX_MS = 30 * 60_000, JOB_KEEP_MS = 24 * 3600_000;
 
 const num = (v, d) => (v === undefined || v === "" ? d : +v);   // "0" is a real limit (the off switch)
 const kst = (ms = Date.now()) => new Date(ms + 9 * 3600_000).toISOString();
@@ -81,8 +85,11 @@ export function layoutContent(body) {
     const ar = s.w > 0 && s.h > 0 ? s.w / s.h : null;
     const orient = ar ? `${ar < 0.95 ? "P" : ar > 1.05 ? "L" : "S"} ${ar.toFixed(2)}` : "";
     const video = s.video ? `영상 ${Math.round((s.durMs || 0) / 100) / 10}초` + (im.atMs != null ? `, 장면 ${im.atMs}ms` : "") : "";
-    content.push(txt([`[${clean(im.id, 64)}]`, clean(s.local, 20), clean(s.place, 40), orient, video].filter(Boolean).join(" ")), jpeg(im.b64));
+    const tag = s.kind ? `${clean(s.kind, 4)}: ${clean(s.what, 30)}` : "";
+    content.push(txt([`[${clean(im.id, 64)}]`, clean(s.local, 20), clean(s.place, 40), orient, video, tag].filter(Boolean).join(" ")), jpeg(im.b64));
   }
+  const flow = outline(body.scenes, shots);
+  if (flow) content.push(txt(flow));
   const o = body.opts || {};
   const notes = (body.notes || []).map(n => `${clean(n.day, 10) || "날짜 없음"}: ${clean(n.text, 12000)}`).join("\n\n");
   let tail = `여행한 사람이 적은 여행 성격: 누구랑=${clean(o.who, 40) || "없음"}, ${clean(o.about, 200) || "없음"}\n\n` +
@@ -96,15 +103,110 @@ export function layoutContent(body) {
   return content;
 }
 
+const getJob = (db, job) => db.prepare("SELECT * FROM jobs WHERE job = ?1").bind(job).first();
+
+/** Where a /layout job stands: the queue consumer writes the result; until then it is pending. */
+export async function jobState(env, counts, row) {
+  if (!row) return { error: "none" };
+  return row.status === "queued" ? { status: "pending" } : JSON.parse(row.body);
+}
+
+/** /layout on a job that already exists: the /result answer, but a pending one keeps the {job, status} shape. */
+async function layoutState(env, counts, row) {
+  const s = await jobState(env, counts, row);
+  return s.status === "pending" ? { job: row.job, status: "pending" } : s;
+}
+
+/** Record a job's end once (the status='queued' guard) and settle its money: real usage, or keep the reservation. */
+async function finishJob(env, counts, row, out, usage) {
+  const status = out && !out.error ? "done" : "failed";
+  const won = await env.DB.prepare("UPDATE jobs SET status = ?2, body = ?3 WHERE job = ?1 AND status = 'queued' RETURNING job")
+    .bind(row.job, status, JSON.stringify(out || { error: "model" })).first();
+  if (won && usage) await counts.settle(row.month, realMills(usage) - row.reserved);
+}
+
+/** Queue consumer: one /layout job, a normal (fast, not background) model call; up to 15 min of wall time here. */
+export async function runJob(env, counts, job) {
+  const row = await getJob(env.DB, job);
+  if (!row || row.status !== "queued") return;
+  const payload = await env.LAYOUT_IN.get(job, "json");
+  if (!payload) return finishJob(env, counts, row, { error: "none" }, null);
+  let out = { error: "model" }, usage = null;
+  try {
+    const r = await (env.fetchModel || fetch)(OPENAI_URL, {
+      method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${env.OPENAI_KEY}` },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) { console.log("upstream", r.status); out = { error: "upstream" }; usage = { input_tokens: 0, output_tokens: 0 }; }
+    else {
+      const data = await r.json();
+      usage = data.usage || null;
+      console.log("model", data.status, data.usage?.input_tokens, data.usage?.output_tokens);   // counts only, never text
+      const text = (data.output || []).find(o => o.type === "message")?.content?.find(c => c.type === "output_text")?.text;
+      if (data.status === "completed" && text) { try { out = JSON.parse(text); } catch { out = { error: "model" }; } }
+    }
+  } catch { console.log("upstream network"); out = { error: "upstream" }; }   // billing unknown: the reservation stays
+  await finishJob(env, counts, row, out, usage);
+  await env.LAYOUT_IN.delete(job);
+}
+
+/** Cron: drop rows older than a day, time out jobs stuck over 30 min (reservation kept). */
+export async function cron(env, counts, now = Date.now()) {
+  await env.DB.prepare("DELETE FROM jobs WHERE created < ?1").bind(now - JOB_KEEP_MS).run();
+  await env.DB.prepare("UPDATE jobs SET status = 'failed', body = ?2 WHERE status = 'queued' AND created < ?1")
+    .bind(now - JOB_MAX_MS, JSON.stringify({ error: "timeout" })).run();
+}
+
+/** /layout: claim the job row, park the request (KV, 2 h) and queue it; answer at once. The app polls /result. */
+async function startLayout(env, counts, job, payload, kMonth, kDay, reserved) {
+  const refund = async () => { await counts.settle(kMonth, -reserved); await counts.give(kDay); };
+  const claimed = await env.DB.prepare("INSERT INTO jobs (job, month, reserved, status, created) VALUES (?1, ?2, ?3, 'queued', ?4) " +
+    "ON CONFLICT(job) DO NOTHING RETURNING job").bind(job, kMonth, reserved, Date.now()).first();
+  if (!claimed) { await refund(); return layoutState(env, counts, await getJob(env.DB, job)); }   // a twin request won the race
+  try {
+    await env.LAYOUT_IN.put(job, JSON.stringify(payload), { expirationTtl: 7200 });
+    await env.JOBQ.send({ job });
+  } catch {
+    console.log("queue");
+    await refund();
+    await env.DB.prepare("DELETE FROM jobs WHERE job = ?1").bind(job).run();
+    return { error: "upstream" };
+  }
+  return { job, status: "pending" };
+}
+
+/** The trip as the app grouped it (day -> scene by time gap/place): the editor keeps this order. */
+export function outline(days, shots) {
+  if (!Array.isArray(days) || !days.length) return "";
+  const lines = ["## 여행의 흐름 (사진의 시각·장소로 앱이 나눈 것 — 날과 장면의 순서를 그대로 지킨다)"];
+  for (const d of days.slice(0, 31)) {
+    lines.push("", clean(d.label, 40));
+    for (const [i, sc] of (Array.isArray(d.scenes) ? d.scenes : []).slice(0, 40).entries()) {
+      const ids = (Array.isArray(sc.ids) ? sc.ids : []).slice(0, 40).map(id => {
+        const s = shots.get(id) || {};
+        return `${clean(id, 64)}(${clean(s.kind, 4) || "?"}: ${clean(s.what, 30)})`;
+      });
+      lines.push(`  장면 ${i + 1} · ${clean(sc.from, 5)}–${clean(sc.to, 5)} · ${clean(sc.place, 40) || "장소 모름"}: ${ids.join(", ")}`);
+    }
+  }
+  return lines.join("\n");
+}
+
 /** Text chars in a request (for the input reservation). */
 const chars = body => JSON.stringify({ s: body.shots, n: body.notes, o: body.opts, p: body.page, m: body.mustInclude,
-  c: body.catalog, f: body.fix, v: body.prev }).length;
+  c: body.catalog, f: body.fix, v: body.prev, sc: body.scenes }).length;
 
 export async function handle(req, env, ctx, counts) {
   const url = new URL(req.url);
-  const route = ROUTES[url.pathname];
-  if (req.method !== "POST" || !route) return json({ error: "not found" }, 404);
+  const route = ROUTES[url.pathname], result = url.pathname === "/result";
+  if (req.method !== "POST" || !(route || result)) return json({ error: "not found" }, 404);
   if (!env.APP_TOKEN || req.headers.get("x-app-token") !== env.APP_TOKEN) return json({ error: "token" }, 401);
+  if (result) {   // polled every few seconds: no IP limiter, no counters
+    let b;
+    try { b = await req.json(); } catch { return json({ error: "body" }, 400); }
+    if (!JOB.test(b?.job)) return json({ error: "body" }, 400);
+    return json(await jobState(env, counts, await getJob(env.DB, b.job)));
+  }
   if (env.LIMIT && !(await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" })).success) return json({ error: "slow" }, 429);
   let body;
   try { body = await req.json(); } catch { return json({ error: "body" }, 400); }
@@ -113,9 +215,15 @@ export async function handle(req, env, ctx, counts) {
   if (!images.length || !images.every(i => goodB64(i?.b64) && typeof i.id === "string")) return json({ error: "body" }, 400);
   const shape = SHAPES.includes(body.shape) ? body.shape : "short";
   const kind = url.pathname.slice(1);
-  if (kind === "layout" && (!Object.hasOwn(THEMES, body.theme) || !Array.isArray(body.catalog) || !body.catalog.length ||
+  // a request without a job (app builds before 11-27) still gets the old streamed answer
+  const asJob = kind === "layout" && body.job !== undefined;
+  if (kind === "layout" && ((asJob && !JOB.test(body.job)) || !Object.hasOwn(THEMES, body.theme) || !Array.isArray(body.catalog) || !body.catalog.length ||
     body.catalog.length > MAX_CATALOG || JSON.stringify(body.prev ?? null).length > MAX_PREV)) return json({ error: "body" }, 400);
   if (!env.OPENAI_KEY) return json({ error: "off" }, 503);
+  if (asJob) {   // idempotent: the same job never calls the model twice
+    const row = await getJob(env.DB, body.job);
+    if (row) return json(await layoutState(env, counts, row));
+  }
 
   const now = kst(), kMonth = `m|${now.slice(0, 7)}`;
   const [dk, dvar, ddef] = route.day, kDay = `${dk}|${now.slice(0, 10)}`;
@@ -132,6 +240,19 @@ export async function handle(req, env, ctx, counts) {
 
   const schema = { pick: PICK_SCHEMA, write: WRITE_SCHEMA, rewrite: REWRITE_SCHEMA, layout: LAYOUT_SCHEMA }[kind];
   const content = kind === "rewrite" ? rewriteContent(body, images) : kind === "layout" ? layoutContent(body) : bookContent(body, kind === "pick");
+  // /layout's model and effort can differ (LAYOUT_MODEL / LAYOUT_EFFORT); with ALLOW_TEST=1 a request may ask for others (model comparison)
+  // the override needs the operator's TEST_KEY secret (the app token ships inside the APK) and an allowed model
+  const test = kind === "layout" && env.ALLOW_TEST === "1" && env.TEST_KEY && req.headers.get("x-test-key") === env.TEST_KEY &&
+    body.test && typeof body.test === "object" ? body.test : {};
+  const TEST_MODELS = ["gpt-5.4", "gpt-5.4-mini", "gpt-5.5"];
+  const model = kind === "layout" ? (TEST_MODELS.includes(test.model) ? test.model : env.LAYOUT_MODEL || env.MODEL || "gpt-5.4") : env.MODEL || "gpt-5.4";
+  const effort = kind === "layout" ? (["low", "medium", "high"].includes(test.effort) ? test.effort : env.LAYOUT_EFFORT || "medium") : "medium";
+  const payload = {
+    model, max_output_tokens: maxTokens, reasoning: { effort }, store: false,
+    input: [{ role: "system", content: system }, { role: "user", content }],
+    text: { format: { type: "json_schema", name: kind, schema, strict: true } },
+  };
+  if (asJob) return json(await startLayout(env, counts, body.job, payload, kMonth, kDay, reserved));
 
   // Stream to the app: a space every 10 s keeps the connection open while the model thinks, then one JSON object.
   // Status is already 200 by then, so errors travel in the body: {error: "model" | "upstream"}.
@@ -145,11 +266,7 @@ export async function handle(req, env, ctx, counts) {
       const r = await (env.fetchModel || fetch)(OPENAI_URL, {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${env.OPENAI_KEY}` },
-        body: JSON.stringify({
-          model: env.MODEL || "gpt-5.4", max_output_tokens: maxTokens, reasoning: { effort: "medium" }, store: false,
-          input: [{ role: "system", content: system }, { role: "user", content }],
-          text: { format: { type: "json_schema", name: kind, schema, strict: true } },
-        }),
+        body: JSON.stringify(payload),
       });
       if (!r.ok) {
         console.log("upstream", r.status);
@@ -181,4 +298,8 @@ export async function handle(req, env, ctx, counts) {
 
 export default {
   async fetch(req, env, ctx) { return handle(req, env, ctx, new D1Counts(env.DB)); },
+  async scheduled(event, env, ctx) { ctx.waitUntil(cron(env, new D1Counts(env.DB))); },
+  async queue(batch, env) {
+    for (const m of batch.messages) { await runJob(env, new D1Counts(env.DB), m.body.job); m.ack(); }
+  },
 };

@@ -5,6 +5,9 @@ const BANNED = "금지: 추억, 힐링, 소중한, ~했던 순간, 잊지 못할
 
 export const SYSTEM_PICK = `너는 여행 사진첩 편집자다. 한 사람이 여행에서 찍은 사진·영상 장면 미리보기와, 각 장의 현지 시각·장소 이름, 그 사람이 쓴 메모(있을 때)를 받는다. 글은 쓰지 않고 고르기만 한다.
 1. picks: 책에 넣을 사진을 고른다. 흔들림·눈 감음·중복·의미 없는 장면은 뺀다. 같은 장면의 비슷한 사진은 가장 좋은 하나만. score 는 0~100(책의 대표가 될 만할수록 높게). 날마다 고르게. "꼭 넣을 사진"으로 표시된 id 는 반드시 넣는다.
+   고른 사진마다 kind 와 what 도 적는다 — 책을 엮는 편집자가 이것으로 여행의 흐름을 이해한다.
+   kind: 풍경 | 사람 | 음식 | 실내 | 이동 | 물건 | 기타 중 하나(사람이 주인공이면 사람, 차·배·비행기 창·길 위면 이동, 숙소·카페 안은 실내).
+   what: 사진에 실제로 보이는 것을 8~20자 평서문 명사구로(예: "저수지 둑길과 억새", "꽃게탕 냄비", "텐트 안 난로"). 보이지 않는 것·감정·비유를 쓰지 않는다.
    영상은 장면 이미지가 여러 장 온다(id 는 영상 id). 영상을 넣을 거면 영상 id 를 picks 에 한 번만 넣는다.
 2. ask: 둘 중 무엇을 넣을지 사람이 골라야 할 만큼 비슷하게 좋은 두 장만, 최대 5쌍. 없으면 빈 배열.
 3. clips: 넣은 영상마다 3~5초 구간(startMs, endMs). 장면 이미지의 영상 안 시각(ms)을 보고 가장 좋은 순간을 고른다.
@@ -38,7 +41,8 @@ const obj = (props) => ({ type: "object", additionalProperties: false, required:
 
 // No array/length/number constraints: structured outputs do not support them. The app's checkPick/checkWrite enforce counts.
 export const PICK_SCHEMA = obj({
-  picks: { type: "array", items: obj({ id: str, score: int }) },
+  picks: { type: "array", items: obj({ id: str, score: int,
+    kind: { type: "string", enum: ["풍경", "사람", "음식", "실내", "이동", "물건", "기타"] }, what: str }) },
   ask: { type: "array", items: obj({ a: str, b: str }) },
   clips: { type: "array", items: obj({ id: str, startMs: int, endMs: int }) },
   chapters: { type: "array", items: obj({ day: str, line: str }) },
@@ -91,7 +95,7 @@ ${cat}
 - 칸의 방향과 사진 방향을 맞춘다. 한 사진은 한 번만(표지 사진은 본문에 한 번 더 가능). 약한 사진은 빼도 된다.
 - fx, fy(0~100): 칸에 맞춰 잘릴 때 남길 중심.
 - texts: 그 틀에 있는 글 칸만, 글자 수 이하. 글 칸이 있어도 비워 둘 거면 넣지 않는다(표지 title·period 는 꼭).
-- intent: 그 쪽에서 하려는 것 한 줄(책에 안 나온다). plan: 책 전체 흐름 3~6줄.
+- plan: 책 전체 흐름 2~4줄(책에 안 나온다).
 
 답은 스키마 JSON 만.`;
 }
@@ -99,7 +103,7 @@ ${cat}
 export const LAYOUT_SCHEMA = obj({
   title: str, plan: str,
   pages: { type: "array", items: obj({
-    layout: str, intent: str,
+    layout: str,
     photos: { type: "array", items: obj({ id: str, fx: int, fy: int }) },
     texts: { type: "array", items: obj({ key: str, text: str }) },
   }) },

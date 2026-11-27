@@ -4,7 +4,7 @@ compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
 
 # 「여행 책자」 AI relay: 512 px previews + local times + place names + notes -> GPT -> picks, captions, essay.
-# Nothing is stored; logs carry status and token counts only.
+# /layout plans are kept in D1 `jobs` up to 24 h (background jobs); nothing else is stored. Logs: status and token counts only.
 # Secrets: OPENAI_KEY (none = 503 off), APP_TOKEN (the app's x-app-token; none = every call 401).
 [vars]
 MODEL = "gpt-5.4"
@@ -13,6 +13,14 @@ MONTH_CENTS = "1000"
 DAY_BOOKS = "20"
 WRITE_DAY = "60"
 REWRITE_DAY = "200"
+# /layout may ask for another model/effort (body.test) while models are compared (11-27); set "0" after
+ALLOW_TEST = "1"
+# /layout reasoning effort: low took 66 s vs medium 128 s on the same 20-photo trip (11-27), plain captions either way
+LAYOUT_EFFORT = "low"
+
+# finishes queued /layout jobs, times out stuck ones, prunes rows older than 24 h
+[triggers]
+crons = ["* * * * *"]
 
 [[d1_databases]]
 binding = "DB"
@@ -30,3 +38,19 @@ simple = { limit = 4, period = 60 }
 type = "Text"
 globs = ["**/*.md"]
 fallthrough = true
+
+# /layout jobs (11-27): the request waits in KV, a queue consumer makes the (fast, normal) model call with up to
+# 15 min of wall time, so the app may leave or be closed; the plan lands in D1 `jobs`
+[[kv_namespaces]]
+binding = "LAYOUT_IN"
+id = "867f0f93f82f4834941546cf6374be64"
+
+[[queues.producers]]
+binding = "JOBQ"
+queue = "layout-jobs"
+
+[[queues.consumers]]
+queue = "layout-jobs"
+max_batch_size = 1
+max_batch_timeout = 1
+max_retries = 1

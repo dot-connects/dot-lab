@@ -2,10 +2,23 @@ import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
-import { handle, MemoryCounts, D1Counts, reserveMills, realMills } from "../src/index.js";
+import { handle, cron, runJob, MemoryCounts, D1Counts, reserveMills, realMills } from "../src/index.js";
 
 const B64 = "/9j/" + "A".repeat(300);
-let counts, env, calls, logs, waits;
+let counts, env, calls, logs, waits, db;
+
+// D1 over node:sqlite, built from schema.sql
+function fakeD1() {
+  db = new DatabaseSync(":memory:");
+  db.exec(readFileSync(new URL("../schema.sql", import.meta.url), "utf8"));
+  return { prepare(sql) { const st = db.prepare(sql); return { bind(...a) {
+    return { first: async () => st.get(...a) ?? null, run: async () => st.run(...a), all: async () => ({ results: st.all(...a) }) }; } }; } };
+}
+
+// KV and Queue stand-ins
+let kv, queued;
+function fakeKV() { kv = new Map(); return { put: async (k, v) => kv.set(k, v), get: async (k, t) => (kv.has(k) ? (t === "json" ? JSON.parse(kv.get(k)) : kv.get(k)) : null), delete: async k => kv.delete(k) }; }
+function fakeQ() { queued = []; return { send: async m => queued.push(m) }; }
 
 // a fake OpenAI fetch: `reply` (Responses API body), an HTTP error `status`, or a network `fail`
 function fakeFetch({ reply, status, fail } = {}) {
@@ -17,12 +30,12 @@ function fakeFetch({ reply, status, fail } = {}) {
   };
 }
 const ok = (obj, usage = { input_tokens: 20000, output_tokens: 4000 }, st = "completed") =>
-  ({ status: st, usage, output: [{ type: "reasoning" }, { type: "message", content: [{ type: "output_text", text: JSON.stringify(obj) }] }] });
+  ({ id: "resp_1", status: st, usage, output: [{ type: "reasoning" }, { type: "message", content: [{ type: "output_text", text: JSON.stringify(obj) }] }] });
 
 beforeEach(() => {
   counts = new MemoryCounts(); calls = []; logs = []; waits = [];
   env = { APP_TOKEN: "tok", OPENAI_KEY: "k", MONTH_CENTS: "1000", DAY_BOOKS: "20",
-    fetchModel: fakeFetch({ reply: ok({ picks: [] }) }) };
+    fetchModel: fakeFetch({ reply: ok({ picks: [] }) }), DB: fakeD1(), LAYOUT_IN: fakeKV(), JOBQ: fakeQ() };
   console.log = (...a) => logs.push(a.join(" "));
 });
 
@@ -155,7 +168,7 @@ const CATALOG = [
   { id: "a/cover", kind: "cover", slots: ["P"], texts: { title: 12, period: 20 }, when: "표지" },
   { id: "a/pair", kind: "photo", slots: ["L", "V"], texts: { cap: 24 }, when: "짝 두 장" },
 ];
-const layoutBody = extra => ({ images: imgs(2), theme: "a", catalog: CATALOG, rules: { pages: [16, 26], min_distinct: 5 },
+const layoutBody = extra => ({ job: "job-12345678", images: imgs(2), theme: "a", catalog: CATALOG, rules: { pages: [16, 26], min_distinct: 5 },
   shots: [{ id: "p0", local: "2026-06-12T13:20", place: "협재", w: 3000, h: 4000 },
     { id: "p1", local: "2026-06-12T14:00", place: "우도", video: true, durMs: 8400, w: 1920, h: 1080 }],
   opts: { who: "연인", about: "느긋하게 걷기" }, notes: [{ day: "2026-06-12", text: "바람이 셌다" }], ...extra });
@@ -164,6 +177,7 @@ const allText = c => [c.input[0].content, ...c.input[1].content.filter(x => x.ty
 test("/layout prompt: theme guide, catalog line, concept line, labelled images, layout schema", async () => {
   const r = await call(layoutBody(), { path: "/layout" });
   assert.equal(r.status, 200);
+  await runJob(env, counts, "job-12345678");   // the queue consumer makes the call
   const c = calls[0], t = allText(c);
   assert.ok(t.includes("여백의 책"));                                    // a.md
   assert.ok(t.includes("글에서 '메모'"));                                 // _common.md
@@ -181,6 +195,7 @@ test("/layout prompt: theme guide, catalog line, concept line, labelled images, 
 
 test("/layout: concept defaults to 없음, retry block carries fix list and the previous answer", async () => {
   await call(layoutBody({ opts: {}, fix: ["2쪽: 없는 틀 x"], prev: { title: "제주", pages: [] } }), { path: "/layout" });
+  await runJob(env, counts, "job-12345678");
   const t = allText(calls[0]);
   assert.ok(t.includes("누구랑=없음, 없음"));
   assert.ok(t.includes("## 지난 답의 문제 (모두 고쳐서 책 전체를 다시 답해라)\n- 2쪽: 없는 틀 x\n\n지난 답:\n{\"title\":\"제주\",\"pages\":[]}"));
@@ -198,4 +213,71 @@ test("/layout shares the /write day counter", async () => {
   env.WRITE_DAY = "1";
   assert.equal((await call(layoutBody(), { path: "/layout" })).status, 200);
   assert.equal((await call({ images: imgs(2) }, { path: "/write" })).status, 503);
+});
+
+// /layout queued jobs + /result polling
+const PLAN = { title: "제주", plan: "p", pages: [] };
+const USAGE = { input_tokens: 30000, output_tokens: 9000 };
+const result = (job = "job-12345678", token) => call({ job }, { path: "/result", token });
+const work = () => runJob(env, counts, "job-12345678");
+
+test("/layout: queued at once (KV + queue, no model call yet); the same job never queues twice", async () => {
+  const r = await call(layoutBody(), { path: "/layout" });
+  assert.deepEqual(r.body, { job: "job-12345678", status: "pending" });
+  assert.equal(calls.length, 0);
+  assert.deepEqual(queued, [{ job: "job-12345678" }]);
+  assert.ok(kv.has("job-12345678"));
+  assert.ok(month() > 0);   // reserved
+  assert.deepEqual((await call(layoutBody(), { path: "/layout" })).body, { job: "job-12345678", status: "pending" });
+  assert.equal(queued.length, 1);
+  assert.equal(db.prepare("SELECT count(*) c FROM jobs").get().c, 1);
+});
+
+test("consumer: one normal model call, plan stored, money settled once, request deleted", async () => {
+  env.fetchModel = fakeFetch({ reply: ok(PLAN, USAGE) });
+  await call(layoutBody(), { path: "/layout" });
+  assert.deepEqual((await result()).body, { status: "pending" });
+  await work();
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].background, undefined);
+  assert.deepEqual((await result()).body, PLAN);
+  assert.equal(month(), realMills(USAGE));
+  assert.equal(kv.has("job-12345678"), false);
+  await work();   // a redelivered message does nothing
+  assert.equal(calls.length, 1);
+  assert.deepEqual((await call(layoutBody(), { path: "/layout" })).body, PLAN);
+});
+
+test("consumer: model error -> {error}; upstream HTTP error refunds; unknown job -> none", async () => {
+  env.fetchModel = fakeFetch({ reply: ok({}, { input_tokens: 1000, output_tokens: 0 }, "incomplete") });
+  await call(layoutBody(), { path: "/layout" });
+  await work();
+  assert.deepEqual((await result()).body, { error: "model" });
+  assert.equal(month(), realMills({ input_tokens: 1000, output_tokens: 0 }));
+  assert.deepEqual((await result("job-nothere")).body, { error: "none" });
+  assert.equal((await result("bad")).status, 400);
+});
+
+test("/result skips the IP limiter; a bad token is 401", async () => {
+  let limited = 0;
+  env.LIMIT = { limit: async () => { limited++; return { success: false }; } };
+  assert.deepEqual((await result()).body, { error: "none" });
+  assert.equal(limited, 0);
+  assert.equal((await result("job-12345678", "nope")).status, 401);
+});
+
+test("cron: times out a job stuck 30 min (reservation kept), deletes day-old rows", async () => {
+  const now = Date.now();
+  const ins = db.prepare("INSERT INTO jobs (job, resp, month, reserved, status, body, created) VALUES (?, ?, ?, ?, ?, ?, ?)");
+  ins.run("job-old-queued", null, "m|x", 50, "queued", null, now - 31 * 60_000);
+  ins.run("job-day-old", null, "m|x", 50, "done", "{}", now - 25 * 3600_000);
+  await cron(env, counts, now);
+  assert.deepEqual((await result("job-old-queued")).body, { error: "timeout" });
+  assert.deepEqual((await result("job-day-old")).body, { error: "none" });
+});
+
+test("a request without a job still gets the old streamed answer", async () => {
+  env.fetchModel = fakeFetch({ reply: ok(PLAN, USAGE) });
+  const b = layoutBody(); delete b.job;
+  assert.deepEqual((await call(b, { path: "/layout" })).body, PLAN);
 });
