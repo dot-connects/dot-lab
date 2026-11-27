@@ -1,0 +1,296 @@
+<meta charset="utf-8">
+<title>리얼뽑기 펠트 시안 v3</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<link rel="stylesheet" href="kit.css">
+<link rel="stylesheet" href="v3.css">
+
+<div class="wrap">
+<header>
+  <h1>리얼뽑기, 펠트로 다시<br><em>v3 · 실제 흐름대로</em></h1>
+  <p class="lead">고르신 방향(펠트 세계 · 진짜 동물 3가지 방식 비교 · 날씨는 3D로 · 광고 없음 · 캡슐 부화 · 4:5 자랑 카드)으로 처음부터 다시 짰어요. 화면은 실제 앱 크기(360×780)이고, 판정·문구는 지금 앱 코드 그대로예요.</p>
+</header>
+<nav class="toc" aria-label="화면 목록">
+  <a class="chip felt stitch" href="#c1">1 카메라 뽑기</a><a class="chip felt stitch" href="#c2">2 처음 뽑은 카드</a><a class="chip felt stitch" href="#c3">3 자랑 카드</a><a class="chip felt stitch" href="#c4">4 도감</a><a class="chip felt stitch" href="#c5">5 펫 만들기</a><a class="chip felt stitch" href="#c6">6 펫 설정</a><a class="chip felt stitch" href="#c7">7 날씨</a><a class="chip felt stitch" href="#c8">8 스토어 첫 장</a><a class="chip felt stitch" href="#c9">9 릴스 첫 장면</a><a class="chip felt stitch" href="#c0">+ 그림 뽑기</a>
+</nav>
+
+<!-- 1 camera -->
+<section class="item felt stitch" id="c1">
+  <div>
+    <h2><span class="no felt">1</span>카메라로 진짜 녀석 뽑기</h2>
+    <p class="what">지금 앱 규칙 그대로예요. <b>집게 끝이 몸에 닿아야</b> 잡히고(가운데 80% · 가장자리 35%), 잡히면 들려 올라가며 버둥대다 지면 <b>미끄러져 빠져요</b>. 몸 밖을 누르면 헛집어요. 캡슐은 맨 위에서.</p>
+    <ul class="facts">
+      <li>들려 올라가는 모습 3가지를 골라 보세요: <b>펠트 스티커</b>(흰 바느질 테두리로 떼어짐) · <b>오린 사진</b>(지금 앱) · <b>잡자마자 작게</b>(바로 캡슐).</li>
+      <li>결과도 골라서 볼 수 있어요: 성공 · 미끄러져 놓침 · 헛집음. 실패 문구는 앱 그대로("흔들려서 빠졌다", "헛집었다").</li>
+      <li>놓치면 방식마다 다르게: 스티커는 팔랑 떨어져 제자리에 "톡" 다시 붙고, 오린 사진은 툭 떨어져 사라지고, 작게는 캡슐이 "펑" 열려 녀석이 튀어 돌아가요.</li>
+      <li>성공하면 바로 2번 "처음 뽑은 카드"가 떠요.</li>
+    </ul>
+    <span class="size felt">크기 M · 앱 판정 그대로, 그림·연출만</span>
+  </div>
+  <div style="text-align:center">
+    <div class="dev"><div class="scr" id="cam">
+      <img class="cbg" src="img/cam2.jpg" alt="카메라 화면">
+      <img class="cring" id="cring" src="img/cam2-ring.png" alt="">
+      <div class="vig"></div>
+      <div class="sb" style="color:#fff"><span>9:41</span><span>●●● ▮</span></div><div class="punch"></div>
+      <div class="rail"></div>
+      <div class="top">
+        <button class="chip felt stitch"><svg class="camoff" viewBox="0 0 24 24" fill="none" stroke="#3b2e22" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="18" height="13" rx="3"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/><path d="M3 3l18 18"/></svg>카메라 끄기</button>
+        <button class="chip felt stitch" id="cdex">도감 8</button>
+      </div>
+      <div class="found felt stitch" id="found"><span class="dot"></span>고양이 찾았다!</div>
+      <div class="ar" id="ar"><img src="img/monggeul-walk2.webp" alt="몽글"></div>
+      <img class="held" id="held" alt="">
+      <div class="capx" id="capx"><img class="in" src="img/cam2-cat.png" alt=""><img class="sh" src="img/cap-closed.png" alt=""></div>
+      <div class="clawbox" id="ccb" style="transform:translateX(130px)"><div class="str" id="cstr"></div><img class="c" src="img/claw.png" alt="집게"></div>
+      <div class="flash" id="cflash"></div>
+      <div class="hint felt stitch">집게를 몸 위로, 꾹!</div>
+      <button class="gobtn" id="cgo" aria-label="집기"><img src="img/button.png" alt=""><span class="lbl felt">집기</span></button>
+      <div class="toast felt stitch" id="ctoast"></div>
+      <div class="newcard" id="newcard"></div>
+    </div></div>
+    <div class="ctl" role="group" aria-label="방식"><span class="lab">방식</span>
+      <button class="chip felt stitch" data-v="sticker" aria-pressed="true">펠트 스티커</button><button class="chip felt stitch" data-v="cut" aria-pressed="false">오린 사진</button><button class="chip felt stitch" data-v="small" aria-pressed="false">잡자마자 작게</button>
+    </div>
+    <div class="ctl" role="group" aria-label="결과"><span class="lab">결과</span>
+      <button class="chip felt stitch" data-o="win" aria-pressed="true">성공</button><button class="chip felt stitch" data-o="slip" aria-pressed="false">미끄러져 놓침</button><button class="chip felt stitch" data-o="air" aria-pressed="false">헛집음</button>
+    </div>
+    <p class="cap">화면을 끌어 집게를 맞추고 빨간 버튼</p>
+  </div>
+</section>
+
+<!-- 2 first card -->
+<section class="item felt stitch" id="c2">
+  <div>
+    <h2><span class="no felt">2</span>처음 뽑았을 때</h2>
+    <p class="what">캡슐이 굴러 나가면 뽑기 화면 위에 <b>자랑 카드 그대로</b>가 떠요. 바로 공유할 수 있게, 보이는 그림과 올라가는 그림이 같아요.</p>
+    <ul class="facts">
+      <li>주 버튼은 "자랑하기" 하나, "계속 뽑기"는 글자로. 카드 밖을 눌러도 안 닫혀요(지금 앱처럼 집게가 안 움직이게).</li>
+      <li>카드 아래 한 줄로 다음 할 일을 알려 줘요: "도감에 넣었어요 · 펫으로 만들 수 있어요 ›".</li>
+      <li>진짜 녀석은 스티커, 털뭉치 녀석은 그 녀석 그림.</li>
+    </ul>
+    <span class="size felt">크기 S · BragCard 다시 그리기</span>
+  </div>
+  <div class="dev"><div class="scr" id="first">
+    <img class="cbg blur" src="img/cam2.jpg" alt="">
+    <div class="dim"></div>
+    <div class="sb" style="color:#fff"><span>9:42</span><span>●●● ▮</span></div><div class="punch"></div>
+    <div class="ribbon">새로 뽑았다!</div>
+    <div class="cardslot" data-card="real"></div>
+    <p class="after">도감에 넣었어요 · <u>펫으로 만들 수 있어요 ›</u></p>
+    <div class="firstbtns"><button class="fbtn felt stitch">자랑하기</button><button class="flink light">계속 뽑기</button></div>
+  </div></div>
+</section>
+
+<!-- 3 share card -->
+<section class="item felt stitch" id="c3">
+  <div>
+    <h2><span class="no felt">3</span>자랑 카드 (4:5)</h2>
+    <p class="what">인스타 피드에 올리는 한 장. 펠트 세계 위에 열린 캡슐, 거기서 나온 녀석, 이름표. 앱 이름은 작게, 링크는 넣지 않아요(지금 원칙).</p>
+    <ul class="facts">
+      <li>캡슐 색은 뽑을 때마다 달라요(지금 앱의 10색). 카드 강조색도 그 색을 따라가요.</li>
+      <li>오른쪽 위 우표 = 도감 번호. 아래 이름표 = 이름 · 종류 · 뽑은 날 · 성격 두 개.</li>
+    </ul>
+    <span class="size felt">크기 S · ShareCard 다시 그리기</span>
+  </div>
+  <div class="stage">
+    <div><div class="cardslot big" data-card="real"></div><p class="cap">진짜 녀석</p></div>
+    <div><div class="cardslot big" data-card="critter"></div><p class="cap">털뭉치 녀석</p></div>
+  </div>
+</section>
+
+<!-- 4 dex -->
+<section class="item felt stitch" id="c4">
+  <div>
+    <h2><span class="no felt">4</span>도감</h2>
+    <p class="what">칸마다 펠트 카드. 진짜 녀석은 <b>스티커</b>로, 펫을 만드는 중인 칸은 <b>흔들리는 캡슐</b>로, 못 뽑은 털뭉치는 닫힌 캡슐로 보여요.</p>
+    <ul class="facts">
+      <li>위 숫자는 "털뭉치 7/16" 하나만(모을 목표가 보이게). 진짜 녀석 수는 칸으로 충분해요.</li>
+      <li>"펫 설정"은 오른쪽 위 보조 칩. 펫 설정에서 뒤로 가면 다시 여기로 와요(오늘 고쳐서 커밋함).</li>
+    </ul>
+    <span class="size felt">크기 M</span>
+  </div>
+  <div class="dev"><div class="scr" id="dexg">
+    <div class="sb"><span>9:43</span><span>●●● ▮</span></div><div class="punch"></div>
+    <div class="dhead"><button class="chip felt stitch">‹ 뽑기</button><button class="chip felt stitch">펫 설정</button></div>
+    <div class="dtitle"><h3>도감</h3><span class="prog felt"><img src="img/cap-closed.png" alt="">털뭉치 7 / 16</span></div>
+    <div class="grid" id="grid"></div>
+  </div></div>
+</section>
+
+<!-- 5 make pet -->
+<section class="item felt stitch" id="c5">
+  <div>
+    <h2><span class="no felt">5</span>펫 만들기 = 캡슐 부화</h2>
+    <p class="what">만드는 데 1~3분 걸려서, 화면을 붙잡아 두지 않아요. 누르면 고른 칸이 <b>캡슐</b>로 닫히고 흔들리며 금이 가요. 나가도 되고, 다 되면 알림이 오고 캡슐이 "퐁" 열려요.</p>
+    <ul class="facts">
+      <li>광고는 뺐어요. 남은 무료 장수는 버튼 한 곳에만.</li>
+      <li>털뭉치·피규어는 고르는 칸 2개 + 버튼 1개. 피규어는 아직 안 그려 봤으면 "눌러서 미리보기".</li>
+      <li>도감 칸에도 같은 캡슐이 흔들려요(4번). 시안은 1~3분을 6초로 줄였어요.</li>
+    </ul>
+    <span class="size felt">크기 M · 상세 화면 + 알림</span>
+  </div>
+  <div style="text-align:center">
+    <div class="dev"><div class="scr" id="det">
+      <div class="sb"><span>9:44</span><span>●●● ▮</span></div><div class="punch"></div>
+      <div class="noti felt" id="noti"><img src="img/cap-open.png" alt=""><span><b>리얼뽑기</b><br>삼색이 털뭉치가 다 됐어요!</span></div>
+      <div class="dtop"><button class="chip felt stitch">‹ 도감</button><button class="chip felt stitch">자랑하기</button></div>
+      <div class="dhero"><img src="img/cam2-sticker.png" alt="삼색이"><i class="ped"></i></div>
+      <div class="dname"><h3>삼색이</h3><p>진짜 고양이 · No.8 · 11월 27일 뽑음</p><div class="tags"><span class="on">잠꾸러기</span><span class="on">애교쟁이</span></div></div>
+      <div class="make felt stitch" style="--c:#fffaf0;--r:22px">
+        <h4>펫으로 만들기</h4>
+        <div class="pick" role="group" aria-label="모양">
+          <button class="felt" aria-pressed="true" data-k="털뭉치" id="tile1"><span class="tim"><img src="img/calico-fluff.png" alt="" id="tileImg"></span>털뭉치</button>
+          <button class="felt" aria-pressed="false" data-k="피규어"><span class="tim todo">눌러서<br>미리보기</span>피규어</button>
+        </div>
+        <button class="fbtn felt stitch" id="mkBtn">털뭉치 펫 만들기 · 무료 5장</button>
+        <p class="mknote" id="mkNote">한 번 만들면 홈 화면에서 같이 살아요</p>
+      </div>
+    </div></div>
+    <div class="ctl" style="margin-inline:auto"><button class="chip felt stitch" id="mkReset">처음부터</button></div>
+  </div>
+</section>
+
+<!-- 6 pet settings -->
+<section class="item felt stitch" id="c6">
+  <div>
+    <h2><span class="no felt">6</span>펫 설정</h2>
+    <p class="what">지금은 한 화면에 누를 곳이 20개쯤이에요. 위에 <b>홈 화면 미리보기 + 켜기 스위치</b>, 그 아래 <b>누구 · 크기</b>만 두고 나머지는 "더 보기" 안으로 접었어요.</p>
+    <ul class="facts">
+      <li>고르는 대로 미리보기 속 녀석이 바로 바뀌어요(눌러 보세요).</li>
+      <li>더 보기: 두 번 톡톡 앱 구름 · 혼잣말 · 날씨 알려 주기(대략 위치) · 소리 · 홈 화면에서만/항상.</li>
+      <li>뒤로 = 도감.</li>
+    </ul>
+    <span class="size felt">크기 M · PetScreen 다시 배치</span>
+  </div>
+  <div class="dev"><div class="scr" id="pet">
+    <div class="sb"><span>9:45</span><span>●●● ▮</span></div><div class="punch"></div>
+    <div class="ptop"><button class="chip felt stitch">‹ 도감</button></div>
+    <h3 class="ptitle">펫</h3>
+    <div class="pscroll">
+      <div class="pv felt" style="--r:24px"><div class="pvhome"><span class="pvclock">9:41</span><div class="pvpet" id="pvPet"><img id="pvImg" src="img/monggeul-walk1.webp" alt=""></div><div class="pvapps"><i></i><i></i><i></i><i></i></div></div>
+        <label class="pon"><span>홈 화면에 펫 띄우기</span><input type="checkbox" id="pOn" checked><i class="sw"></i></label></div>
+      <h5>누구</h5>
+      <div class="whos" id="who"></div>
+      <h5>크기</h5>
+      <div class="seg felt" id="size"><button data-s=".8">작게</button><button data-s="1" aria-pressed="true">보통</button><button data-s="1.25">크게</button></div>
+      <button class="more" id="moreBtn">더 보기 ▾</button>
+      <div class="morebox felt stitch" id="moreBox" hidden>
+        <div class="row"><span>두 번 톡톡 → 앱 구름<small>최근 쓴 앱 6개</small></span><b>›</b></div>
+        <div class="row"><span>혼잣말 말풍선<small>잠금 풀 때 가끔</small></span><label><input type="checkbox" checked><i class="sw"></i></label></div>
+        <div class="row"><span>날씨 알려 주기<small>대략 위치를 써요</small></span><label><input type="checkbox"><i class="sw"></i></label></div>
+        <div class="row"><span>소리</span><label><input type="checkbox" checked><i class="sw"></i></label></div>
+        <div class="row"><span>보이는 곳</span><span class="mini"><b class="on">홈 화면만</b><b>항상</b></span></div>
+      </div>
+    </div>
+  </div></div>
+</section>
+
+<!-- 7 weather -->
+<section class="item felt stitch" id="c7">
+  <div>
+    <h2><span class="no felt">7</span>날씨: 펫이 직접 해요</h2>
+    <p class="what">아이콘을 얹지 않고, 털뭉치가 <b>스스로 우산을 꺼내 펴고 · 마스크를 꺼내 쓰고 · 목도리를 해요</b>. 우산·마스크·목도리는 펫과 같은 3D 털 엔진에서 같은 빛으로 구웠어요.</p>
+    <ul class="facts" id="wxFacts">
+      <li>비가 오기 시작하면 걷다가 멈춰 우산을 펴요. 미세먼지가 나쁘면 마스크를 꺼내 써요. 길게 누르면 지금 날씨 행동을 다시 해요.</li>
+      <li>말풍선은 지금 혼잣말 그대로, 한 줄만("비 와! 우산 챙겨").</li>
+      <li>우산 폭은 몸의 1.3배까지, 마스크·목도리는 몸 안에. 사진으로 만든 펫은 펫 그림을 만들 때 이 동작 칸도 같이 그려요.</li>
+    </ul>
+    <span class="size felt">크기 L · 3D 소품 + 동작 굽기</span>
+  </div>
+  <div style="text-align:center">
+    <div class="dev"><div class="scr" id="wx">
+      <div class="sb" style="color:#fff"><span>8:12</span><span>●●● ▮</span></div><div class="punch"></div>
+      <div class="clock">8:12</div><div class="date">11월 28일 금요일</div>
+      <div class="wzone"><div class="talk felt" id="wtalk"></div><img id="wimg" class="wpet3" alt=""></div>
+      <div class="apps"><i style="background:#506a8a">▣</i><i style="background:#e9786a">▲</i><i style="background:#f0b93a">≡</i><i style="background:#4caf74">●</i><i style="background:#9b6fd6">♪</i><i style="background:#3e5577">◷</i><i style="background:#ee8a3a">▦</i><i style="background:#6d7785">◎</i></div>
+      <div class="dock"></div>
+    </div></div>
+    <div class="ctl" style="margin-inline:auto" role="group" aria-label="날씨" id="wxCtl"></div>
+    <div class="ctl" style="margin-inline:auto" role="group" aria-label="녀석"><span class="lab">녀석</span><button class="chip felt stitch" data-wp="monggeul" aria-pressed="true">몽글</button><button class="chip felt stitch" data-wp="nyangsom" aria-pressed="false">냥솜</button></div>
+    <p class="cap">날씨를 누르면 그 행동을 처음부터 해요 (12fps)</p>
+  </div>
+</section>
+
+<!-- 8 store -->
+<section class="item felt stitch" id="c8">
+  <div>
+    <h2><span class="no felt">8</span>스토어 첫 장</h2>
+    <p class="what">두 안이에요. <b>A</b>는 "사진 → 털뭉치 → 내 폰" 과정을 한 장에, <b>B</b>는 진짜 고양이 옆에 털뭉치가 앉아 있는 결과 한 장면으로 훅.</p>
+    <ul class="facts">
+      <li>문구: "우리 아이 사진 한 장이 / 털뭉치 펫이 돼요". 2번째 장은 뽑기 재미(펫 없는 사람도).</li>
+      <li>사진은 실제 앱이 오린 삼색이와 그 털뭉치 결과물.</li>
+    </ul>
+    <span class="size felt">크기 S</span>
+  </div>
+  <div class="stage">
+    <div><div class="store sa">
+      <div class="sbg"></div>
+      <h3>우리 아이 사진 한 장이<br><em>털뭉치 펫이 돼요</em></h3>
+      <div class="polar"><i class="tape"></i><img src="img/calico.jpg" alt=""><span>우리 집 삼색이</span></div>
+      <svg class="arrow" viewBox="0 0 90 60"><path d="M6 48 C26 8, 58 6, 80 30" fill="none" stroke="#fffaf0" stroke-width="4" stroke-dasharray="7 6" stroke-linecap="round"/><path d="M70 22 L81 31 L68 37" fill="none" stroke="#fffaf0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="res"><img src="img/calico-fluff.png" alt=""><i class="ped"></i></div>
+      <div class="mini"><span class="talk felt">집사 왔어?</span><img src="img/calico-fluff.png" alt=""></div>
+    </div><p class="cap">A · 과정</p></div>
+    <div><div class="store sb2">
+      <img class="full" src="img/cam2.jpg" alt="">
+      <img class="sit" src="img/calico-fluff.png" alt="">
+      <div class="banner felt stitch"><h3>우리 집 고양이 옆에<br><em>털뭉치 삼색이</em>가 생겼어요</h3></div>
+      <div class="lbl l1 felt">진짜 삼색이</div><div class="lbl l2 felt">털뭉치 삼색이</div>
+    </div><p class="cap">B · 결과 한 장면</p></div>
+  </div>
+</section>
+
+<!-- 9 reel -->
+<section class="item felt stitch" id="c9">
+  <div>
+    <h2><span class="no felt">9</span>릴스 첫 장면 (3초)</h2>
+    <p class="what">앱이 실제로 하는 일을 3초에 그대로: 카메라 속 고양이 → 바느질 윤곽이 둘러지고 → 스티커로 떼어져 → 옆에 털뭉치가 퐁.</p>
+    <ul class="facts">
+      <li>촬영 없이 있는 사진·누끼·결과물로 만들어요. 뒤는 지금 릴스 흐름.</li>
+      <li>자막은 스토어와 같은 말로 맞춰요.</li>
+    </ul>
+    <span class="size felt">크기 S · 렌더 3초</span>
+  </div>
+  <div style="text-align:center">
+    <div class="reel3" id="reel3">
+      <img class="full" src="img/cam2.jpg" alt="">
+      <img class="rring" id="rRing" src="img/cam2-ring.png" alt="">
+      <img class="rstk" id="rStk" src="img/cam2-sticker.png" alt="">
+      <img class="rfl" id="rFl" src="img/calico-fluff.png" alt="">
+      <div class="rfound felt stitch" id="rFound">고양이 찾았다!</div>
+      <span class="lab">그냥 시켜봄 · 리얼뽑기</span>
+      <div class="sub" id="rSub"></div>
+    </div>
+    <div class="ctl" style="margin-inline:auto"><button class="chip felt stitch" id="rRe">다시 보기</button></div>
+  </div>
+</section>
+
+<!-- 0 felt claw (kept) -->
+<section class="item felt stitch" id="c0">
+  <div>
+    <h2><span class="no felt">+</span>카메라를 끈 뽑기 (펠트 세계)</h2>
+    <p class="what">지난번에 괜찮다고 하신 펠트 세계 그대로 두었어요. 카메라를 끄면 이 화면이에요.</p>
+    <span class="size felt">크기 M · 그림 4장 교체</span>
+  </div>
+  <div class="dev"><div class="scr" id="claw">
+    <div class="sb"><span>9:41</span><span>●●● ▮</span></div><div class="punch"></div>
+    <div class="rail"></div>
+    <div class="top">
+      <button class="chip felt stitch"><svg class="camoff" viewBox="0 0 24 24" fill="none" stroke="#3b2e22" stroke-width="2" stroke-linecap="round"><rect x="3" y="7" width="18" height="13" rx="3"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8 7l1.5-3h5L16 7"/></svg>카메라 켜기</button>
+      <button class="chip felt stitch" id="dexn">도감 7</button>
+    </div>
+    <div class="clawbox" id="cb"><div class="str" id="str"></div><img class="c" src="img/claw.png" alt="집게"></div>
+    <div class="capwrap" id="capw"><img class="in" id="capIn" alt=""><img src="img/cap-closed.png" alt="" style="opacity:.82"></div>
+    <div class="hint felt stitch">끌어서 맞추고, 꾹!</div>
+    <button class="gobtn" id="go" aria-label="집기"><img src="img/button.png" alt=""><span class="lbl felt">집기</span></button>
+    <div class="toast felt stitch" id="toast"></div>
+  </div></div>
+</section>
+</div>
+
+<script src="camtop.js"></script>
+<script src="claw.js"></script>
+<script src="wx3d.js"></script>
+<script src="v3.js"></script>
