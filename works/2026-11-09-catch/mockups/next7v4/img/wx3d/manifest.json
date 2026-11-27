@@ -1,0 +1,54 @@
+{
+ "monggeul": {
+  "cold": {
+   "act": 24,
+   "loop": 6
+  },
+  "dust": {
+   "act": 24,
+   "loop": 8
+  },
+  "hot": {
+   "act": 26,
+   "loop": 6
+  },
+  "rain": {
+   "act": 26,
+   "loop": 8
+  },
+  "snow": {
+   "act": 26,
+   "loop": 8
+  },
+  "sun": {
+   "act": 24,
+   "loop": 8
+  }
+ },
+ "nyangsom": {
+  "cold": {
+   "act": 24,
+   "loop": 6
+  },
+  "dust": {
+   "act": 24,
+   "loop": 8
+  },
+  "hot": {
+   "act": 26,
+   "loop": 6
+  },
+  "rain": {
+   "act": 26,
+   "loop": 8
+  },
+  "snow": {
+   "act": 26,
+   "loop": 8
+  },
+  "sun": {
+   "act": 24,
+   "loop": 8
+  }
+ }
+}
