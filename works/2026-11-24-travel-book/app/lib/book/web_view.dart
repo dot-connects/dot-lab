@@ -21,6 +21,46 @@ InAppWebViewSettings bookSettings(String booksDir) => InAppWebViewSettings(
       supportZoom: false,
     );
 
+/// A WebView that stops (video, timers, drawing) while its screen is covered by another route or the app is in the
+/// background: a book's looping clips kept decoding under the export / 다듬기 screens and with the phone locked.
+mixin PausesWhenHidden<T extends StatefulWidget> on State<T>, WidgetsBindingObserver {
+  InAppWebViewController? get web;
+  bool _paused = false, _covered = false;
+  AppLifecycleState _life = AppLifecycleState.resumed;
+
+  void _apply() {
+    final c = web, p = _covered || _life != AppLifecycleState.resumed;
+    if (c == null || p == _paused) return;
+    _paused = p;
+    p ? c.pause() : c.resume();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _covered = !TickerMode.valuesOf(context).enabled; // routes under an opaque one run with tickers off
+    _apply();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _life = state;
+    _apply();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+}
+
 class BookWebView extends StatefulWidget {
   final Map<String, Object?> book; // bookJs(book)
   final String booksDir; // <app documents>/books
@@ -33,8 +73,10 @@ class BookWebView extends StatefulWidget {
   State<BookWebView> createState() => _BookWebViewState();
 }
 
-class _BookWebViewState extends State<BookWebView> {
+class _BookWebViewState extends State<BookWebView> with WidgetsBindingObserver, PausesWhenHidden {
   InAppWebViewController? _c;
+  @override
+  InAppWebViewController? get web => _c;
   bool _loaded = false;
 
   Future<void> _render() async {

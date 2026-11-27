@@ -45,7 +45,6 @@ dependencies:
   path_provider: ^2.1.6
   http: ^1.6.0
   read_pdf_text: ^0.3.1
-  pdfx: ^2.11.0
 
 # AGP 9 rejects proguard-android.txt in the plugin's build.gradle; vendored copy with only that line changed
 dependency_overrides:
@@ -92,7 +91,7 @@ flutter:
     # 다듬기 font cards: the book fonts cut down to the few letters a card shows (the book itself uses the woff2s)
     - family: SUIT
       fonts:
-        - asset: assets/book/fonts/SUIT-Bold.otf
+        - asset: assets/fonts/preview/SUIT-Bold.ttf
     - {family: GowunBatang, fonts: [{asset: assets/fonts/preview/GowunBatang-Regular.ttf}]}
     - {family: Gaegu, fonts: [{asset: assets/fonts/preview/Gaegu-Regular.ttf}]}
     - {family: NanumPenScript, fonts: [{asset: assets/fonts/preview/NanumPenScript-Regular.ttf}]}

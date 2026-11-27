@@ -18,8 +18,10 @@ class EditWebView extends StatefulWidget {
   State<EditWebView> createState() => _EditWebViewState();
 }
 
-class _EditWebViewState extends State<EditWebView> {
+class _EditWebViewState extends State<EditWebView> with WidgetsBindingObserver, PausesWhenHidden {
   InAppWebViewController? _c;
+  @override
+  InAppWebViewController? get web => _c;
   bool _loaded = false;
   int _drawn = -1; // the version the runtime holds
   Future<void> _queue = Future.value();

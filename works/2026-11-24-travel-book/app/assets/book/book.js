@@ -145,8 +145,13 @@
   }
 
   const seen = new IntersectionObserver(es => {
-    for (const e of es) for (const v of e.target.querySelectorAll("video[data-clip]")) e.isIntersecting ? v.play().catch(() => {}) : v.pause();
+    for (const e of es) for (const v of e.target.querySelectorAll("video[data-clip]")) e.isIntersecting && !document.hidden ? v.play().catch(() => {}) : v.pause();
   }, { threshold: 0.6 });
+  // hidden (screen off, app in the background, another screen on top): no clip decodes; back: the visible one plays
+  document.addEventListener("visibilitychange", () => {
+    for (const v of document.querySelectorAll("video[data-clip]")) v.pause();
+    if (!document.hidden) for (const pg of document.querySelectorAll(".pg")) { seen.unobserve(pg); seen.observe(pg); }
+  });
 
   window.renderBook = async function (book, opts = {}) {
     // the old pages stop taking edits now: their events would land on a page that is about to change

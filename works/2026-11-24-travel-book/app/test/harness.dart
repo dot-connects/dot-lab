@@ -15,7 +15,7 @@ Future<void> loadFonts() async {
   final f = {
     fUi: ['assets/book/fonts/PretendardVariable.ttf'],
     fNum: ['assets/book/fonts/InterTightwght.ttf'],
-    'SUIT': ['assets/book/fonts/SUIT-Bold.otf'],
+    'SUIT': ['assets/fonts/preview/SUIT-Bold.ttf'],
     for (final f in ['GowunBatang', 'Gaegu', 'NanumPenScript', 'GowunDodum', 'Hahmlet', 'DoHyeon'])
       f: ['assets/fonts/preview/${f == 'Hahmlet' ? f : '$f-Regular'}.ttf'],
     'MaterialIcons': ['${Platform.environment['FLUTTER_ROOT'] ?? 'C:/DC/tools/flutter'}/bin/cache/artifacts/material_fonts/materialicons-regular.otf'],
