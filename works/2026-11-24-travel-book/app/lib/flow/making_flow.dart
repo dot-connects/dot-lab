@@ -57,6 +57,7 @@ class _MakingFlowState extends State<MakingFlow> {
   PickProgress? _p;
   late Book? _book = widget.book;
   List<(String, String)> _ask = [];
+  String? _notice; // the picker did not answer: the review says so
 
   App get app => widget.app;
   List<NoteInput> get _notes => [for (final n in widget.draft?.notes ?? const <NoteItem>[]) if (!n.bad && n.input != null) n.input!];
@@ -98,9 +99,15 @@ class _MakingFlowState extends State<MakingFlow> {
     if (!mounted) return;
     _book = r.book;
     if (r.ai != AiState.ok) {
-      // the picker did not answer: a book from the phone's own choice, without text, plus the banner
-      await app.pipe.finish(r.book);
-      _open(failed: r.ai);
+      // the picker did not answer: the phone's own choice goes on to the same review, theme and making steps
+      // (operator 11-27: offline skipped all of them); the write tries the AI again
+      unawaited(mc.keepScreenOn(false).catchError((_) {}));
+      setState(() {
+        _notice = r.ai == AiState.off
+            ? '이번 달 AI 사용량을 다 써서 폰이 직접 골랐어요. 글은 다음 달에 넣을 수 있어요.'
+            : '인터넷이 연결되지 않아 폰이 직접 골랐어요. 책을 만들 때 다시 연결해 볼게요.';
+        _phase = _Phase.review;
+      });
       return;
     }
     await Future<void>.delayed(const Duration(milliseconds: 1600)); // let the count ease down to "38" and be seen
@@ -302,6 +309,7 @@ class _MakingFlowState extends State<MakingFlow> {
           coverId: b.cover,
           from: widget.albumPhotos > 0 ? widget.albumPhotos : b.pool.length,
           videos: [for (final (_, cs) in days) ...cs].where((c) => c.shot.isVideo).length,
+          notice: _notice,
           onTapPhoto: _tapPhoto,
           onAdd: (day) async {
             await app.pipe.addOne(b, day);

@@ -112,7 +112,7 @@ void main() {
     await t.tap(find.byIcon(Icons.chevron_right));
     await t.pumpAndSettle();
     expect(seen.last.page, 1);
-    await t.tap(find.text('바꾸기'));
+    await t.tap(find.text('다른 사진으로 바꾸기'));
     await t.pumpAndSettle();
     expect(find.text('10:04'), findsOneWidget); // p4: the first photo on no page
     await t.tap(find.text('10:04'));

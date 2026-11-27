@@ -39,11 +39,16 @@ abstract class Source {
 }
 
 const maxAiImages = 60;
+/// ponytail: at most this many photos are measured on the phone (evenly in time); a smarter pre-pass if trips this
+/// big turn out common.
+const maxMeasure = 4000;
+const _chunk = 48;
 const sceneAt = [.15, .40, .65, .90];
 
 class PickProgress {
   final int inRange, albums, albumPhotos;
   final int blurDark, similar, capture, sent;
+  final int measured, toMeasure; // photos looked at so far / to look at (the phone's own pass, before the AI)
   final int? picked;
   final int must;
   final List<(String id, bool kept)> strip;
@@ -55,11 +60,15 @@ class PickProgress {
     this.similar = 0,
     this.capture = 0,
     this.sent = 0,
+    this.measured = 0,
+    this.toMeasure = 0,
     this.picked,
     this.must = 0,
     this.strip = const [],
   });
-  PickProgress copyWith({int? blurDark, int? similar, int? capture, int? sent, int? picked, List<(String, bool)>? strip}) => PickProgress(
+  PickProgress copyWith(
+          {int? blurDark, int? similar, int? capture, int? sent, int? measured, int? toMeasure, int? picked, List<(String, bool)>? strip}) =>
+      PickProgress(
         inRange: inRange,
         albums: albums,
         albumPhotos: albumPhotos,
@@ -67,6 +76,8 @@ class PickProgress {
         similar: similar ?? this.similar,
         capture: capture ?? this.capture,
         sent: sent ?? this.sent,
+        measured: measured ?? this.measured,
+        toMeasure: toMeasure ?? this.toMeasure,
         picked: picked ?? this.picked,
         must: must,
         strip: strip ?? this.strip,
@@ -135,12 +146,55 @@ class Pipeline {
   }) async {
     final byId = {for (final s in shots) s.id: s}; // one shot can sit in two albums on other platforms
     final all = byId.values.toList();
-    var p = PickProgress(inRange: inRange, albums: albums, albumPhotos: all.length, must: must.length);
+    // only photos are measured (videos and screen captures are never judged by sharpness); a huge trip is thinned
+    // evenly in time first - the AI sees at most [maxAiImages] anyway
+    final look = [for (final (i, s) in all.indexed) if (!s.isVideo && !isScreenshot(s)) i];
+    final measuredIdx = look.length <= maxMeasure ? look : [for (var k = 0; k < maxMeasure; k++) look[k * look.length ~/ maxMeasure]];
+    final thinned = look.length - measuredIdx.length;
+    var p = PickProgress(
+      inRange: inRange,
+      albums: albums,
+      albumPhotos: all.length,
+      must: must.length,
+      toMeasure: measuredIdx.length,
+      strip: [for (var k = 0; k < 12 && look.isNotEmpty; k++) (all[look[k * look.length ~/ 12]].id, false)],
+    );
     onProgress?.call(p);
 
-    // 256 px thumbnails, measured off the UI isolate in one batch
-    final thumbs = <Uint8List?>[for (final s in all) await src.jpeg(s.id, 256, quality: 70)];
-    final m = await _measureAll(thumbs);
+    // 256 px thumbnails, fetched [_chunk] at a time; each chunk is measured off the UI isolate while the next loads
+    const none = (sharp: 0.0, luma: 128.0, dhash: 0);
+    final m = List<({double sharp, double luma, int dhash})>.filled(all.length, none);
+    final skipped = {for (final i in look) i}..removeAll(measuredIdx);
+    var done = 0;
+    Future<void>? measuring;
+    for (var at = 0; at < measuredIdx.length; at += _chunk) {
+      final part = measuredIdx.sublist(at, math.min(at + _chunk, measuredIdx.length));
+      final thumbs = await Future.wait([for (final i in part) src.jpeg(all[i].id, 256, quality: 70)]);
+      await measuring;
+      measuring = _measureAll(thumbs).then((r) {
+        for (final (k, i) in part.indexed) {
+          m[i] = r[k];
+        }
+        done += part.length;
+        onProgress?.call(p = p.copyWith(measured: done));
+      });
+    }
+    await measuring;
+
+    // place names: each distinct ~1 km cell once, all at the same time
+    (double, double)? at(Shot s) {
+      if (s.lat != null && s.lng != null) return (s.lat!, s.lng!);
+      final v = timeline == null ? null : visitAt(timeline, s.utc);
+      return v == null || v.name != null ? null : (v.lat, v.lng);
+    }
+
+    final cells = <String, (double, double)>{};
+    for (final s in all) {
+      final c = at(s);
+      if (c != null) cells.putIfAbsent('${c.$1.toStringAsFixed(2)},${c.$2.toStringAsFixed(2)}', () => c);
+    }
+    await Future.wait([for (final (la, ln) in cells.values) _place(la, ln)]);
+
     final photos = all.where((s) => !s.isVideo).toList();
     final cands = <Candidate>[];
     for (var i = 0; i < all.length; i++) {
@@ -154,16 +208,17 @@ class Pipeline {
       }
       cands.add(Candidate(s, sharp: m[i].sharp, luma: m[i].luma, dhash: m[i].dhash, place: place, local: localOf(s, photos)));
     }
+    final skippedIds = {for (final i in skipped) all[i].id};
 
     final mustC = cands.where((c) => must.contains(c.id)).take(10).toList();
     final free = cands.where((c) => !must.contains(c.id)).toList();
     final vids = free.where((c) => c.shot.isVideo).toList();
     final shotsOnly = free.where((c) => !c.shot.isVideo && !isScreenshot(c.shot)).toList();
     final capture = free.length - vids.length - shotsOnly.length;
-    final good = shotsOnly.where((c) => !isBad(c)).toList();
-    final blurDark = shotsOnly.length - good.length;
+    final good = shotsOnly.where((c) => !skippedIds.contains(c.id) && !isBad(c)).toList();
+    final blurDark = shotsOnly.length - thinned - good.length;
     final deduped = dedupeBursts(good);
-    final similar = good.length - deduped.length;
+    final similar = good.length - deduped.length + thinned;
 
     final sentVids = capEvenly(vids, maxPickVideos);
     final refImages = [for (final n in notes) if (n.image != null) n.image!];
@@ -176,7 +231,7 @@ class Pipeline {
       similar: similar,
       capture: capture,
       sent: sent.length,
-      strip: [for (final c in cands.take(12)) (c.id, sentIds.contains(c.id))],
+      strip: [for (final (id, _) in p.strip) (id, sentIds.contains(id))],
     );
     onProgress?.call(p);
 

@@ -14,6 +14,7 @@ class PicksReviewScreen extends StatelessWidget {
   final String? coverId;
   final int from; // photos the picker chose from
   final int videos;
+  final String? notice; // why the phone picked these on its own (the AI did not answer)
   final ValueChanged<PhotoRef> onTapPhoto;
   final ValueChanged<DateTime> onAdd;
   final VoidCallback onBack, onMake; // onMake: on to the book-shape screen
@@ -24,6 +25,7 @@ class PicksReviewScreen extends StatelessWidget {
     this.coverId,
     required this.from,
     this.videos = 0,
+    this.notice,
     required this.onTapPhoto,
     required this.onAdd,
     required this.onBack,
@@ -51,6 +53,13 @@ class PicksReviewScreen extends StatelessWidget {
       lead: '${fmtInt(from)}장에서 골랐어요. 누르면 빼거나 바꿀 수 있어요.',
       fade: true,
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (notice != null)
+          Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(14)),
+            child: Text(notice!, style: ui(12.5, color: C.ink, h: 1.5)),
+          ),
         for (final (i, (day, ps)) in days.indexed) ...[
           Container(
             height: 22,

@@ -35,7 +35,8 @@ class _EditWebViewState extends State<EditWebView> with WidgetsBindingObserver, 
     if (c == null || !_loaded || !mounted) return;
     while (widget.args.version != _drawn) {
       _drawn = widget.args.version;
-      await c.callAsyncJavaScript(functionBody: 'await window.renderBook(${jsonEncode(widget.book())});');
+      // the page to land on goes with the render: the new pages swap in already on it (no flash of the cover)
+      await c.callAsyncJavaScript(functionBody: 'await window.renderBook(${jsonEncode(widget.book())}, {page: ${widget.args.page}});');
       if (!mounted) return;
     }
     final a = widget.args;

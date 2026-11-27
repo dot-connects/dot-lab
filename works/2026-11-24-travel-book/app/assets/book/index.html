@@ -40,10 +40,12 @@ body.spread .sheet.two{gap:0}
 body.spread .sheet.two .pg{width:min((100vw - 32px) / 2,(100vh - 24px) / var(--ratio))}
 body.spread .pg.left{box-shadow:inset -14px 0 18px -14px rgba(0,0,0,.28)}
 body.spread .pg.right{box-shadow:inset 14px 0 18px -14px rgba(0,0,0,.22)}
+body.spread .pg.blank{background:#ece6dc}
 /* 다듬기: words typed in place, the selected photo outlined (drag moves what shows) */
 .pg .editing{outline:1.5px dashed currentColor;outline-offset:3px;caret-color:currentColor;-webkit-user-select:text;user-select:text}
 .pg .editing:focus{outline-style:solid}
 .pg .selslot{touch-action:none;cursor:grab}
+body.photoedit .pg [data-slot]{touch-action:none}
 .pg .selslot::after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 0 3px #fff,inset 0 0 0 6px #2f5bff;pointer-events:none;z-index:2}
 .pg img.selslot{outline:4px solid #2f5bff;outline-offset:-4px}
 /* export mode: one page fills the viewport exactly */

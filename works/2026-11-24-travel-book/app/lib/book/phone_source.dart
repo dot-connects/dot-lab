@@ -75,7 +75,8 @@ class PhoneSource implements Source {
   @override
   Future<String?> placeOf(double lat, double lng) async {
     try {
-      final p = (await _geo.placemarkFromCoordinates(lat, lng)).firstOrNull;
+      // offline, the OS geocoder can wait long per call: a book without a place name beats a frozen screen
+      final p = (await _geo.placemarkFromCoordinates(lat, lng).timeout(const Duration(seconds: 4))).firstOrNull;
       if (p == null) return null;
       final s = [p.locality, p.subAdministrativeArea, p.name].firstWhere((x) => x != null && x.isNotEmpty, orElse: () => null);
       return s;

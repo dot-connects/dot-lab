@@ -18,6 +18,18 @@
     document.getElementById("tpl").innerHTML = html;
   }
 
+  /** A slot's crop "x% y%" or "x% y% s": where the photo sits in its frame, and how far it is zoomed (s >= 1). */
+  function setCrop(el, c) {
+    let [x = 50, y = 50, s = 1] = (c || "50% 50%").split(" ").map(parseFloat);
+    s = Math.max(1, Math.min(4, s || 1));
+    el.dataset.c = s > 1.005 ? `${x.toFixed(1)}% ${y.toFixed(1)}% ${s.toFixed(2)}` : `${x.toFixed(1)}% ${y.toFixed(1)}%`;
+    el.style.objectPosition = `${x}% ${y}%`;
+    // zoom = a smaller view box of the picture, placed by the same x/y; it stays inside its frame (no transform spill)
+    const w = 100 / s, l = x / 100 * (100 - w), t = y / 100 * (100 - w);
+    if (s > 1.005) el.style.setProperty("object-view-box", `inset(${t.toFixed(2)}% ${(100 - w - l).toFixed(2)}% ${(100 - w - t).toFixed(2)}% ${l.toFixed(2)}%)`);
+    else el.style.removeProperty("object-view-box");
+  }
+
   function fill(pg, spec, book, n) {
     pg.style.setProperty("--ratio", RATIO[book.format] || RATIO.phone);
     pg.dataset.page = n;
@@ -28,12 +40,12 @@
       img.loading = "lazy";
       img.decoding = "async";
       img.src = frame != null && m.frames ? m.frames[+frame] || m.src : m.src;
-      img.style.objectPosition = (spec.crop && spec.crop[i]) || img.dataset.crop || "50% 50%";
+      setCrop(img, (spec.crop && spec.crop[i]) || img.dataset.crop);
       if (m.video && frame === "0") {
         // the clip plays in place of its first frame, only while visible; export keeps the poster
         const v = document.createElement("video");
         Object.assign(v, { muted: true, loop: true, playsInline: true, poster: img.src, src: m.video });
-        v.style.objectPosition = img.style.objectPosition;
+        setCrop(v, img.dataset.c);
         v.dataset.clip = "1";
         v.dataset.slot = img.dataset.slot;
         img.replaceWith(v);
@@ -153,6 +165,15 @@
     if (!document.hidden) for (const pg of document.querySelectorAll(".pg")) { seen.unobserve(pg); seen.observe(pg); }
   });
 
+  /** The page index at the left edge of what the reader shows now (0 = cover). */
+  function shownPage(root) {
+    const sheets = root.querySelectorAll(".sheet");
+    if (!sheets.length || !root.clientWidth) return 0;
+    const sh = sheets[Math.round(root.scrollLeft / root.clientWidth)] || sheets[0];
+    const p = sh.querySelector(".pg[data-page]");
+    return p ? +p.dataset.page : 0;
+  }
+
   window.renderBook = async function (book, opts = {}) {
     // the old pages stop taking edits now: their events would land on a page that is about to change
     if (window.editMode) window.editMode(null);
@@ -161,35 +182,54 @@
     document.body.classList.toggle("export", !!opts.exportMode);
     document.body.classList.toggle("tone", !!book.toneMatch);
     applyFont(book);
-    const root = document.getElementById("book");
-    root.replaceChildren();
-    // spread: the cover alone, then two pages side by side like an open book (export always shows one page)
+    // a redraw builds the new pages under the old ones and swaps when they are ready: no blank flash on a font change
+    const old = document.getElementById("book");
+    const keep = opts.page != null ? opts.page : old.children.length ? shownPage(old) : 0;
+    const root = old.cloneNode(false);
+    root.style.cssText = "position:absolute;inset:0;visibility:hidden";
+    old.after(root);
+    // spread: an open book - the cover on the right with the inside cover blank, then 1|2, 3|4 (export: one page)
     const spread = !!opts.spread && !opts.exportMode;
     document.body.classList.toggle("spread", spread);
     let sheet = null;
     book.pages.forEach((spec, n) => {
       const t = document.getElementById(spec.layout);
       if (!t) return;
-      if (!spread || n === 0 || n % 2 === 1) {
+      if (!spread || n % 2 === 1 || n === 0) {
         sheet = document.createElement("div");
-        sheet.className = spread && n > 0 ? "sheet two" : "sheet";
+        sheet.className = spread ? "sheet two" : "sheet";
         root.append(sheet);
+        if (spread && n === 0) { const blank = document.createElement("div"); blank.className = "pg blank left"; sheet.append(blank); }
       }
       const pg = t.content.firstElementChild.cloneNode(true);
       fill(pg, spec, book, n);
-      if (spread && n > 0) pg.classList.add(n % 2 === 1 ? "left" : "right");
+      if (spread) pg.classList.add(n % 2 === 1 ? "left" : "right");
       sheet.append(pg);
       seen.observe(pg);
       let timer = null;
       pg.addEventListener("pointerdown", () => { timer = setTimeout(() => bridge("longPress", { page: n }), 550); });
       for (const ev of ["pointerup", "pointercancel", "pointerleave"]) pg.addEventListener(ev, () => clearTimeout(timer));
     });
+    if (spread) { const b0 = root.querySelector(".pg.blank"), p0 = root.querySelector(".pg[data-page]"); if (b0 && p0) b0.style.setProperty("--ratio", p0.style.getPropertyValue("--ratio")); }
     await document.fonts.ready;
     const st = book.style || {};
-    const pgs = [...root.querySelectorAll(".pg")];
+    const pgs = [...root.querySelectorAll(".pg[data-page]")];
     if (pgs[0]) coverColor(pgs[0], st.cover);
     pgs.slice(1).forEach(pg => sizeText(pg, st.size)); // before the fit: a larger size must still fit
     pgs.forEach(fitBig);
+    // land on the same page as before; its photos decode before the swap
+    const target = pgs.find(p => +p.dataset.page === keep) || pgs[0];
+    const sh = target ? target.closest(".sheet") : null;
+    if (opts.page != null) [...root.children].forEach(x => (x.style.display = x === sh ? "" : "none"));
+    if (sh) {
+      root.scrollLeft = [...root.children].indexOf(sh) * root.clientWidth;
+      const imgs = [...sh.querySelectorAll("img")];
+      imgs.forEach(i => (i.loading = "eager"));
+      await Promise.race([Promise.all(imgs.map(i => i.decode().catch(() => {}))), new Promise(r => setTimeout(r, 700))]);
+    }
+    old.remove();
+    root.style.cssText = "";
+    if (sh) root.scrollLeft = [...root.children].indexOf(sh) * root.clientWidth;
     edit = null;
     bridge("rendered", { pages: book.pages.length, coverPaper: pgs[0] ? paperShows(pgs[0]) : false });
   };
@@ -213,11 +253,32 @@
   // "photo": tap a photo to select it -> bridge("slot", {page, slot}); drag the selected one to move what shows
   //          -> bridge("crop", {page, slot, pos})
   let edit = null;
+
+  /** Typing: the page grows around the words being typed so they stay readable above the keyboard. */
+  function zoomTo(pg, el) {
+    pg.style.transform = "";
+    const pr = pg.getBoundingClientRect(), er = el.getBoundingClientRect();
+    const vw = innerWidth, vh = innerHeight;
+    const k = Math.min(2.6, (vw - 40) / Math.max(er.width, 60), (vh * 0.6) / Math.max(er.height, 20));
+    if (k <= 1.05) return;
+    const cx = er.left + er.width / 2 - pr.left, cy = er.top + er.height / 2 - pr.top;
+    Object.assign(pg.style, { transformOrigin: "0 0", transition: "transform .22s ease", position: "relative", zIndex: 5,
+      transform: `translate(${(vw / 2 - pr.left - cx * k).toFixed(1)}px,${(vh / 2 - pr.top - cy * k).toFixed(1)}px) scale(${k.toFixed(3)})` });
+  }
+  function unzoom(pg) { if (pg) pg.style.transform = ""; }
+  // the keyboard opening (or closing) resizes the view: keep the typed words in the middle
+  addEventListener("resize", () => {
+    const a = document.activeElement;
+    if (edit && edit.mode === "text" && a && a.classList && a.classList.contains("editing")) zoomTo(edit.pg, a);
+  });
+
   window.editMode = function (mode, n, slot) {
-    const pg = document.querySelectorAll(".pg")[n];
+    const pg = n == null ? null : document.querySelector(`.pg[data-page="${n}"]`);
     for (const el of document.querySelectorAll("[contenteditable]")) { el.removeAttribute("contenteditable"); el.classList.remove("editing"); }
     for (const el of document.querySelectorAll(".selslot")) el.classList.remove("selslot");
+    if (edit) unzoom(edit.pg);
     edit = mode && pg ? { mode, n, slot: slot || 0, pg } : null;
+    document.body.classList.toggle("photoedit", !!edit && mode === "photo");
     if (!edit) return;
     if (mode === "text") {
       for (const el of pg.querySelectorAll("[data-text]")) {
@@ -225,6 +286,8 @@
         el.contentEditable = "plaintext-only";
         el.spellcheck = false;
         el.classList.add("editing");
+        el.onfocus = () => zoomTo(pg, el);
+        el.onblur = () => unzoom(pg);
         el.oninput = () => {
           if (el.dataset.text === "title") fitBig(pg);
           bridge("text", { page: n, key: el.dataset.text, value: el.textContent.replace(/\s+/g, " ").trim() });
@@ -241,23 +304,45 @@
     }
   };
 
+  // photo edit: one finger moves what shows, two fingers zoom and move; the result goes back once all lift
+  const pts = new Map();
+  let g = null;
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const mid = ps => ({ x: ps.reduce((t, p) => t + p.x, 0) / ps.length, y: ps.reduce((t, p) => t + p.y, 0) / ps.length });
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) || 1;
+  function rebase() {
+    const [x = 50, y = 50, s = 1] = (g.im.dataset.c || "50% 50%").split(" ").map(parseFloat);
+    Object.assign(g, { x, y, s, start: [...pts.values()].map(p => ({ ...p })) });
+  }
   document.addEventListener("pointerdown", e => {
     if (!edit || edit.mode !== "photo") return;
     const im = e.target.closest && e.target.closest("[data-slot]");
-    if (!im || !edit.pg.contains(im)) return;
-    const slot = +im.dataset.slot, n = edit.n;
-    if (slot !== edit.slot) { edit.slot = slot; window.editMode("photo", edit.n, slot); bridge("slot", { page: edit.n, slot }); return; }
+    if (!im || !edit.pg.contains(im) || (g && g.im !== im)) return;
+    const slot = +im.dataset.slot;
+    if (slot !== edit.slot) { edit.slot = slot; window.editMode("photo", edit.n, slot); bridge("slot", { page: edit.n, slot }); }
     e.preventDefault();
     im.setPointerCapture(e.pointerId);
-    const [x0, y0] = (im.style.objectPosition || "50% 50%").split(" ").map(parseFloat);
-    const sx = e.clientX, sy = e.clientY, r = im.getBoundingClientRect();
-    const clamp = v => Math.max(0, Math.min(100, v));
-    im.onpointermove = m => {
-      im.style.objectPosition = `${clamp(x0 - (m.clientX - sx) / r.width * 160).toFixed(1)}% ${clamp(y0 - (m.clientY - sy) / r.height * 160).toFixed(1)}%`;
-    };
-    im.onpointerup = im.onpointercancel = m => {
-      im.onpointermove = im.onpointerup = im.onpointercancel = null;
-      if (Math.abs(m.clientX - sx) + Math.abs(m.clientY - sy) > 3) bridge("crop", { page: n, slot, pos: im.style.objectPosition });
-    };
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (!g) g = { im, slot, n: edit.n, r: im.getBoundingClientRect(), moved: false, c0: im.dataset.c };
+    rebase();
   });
+  document.addEventListener("pointermove", e => {
+    if (!g || !pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const now = [...pts.values()], a = g.start, m0 = mid(a), m1 = mid(now);
+    const s = now.length > 1 && a.length > 1 ? clamp(g.s * dist(now[0], now[1]) / dist(a[0], a[1]), 1, 4) : g.s;
+    const k = 160 / s; // a zoomed photo moves less per finger pixel
+    const x = clamp(g.x - (m1.x - m0.x) / g.r.width * k, 0, 100), y = clamp(g.y - (m1.y - m0.y) / g.r.height * k, 0, 100);
+    setCrop(g.im, `${x}% ${y}% ${s}`);
+    if (Math.abs(m1.x - m0.x) + Math.abs(m1.y - m0.y) > 3 || s !== g.s) g.moved = true;
+  });
+  function lift(e) {
+    if (!g || !pts.has(e.pointerId)) return;
+    pts.delete(e.pointerId);
+    if (pts.size) return rebase();
+    if (g.moved && g.im.dataset.c !== g.c0) bridge("crop", { page: g.n, slot: g.slot, pos: g.im.dataset.c });
+    g = null;
+  }
+  document.addEventListener("pointerup", lift);
+  document.addEventListener("pointercancel", lift);
 })();

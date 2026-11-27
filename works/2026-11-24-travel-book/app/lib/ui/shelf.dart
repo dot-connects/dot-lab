@@ -289,7 +289,13 @@ class _ShelfState extends State<Shelf> {
           TextSpan(text: '$v', style: nm(10.5, w: FontWeight.w700)),
           TextSpan(text: u),
         ]), style: nm(10.5, color: C.ink2));
-    return Padding(
+    // the whole row opens the book (operator 11-27: tapping the title did nothing); long press = the book menu
+    return Builder(
+      builder: (ctx) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => widget.onOpen(b),
+        onLongPress: () => _longPress(b, ctx),
+        child: Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Stack(clipBehavior: Clip.none, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -324,6 +330,8 @@ class _ShelfState extends State<Shelf> {
           child: Container(width: 7, height: 7, decoration: const BoxDecoration(color: C.ink, shape: BoxShape.circle)),
         ),
       ]),
+        ),
+      ),
     );
   }
 

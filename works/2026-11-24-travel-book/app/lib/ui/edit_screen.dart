@@ -1,5 +1,6 @@
 // 다듬기 (mockup edit-ui, operator 11-27 "원래 6단계 전부" minus 정보 줄): one decision card per step under the page
 // itself. The page is the book runtime ([page] builder) so every change shows exactly as the book will look.
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
@@ -69,6 +70,23 @@ class _EditScreenState extends State<EditScreen> {
   bool _swapMode = false, _coverPaper = true, _custom = false, _saving = false;
   String? _snack;
   bool _undoable = false; // the snack's change is the one undo() takes back
+  Timer? _snackOff;
+
+  /// A short note over the bottom of the page (never pushing the page smaller); it goes by itself.
+  void _note(String text, {bool undoable = false}) {
+    _snack = text;
+    _undoable = undoable;
+    _snackOff?.cancel();
+    _snackOff = Timer(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _snack = null);
+    });
+  }
+
+  @override
+  void dispose() {
+    _snackOff?.cancel();
+    super.dispose();
+  }
 
   List<int> get _pages {
     final ps = e.b.pages;
@@ -81,7 +99,8 @@ class _EditScreenState extends State<EditScreen> {
   }
 
   int get _page {
-    final ps = _pages, p = _at[_step] ?? ps.first;
+    // 글자 opens on a page with body text: the cover's title does not change with the text size
+    final ps = _pages, p = _at[_step] ?? (_step == EditStep.type ? ps.firstWhere((i) => i > 0 && e.hasWords(i), orElse: () => ps.first) : ps.first);
     return ps.contains(p) ? p : ps.firstWhere((x) => x >= p, orElse: () => ps.last);
   }
 
@@ -156,8 +175,7 @@ class _EditScreenState extends State<EditScreen> {
     final page = _page, slot = _slot; // the person may turn the page while the file copies
     await _withMedia({id}, () {
       e.swap(page, slot, id);
-      _snack = '사진을 바꿨어요';
-      _undoable = true;
+      _note('사진을 바꿨어요', undoable: true);
     });
   }
 
@@ -169,22 +187,20 @@ class _EditScreenState extends State<EditScreen> {
     final before = p.ids.toSet();
     final r = e.remove(page, _slot, alts);
     if (r == RemoveResult.kept) {
-      setState(() {
-        _snack = '이 쪽에서는 뺄 수 없어요';
-        _undoable = false;
-      });
+      setState(() => _note('이 쪽에서는 뺄 수 없어요'));
       return;
     }
     final added = r == RemoveResult.filled ? e.b.pages[page].ids.toSet().difference(before) : <String>{};
     await _withMedia(added, () {
-      _undoable = true;
       _slot = 0;
       _swapMode = false;
-      _snack = switch (r) {
-        RemoveResult.closedUp => '「${_place(old)}」 뺐어요 · ${p.ids.length}장 → ${p.ids.length - 1}장',
-        RemoveResult.filled => '빼고 같은 날 사진으로 채웠어요',
-        _ => '「${_place(old)}」 쪽을 뺐어요',
-      };
+      _note(
+          switch (r) {
+            RemoveResult.closedUp => '「${_place(old)}」 뺐어요 · ${p.ids.length}장 → ${p.ids.length - 1}장',
+            RemoveResult.filled => '빼고 같은 날 사진으로 채웠어요',
+            _ => '「${_place(old)}」 쪽을 뺐어요',
+          },
+          undoable: true);
     });
   }
 
@@ -192,17 +208,16 @@ class _EditScreenState extends State<EditScreen> {
   @override
   Widget build(BuildContext context) {
     final s = _step.index, last = _step == EditStep.check, ps = _pages, k = ps.indexOf(_page);
+    // typing: the page takes the whole screen above the keyboard (the runtime zooms to the words)
+    final typing = MediaQuery.viewInsetsOf(context).bottom > 0;
     final events = EditEvents(
       (page, key, value) => setState(() => e.setText(page, key, value)),
       (page, slot) => setState(() {
         _slot = slot;
         _swapMode = false;
       }),
-      (page, slot, pos) => setState(() {
-        e.setCrop(page, slot, pos);
-        _snack = '보이는 부분을 옮겼어요';
-        _undoable = e.canUndo;
-      }),
+      // no note for a move or zoom (operator 11-27: it shrank the page); 원본으로 by the title takes it back
+      (page, slot, pos) => setState(() => e.setCrop(page, slot, pos)),
       (paper) {
         if (paper != _coverPaper && mounted) setState(() => _coverPaper = paper);
       },
@@ -216,6 +231,7 @@ class _EditScreenState extends State<EditScreen> {
         backgroundColor: C.paper,
         body: SafeArea(
           child: Column(children: [
+            if (!typing) ...[
             SizedBox(
               height: 48,
               child: Row(children: [
@@ -237,12 +253,18 @@ class _EditScreenState extends State<EditScreen> {
                 ],
               ]),
             ),
+            ],
             Expanded(
               child: Container(
                 color: C.gridBg,
                 child: Column(children: [
-                  Expanded(child: widget.page(EditPageArgs(_page, _mode, _slot, _version), events)),
-                  if (ps.length > 1)
+                  Expanded(
+                    child: Stack(children: [
+                      Positioned.fill(child: widget.page(EditPageArgs(_page, _mode, _slot, _version), events)),
+                      if (_snack != null) Positioned(left: 0, right: 0, bottom: 0, child: _snackBar()),
+                    ]),
+                  ),
+                  if (ps.length > 1 && !typing)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -256,10 +278,10 @@ class _EditScreenState extends State<EditScreen> {
                         _round(Icons.chevron_right, k < ps.length - 1 ? () => _turn(1) : null, '다음 쪽'),
                       ]),
                     ),
-                  if (_snack != null) _snackBar(),
                 ]),
               ),
             ),
+            if (!typing) ...[
             ConstrainedBox(
               constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .5),
               child: SingleChildScrollView(
@@ -268,6 +290,7 @@ class _EditScreenState extends State<EditScreen> {
               ),
             ),
             Padding(padding: const EdgeInsets.fromLTRB(20, 12, 20, 14), child: _buttons(last)),
+            ],
           ]),
         ),
       ),
@@ -535,14 +558,13 @@ class _EditScreenState extends State<EditScreen> {
             ),
           ),
         );
+    // operator 11-27: moving is what a finger on the photo always does (one finger moves, two zoom), so no 옮기기 button
     return [
-      _h('쪽마다 사진', p.ids.length > 1 ? '사진을 눌러 고르고, 끌어서 보이는 부분을 옮기거나 바꾸거나 빼요.' : '사진을 끌어서 보이는 부분을 옮기거나, 바꾸거나 빼요.'),
+      _h('쪽마다 사진', p.ids.length > 1 ? '사진을 눌러 고르고, 끌어서 옮기거나 두 손가락으로 키워요.' : '끌어서 옮기고, 두 손가락으로 키우거나 줄여요.'),
       Row(children: [
-        act(Icons.open_with, '옮기기', () => setState(() => _swapMode = false), on: !_swapMode),
+        act(Icons.swap_horiz, _swapMode ? '바꿀 사진 고르는 중' : '다른 사진으로 바꾸기', () => setState(() => _swapMode = !_swapMode), on: _swapMode),
         const SizedBox(width: 8),
-        act(Icons.swap_horiz, '바꾸기', () => setState(() => _swapMode = true), on: _swapMode),
-        const SizedBox(width: 8),
-        act(Icons.delete_outline, '빼기', _remove, color: const Color(0xFFA3261B)),
+        act(Icons.delete_outline, '이 사진 빼기', _remove, color: const Color(0xFFA3261B)),
       ]),
       if (_swapMode)
         alts.isEmpty
@@ -570,9 +592,7 @@ class _EditScreenState extends State<EditScreen> {
                     );
                   },
                 ),
-              )
-      else
-        Padding(padding: const EdgeInsets.only(top: 10), child: Text('표시된 사진을 손가락으로 끌면 보이는 부분이 옮겨져요.', style: ui(12.5, color: C.ink2))),
+              ),
     ];
   }
 
