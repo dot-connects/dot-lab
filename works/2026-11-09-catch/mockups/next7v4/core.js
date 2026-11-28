@@ -109,8 +109,8 @@ async function dropAndRoll(c, floorY, screenW, onLand){
 
 /* ---------- claw rig: string + claw image in a box that can swing ---------- */
 const TIP = 108;          // claw image top -> prong tips
-/** a copy of the claw box shown only for the two outer prongs, stacked above the capsule and the catch,
-    so what the claw holds sits between its prongs; returns sync() to call after every style write */
+/** a copy of the claw box shown only for the middle prong (the one facing us), stacked above the capsule and the catch,
+    so what the claw holds sits behind it and between the side prongs; returns sync() to call after every style write */
 function clawFront(box){
   const f = box.cloneNode(true);
   [f, ...f.querySelectorAll("[id]")].forEach(e => e.removeAttribute("id"));
