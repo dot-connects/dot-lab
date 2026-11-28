@@ -94,10 +94,12 @@
       // it slides along the prongs (the player sees it coming), then drops
       await Promise.all([rig.to(260, E.inQ, { close: .35 }), tween(260, E.inQ, t => hangHeld(w, pend(8, sw(), .012, 480) * (1 - t), -6 + 22 * t))]);
       toast("흔들려서 빠졌다");
-      const [px, py] = pivot(); let y = py - 22 + 16, vy = 0; const floor = feet(hit) - w;
-      heldEl.style.display = "none"; hit.state = "fall"; hit.x = wrap(pan + px - 180); hit.dy = y - floor;
-      await loop(dt => { vy += dt * .0042; hit.dy += vy * dt; if (hit.dy >= 0) { hit.dy = 0; return true; } });
-      puff(scr, px, floor + w - 4, 6, 28, 40); hit.state = "dazed";
+      // it falls in the same pose it hung in (no sprite swap mid-air), tipping a little; the world sprite takes over on landing
+      const [px, py] = pivot(); let y = py - 22 + 16, vy = 0, a = 0; const floor = feet(hit) - w;
+      await loop(dt => { vy += dt * .0042; y = Math.min(floor, y + vy * dt); a = Math.min(14, a + dt * .03);
+        heldEl.style.transform = `translate(${px - w / 2}px,${y}px) rotate(${a}deg)`; return y >= floor; });
+      heldEl.style.display = "none"; hit.x = wrap(pan + px - 180); hit.dy = 0; hit.state = "dazed";
+      puff(scr, px, floor + w - 4, 6, 28, 40);
       riseEmpty(mid, 600);
       await sleep(900); hit.state = "walk"; hit.dy = 0; busy = false; return;
     }

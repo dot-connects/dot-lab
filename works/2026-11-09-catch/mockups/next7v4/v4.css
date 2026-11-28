@@ -21,7 +21,7 @@
 .k-go:active img,.k-go.press img{transform:scale(.93) translateY(4px)}
 .k-go .lbl{--r:10px;font:14px Jua;padding:1px 12px;margin-top:-6px}
 .k-hint{position:absolute;left:16px;bottom:44px;font:14px Jua;padding:6px 13px;z-index:100;--c:#fffaf0e6}
-.k-toast{position:absolute;left:50%;top:150px;transform:translateX(-50%) scale(.8);opacity:0;z-index:110;font:20px Jua;padding:10px 20px;white-space:nowrap;transition:transform .3s cubic-bezier(.3,1.6,.5,1),opacity .2s;--r:16px}
+.k-toast{position:absolute;left:50%;bottom:150px;transform:translateX(-50%) scale(.8);opacity:0;z-index:110;font:20px Jua;padding:10px 20px;white-space:nowrap;transition:transform .3s cubic-bezier(.3,1.6,.5,1),opacity .2s;--r:16px}
 .k-toast.on{opacity:1;transform:translateX(-50%) scale(1)}
 .k-cap{position:absolute;left:0;top:0;width:84px;height:90px;z-index:80;pointer-events:none}
 .k-body{position:absolute;inset:0;transform-origin:50% 50%}
@@ -39,7 +39,7 @@
 .cm-ring{position:absolute;left:77.5px;top:296.5px;width:202px;height:222px;z-index:3;animation:cmRing 1.8s ease-in-out infinite;filter:drop-shadow(0 0 3px #fff7c8);transition:opacity .25s}
 @keyframes cmRing{50%{opacity:.45}}
 .cm-vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,#0000 60%,#0004);pointer-events:none;z-index:2}
-.cm-found{position:absolute;left:178px;top:262px;transform:translateX(-50%);z-index:78;font:14px Jua;padding:4px 13px 4px 10px;display:flex;align-items:center;gap:6px;--c:#fffaf0;--r:999px;white-space:nowrap}
+.cm-found{position:absolute;left:178px;top:262px;transform:translateX(-50%);z-index:78;transition:opacity .2s;font:14px Jua;padding:4px 13px 4px 10px;display:flex;align-items:center;gap:6px;--c:#fffaf0;--r:999px;white-space:nowrap}
 .cm-found .dot{width:8px;height:8px;border-radius:50%;background:#e2574c;box-shadow:0 0 0 3px #e2574c33;animation:cmRing 1s infinite}
 .cm-found::before{content:"";position:absolute;left:50%;margin-left:-7px;bottom:-7px;border:7px solid transparent;border-bottom:0;border-top-color:#fffaf0}
 .cm-ar{position:absolute;left:236px;top:560px;width:70px;z-index:11;animation:cmArw 6s ease-in-out infinite}
@@ -52,14 +52,14 @@
 /* ---------- 2 first card ---------- */
 #fcScr{background:#555}
 .fc-blur{filter:blur(7px) brightness(.8);transform:scale(1.08)}
-.fc{position:absolute;inset:0;z-index:120;background:#1d150fbf;display:flex;flex-direction:column;align-items:center;padding-top:62px}
+.fc{position:absolute;inset:0;z-index:120;background:#1d150fbf;display:flex;flex-direction:column;align-items:center;justify-content:center;padding-bottom:20px}
 .fc[hidden]{display:none}
 .fc-rib{font:26px Jua;color:#fffaf0;padding:6px 24px;white-space:nowrap;transform:rotate(-2deg);margin-bottom:16px;
   background:#e0794a url(img/felt.png) 0 0/120px;background-blend-mode:soft-light;border-radius:12px;box-shadow:0 4px 0 #8a4426,0 10px 16px #0004;position:relative}
 .fc-rib::after{content:"";position:absolute;inset:4px;border:1.5px dashed #fffaf0aa;border-radius:9px}
 .fc .sc-slot{width:272px;height:340px}
-.fc-after{color:#fffaf0;font-size:13px;margin:14px 0 0;opacity:.92}
-.fc-btns{width:292px;display:flex;flex-direction:column;gap:6px;align-items:center;margin-top:auto;margin-bottom:34px}
+.fc-after{color:#fffaf0;font-size:13px;margin:12px 0 0;opacity:.92}
+.fc-btns{width:292px;display:flex;flex-direction:column;gap:6px;align-items:center;margin-top:18px}
 
 /* ---------- 3 share card (4:5, built at 300x375) ---------- */
 .sc-slot{width:300px;height:375px;position:relative;flex:none}

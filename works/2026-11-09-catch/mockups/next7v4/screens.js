@@ -26,8 +26,8 @@ document.querySelectorAll(".sc-slot[data-card]").forEach(s => fillSlot(s, s.data
 /** screen 2: the first-catch card; plays its entrance. */
 function firstCard(host, onClose){
   host.innerHTML = `<div class="fc-rib">새로 뽑았다!</div><div class="sc-slot"></div>
-    <p class="fc-after">도감에 넣었어요 · <u>펫으로 만들 수 있어요 ›</u></p>
-    <div class="fc-btns"><button class="fbtn felt stitch">자랑하기</button><button class="flink light">계속 뽑기</button></div>`;
+    <div class="fc-btns"><button class="fbtn felt stitch">자랑하기</button><button class="flink light">계속 뽑기</button></div>
+    <p class="fc-after">도감에 넣었어요 · <u>펫으로 만들 수 있어요 ›</u></p>`;
   host.hidden = false; fillSlot(host.querySelector(".sc-slot"), "calico");
   host.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: "ease-out" });
   host.querySelector(".fc-rib").animate([{ transform: "translateY(-50px) rotate(-14deg)", opacity: 0 }, { transform: "translateY(4px) rotate(1deg)", opacity: 1, offset: .7 }, { transform: "rotate(-2deg)" }],
@@ -38,7 +38,7 @@ function firstCard(host, onClose){
     { duration: 560, delay: 380, easing: "cubic-bezier(.3,1.3,.5,1)", fill: "backwards" });
   host.querySelector(".sc-stamp").animate([{ transform: "rotate(30deg) scale(2)", opacity: 0 }, { transform: "rotate(6deg) scale(.92)", opacity: 1, offset: .7 }, { transform: "rotate(6deg) scale(1)", opacity: 1 }],
     { duration: 380, delay: 700, easing: "ease-out", fill: "backwards" });
-  host.querySelectorAll(".fc-after,.fc-btns").forEach((e, i) => e.animate([{ transform: "translateY(14px)", opacity: 0 }, { transform: "none", opacity: 1 }],
+  host.querySelectorAll(".fc-btns,.fc-after").forEach((e, i) => e.animate([{ transform: "translateY(14px)", opacity: 0 }, { transform: "none", opacity: 1 }],
     { duration: 320, delay: 760 + i * 90, easing: "ease-out", fill: "backwards" }));
   host.querySelector(".flink").onclick = () => { host.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200 }).finished.then(() => { host.hidden = true; onClose && onClose(); }); };
 }
@@ -103,7 +103,7 @@ function firstCard(host, onClose){
     // grip
     await rig.to(120, E.outC, { close: 1, squash: .04 });
     rig.to(140, E.outQ, { squash: 0 });
-    ring.style.opacity = 0;
+    ring.style.opacity = 0; $("cmFound").style.opacity = 0;
     const tipX = rig.cx(), tipY = rig.tipY(), capX = tipX, capY = tipY + HANG;
     const fl = $("cmFlash"); fl.style.setProperty("--fx", BCX + "px"); fl.style.setProperty("--fy", BCY + "px");
     fl.animate([{ opacity: 0 }, { opacity: .75, offset: .25 }, { opacity: 0 }], { duration: 360, easing: "ease-out" });
@@ -123,7 +123,7 @@ function firstCard(host, onClose){
     const upTo = 60, T0 = performance.now(), swingAt = () => performance.now() - T0;
     if (outcome === "slip") {
       const mid = Math.round(lerp(target, upTo, .52));
-      await tween(560, E.outQ, t => { rig.drop = lerp(target, mid, t); hang(cap, pend(7, swingAt(), .012, 500)); });
+      await tween(560, E.outQ, t => { rig.drop = lerp(target, mid, t); rig.draw(); hang(cap, pend(7, swingAt(), .012, 500)); });
       // trouble: shudders, wider and wider
       await tween(520, E.lin, (_, r) => { const a = Math.sin(r * Math.PI * 6) * (3 + 13 * r); rig.swing = a * .12; rig.draw(); hang(cap, a); cap.sx = 1 + .03 * Math.sin(r * 40); cap.sy = 2 - cap.sx; cap.draw(); });
       cap.sx = cap.sy = 1;
@@ -134,14 +134,14 @@ function firstCard(host, onClose){
       cap.top.animate([{ transform: "none", opacity: .72 }, { transform: "translate(34px,-70px) rotate(150deg)", opacity: 0 }], { duration: 520, easing: "cubic-bezier(.2,.6,.4,1)", fill: "forwards" });
       cap.bot.animate([{ transform: "none", opacity: 1 }, { transform: "translate(-14px,140px) rotate(-40deg)", opacity: 0 }], { duration: 560, easing: "cubic-bezier(.5,0,.9,.6)", fill: "forwards" });
       cap.con.style.visibility = "hidden";
-      // the little one springs back to where it was, overshoots, settles into the photo
-      const sx = cap.x, sy = cap.y; held.style.display = "block";
+      // the little one hops out and lands back on its body, melting into the photo (no full-size double)
+      const sx = cap.x, sy = cap.y; held.style.display = "block"; heldAt(sx, sy, MINI, -10);
       tween(520, E.io, t => { rig.drop = lerp(mid, mid - 8, t); rig.draw(); });
-      await tween(560, E.lin, (_, r) => { const p = E.outC(r), s = lerp(MINI, 1, E.back(r, 1.9));
-        const x = lerp(sx, BCX, p), y = lerp(sy, BCY, p) - Math.sin(Math.PI * r) * 70; heldAt(x, y, Math.max(.1, s), lerp(-10, 0, p)); });
-      await tween(240, E.lin, (_, r) => { const k = Math.exp(-r * 4) * Math.cos(r * 12); heldAt(BCX, BCY, 1, 0, 1 + .06 * k, 1 - .08 * k); });
-      await tween(220, E.inQ, t => heldAt(BCX, BCY, 1, 0, 1, 1, 1 - t));
-      held.style.display = "none"; cap.remove(); ring.style.opacity = "";
+      const lx = BCX, ly = BCY - 20;
+      await tween(640, E.lin, (_, r) => { const p = E.io(r);
+        heldAt(lerp(sx, lx, p), lerp(sy, ly, p) - Math.sin(Math.PI * r) * 56, lerp(MINI, .36, p), lerp(-10, 0, p), 1, 1, r < .4 ? 1 : 1 - E.inQ((r - .4) / .6)); });
+      puff(scr, lx, ly + 30, 7, 30, 76);
+      held.style.display = "none"; cap.remove(); ring.style.opacity = $("cmFound").style.opacity = "";
       await riseEmpty(mid - 8, 560); busy = false; return;
     }
     const D = 820;
@@ -153,7 +153,7 @@ function firstCard(host, onClose){
     toast("삼색이를 뽑았다!"); dex++; $("cmDex").textContent = `도감 ${dex}`;
     $("cmDex").animate([{ transform: "scale(1)" }, { transform: "scale(1.18)" }, { transform: "scale(1)" }], { duration: 380, easing: "cubic-bezier(.3,1.6,.5,1)" });
     await dropAndRoll(cap, FLOOR, 360);
-    cap.remove(); ring.style.opacity = "";
+    cap.remove(); ring.style.opacity = $("cmFound").style.opacity = "";
     firstCard($("cmCard"));
     busy = false;
   };
