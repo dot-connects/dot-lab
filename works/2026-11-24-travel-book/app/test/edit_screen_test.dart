@@ -128,12 +128,12 @@ void main() {
     final e = BookEdit(_book(), _defs);
     var closed = 0;
     await pump(t, screen(e, onClose: () => closed++));
-    await t.tap(find.byIcon(Icons.close));
+    await t.tap(find.byIcon(Icons.close_rounded));
     await t.pumpAndSettle();
     expect(closed, 1); // nothing changed: just closes
     await t.tap(find.bySemanticsLabel('표지 색 먹'));
     await t.pump();
-    await t.tap(find.byIcon(Icons.close));
+    await t.tap(find.byIcon(Icons.close_rounded));
     await t.pumpAndSettle();
     expect(find.text('다듬은 걸 버리고 나갈까요?'), findsOneWidget);
     await t.tap(find.text('계속 다듬기'));

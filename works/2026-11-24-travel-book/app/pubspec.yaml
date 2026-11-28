@@ -80,6 +80,7 @@ flutter:
     - assets/book/themes/mag/
     - assets/covers/
     - assets/sample/
+    - assets/ui/
 
   # App-screen fonts. Pretendard stands in for IBM Plex Sans KR (mockup font) until Plex is bundled.
   fonts:

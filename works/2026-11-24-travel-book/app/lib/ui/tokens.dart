@@ -16,7 +16,8 @@ class C {
   static const tint = Color(0xFFE7DCCB);
   static const line = Color(0xFFCCC7BC);
   static const body = Color(0xFF4D463E); // paragraph text
-  static const card = Color(0xFFEFE8DD); // .alb, .add>div, .sg>div
+  static const card = Color(0xFFF9F5EE); // .alb, .add>div, .sg>div -- r28: lighter than the paper, with [cardEdge]
+  static const cardEdge = Color(0x245A4630);
   static const cardOn = Color(0xFFE4D7C3); // .alb.sel, .add>div.fill
   static const warn = Color(0xFFEFDCC2); // delete confirm
   static const wallBottom = Color(0xFFEFE8DC);
@@ -107,3 +108,7 @@ class GalleryImage extends ImageProvider<GalleryImage> {
   @override
   int get hashCode => Object.hash(id, long);
 }
+
+/// A card on the paper (r28): its fill, rounded, with a hairline edge so it reads as an object, not a stain.
+BoxDecoration cardDeco({Color color = C.card, double r = 14}) =>
+    BoxDecoration(color: color, borderRadius: BorderRadius.circular(r), border: Border.all(color: C.cardEdge, width: .8));

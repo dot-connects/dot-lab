@@ -235,7 +235,7 @@ class _EditScreenState extends State<EditScreen> {
             SizedBox(
               height: 48,
               child: Row(children: [
-                IconButton(onPressed: _close, icon: const Icon(Icons.close, size: 20, color: C.ink2)),
+                IconButton(onPressed: _close, tooltip: '닫기', icon: const Icon(Icons.close_rounded, size: 22, color: C.ink)),
                 Expanded(child: Text(stepNames[s], style: ui(17, w: FontWeight.w700))),
                 Text('${s + 1} / ${stepNames.length}', style: nm(13, color: C.ink2)),
                 if (!last)
@@ -548,7 +548,7 @@ class _EditScreenState extends State<EditScreen> {
               onTap: onTap,
               child: Container(
                 height: 58,
-                decoration: BoxDecoration(color: on ? C.cardOn : C.card, borderRadius: BorderRadius.circular(14)),
+                decoration: cardDeco(color: on ? C.cardOn : C.card, r: 14),
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Icon(i, size: 20, color: color),
                   const SizedBox(height: 3),

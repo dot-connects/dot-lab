@@ -93,7 +93,7 @@ class ExtrasScreen extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          decoration: BoxDecoration(color: fill ? C.cardOn : C.card, borderRadius: BorderRadius.circular(14)),
+          decoration: cardDeco(color: fill ? C.cardOn : C.card, r: 14),
           child: Row(children: [
             Container(
               width: 36,

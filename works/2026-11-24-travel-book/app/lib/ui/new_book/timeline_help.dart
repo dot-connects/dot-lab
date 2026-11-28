@@ -28,7 +28,7 @@ class TimelineHelpScreen extends StatelessWidget {
     Widget step(Widget il, int n, String t) => Container(
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(9),
-          decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(14)),
+          decoration: cardDeco(color: C.card, r: 14),
           child: Row(children: [
             Container(
               width: 92,
@@ -66,7 +66,7 @@ class TimelineHelpScreen extends StatelessWidget {
         Container(
           margin: const EdgeInsets.only(top: 6),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(14)),
+          decoration: cardDeco(color: C.card, r: 14),
           child: Text(kw('파일은 폰 안에서만 읽고, $range 기록만 써요. 없어도 사진에 든 위치로 지도를 그려요.'), style: ui(11.5, color: C.body, h: 1.5)),
         ),
       ]),

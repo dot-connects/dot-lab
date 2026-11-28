@@ -133,7 +133,7 @@ class _ExportScreenState extends State<ExportScreen> {
         Container(
           margin: const EdgeInsets.only(top: 10),
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-          decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(12)),
+          decoration: cardDeco(color: C.card, r: 12),
           child: Text(_detail, style: ui(12, color: C.body, h: 1.55)),
         ),
       ]),

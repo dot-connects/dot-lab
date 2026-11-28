@@ -61,7 +61,7 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
         onTap: zero ? null : () => setState(() => on ? _sel.remove(a.id) : _sel.add(a.id)),
         child: Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: on ? C.cardOn : C.card, borderRadius: BorderRadius.circular(14)),
+          decoration: cardDeco(color: on ? C.cardOn : C.card, r: 14),
           child: Row(children: [
             a.thumb == null
                 ? Container(width: 46, height: 46, decoration: BoxDecoration(color: C.gridBg, borderRadius: BorderRadius.circular(8)))

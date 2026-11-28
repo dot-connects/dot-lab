@@ -61,7 +61,7 @@ class PicksReviewScreen extends StatelessWidget {
           Container(
             margin: const EdgeInsets.only(bottom: 14),
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-            decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(14)),
+            decoration: cardDeco(color: C.card, r: 14),
             child: Text(notice!, style: ui(12.5, color: C.ink, h: 1.5)),
           ),
         if (pairs > 0 && onPairs != null)

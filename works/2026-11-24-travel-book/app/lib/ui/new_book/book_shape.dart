@@ -109,7 +109,7 @@ class _BookShapeScreenState extends State<BookShapeScreen> {
           crossAxisCount: 3,
           crossAxisSpacing: 6,
           mainAxisSpacing: 7,
-          childAspectRatio: .92,
+          childAspectRatio: .74,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           children: [for (final t in themeNames.keys) _theme(t, t == theme)],
@@ -159,29 +159,28 @@ class _BookShapeScreenState extends State<BookShapeScreen> {
       child: Column(children: [
         Stack(clipBehavior: Clip.none, children: [
           Container(
-            width: 54,
-            height: 72,
+            width: 66,
+            height: 88,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(2),
               boxShadow: on
                   ? const [BoxShadow(color: C.ink, spreadRadius: 4), BoxShadow(color: C.paper, spreadRadius: 2)]
                   : const [BoxShadow(color: Color(0xFFD8CDBC), spreadRadius: 1), BoxShadow(color: Color(0x2E462D14), blurRadius: 8, offset: Offset(2, 3))],
             ),
-            child: Photo('assets/covers/$t.jpg', w: 54, h: 72, r: 2),
+            child: Photo('assets/covers/$t.jpg', w: 66, h: 88, r: 2),
           ),
+        ]),
+        const SizedBox(height: 8),
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Flexible(child: Text(themeNames[t]!, maxLines: 1, overflow: TextOverflow.ellipsis, style: ui(11.5, w: FontWeight.w700, h: 1.2))),
           if (rec)
-            Positioned(
-              top: -5,
-              left: 54 / 2 + 9,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                decoration: BoxDecoration(color: C.ink, borderRadius: BorderRadius.circular(8), border: Border.all(color: C.paper, width: 1.5)),
-                child: Text('추천', style: ui(9.5, w: FontWeight.w700, color: C.paper, h: 1)),
-              ),
+            Container(
+              margin: const EdgeInsets.only(left: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2.5),
+              decoration: BoxDecoration(color: C.ink, borderRadius: BorderRadius.circular(6)),
+              child: Text('추천', style: ui(9, w: FontWeight.w700, color: C.paper, h: 1)),
             ),
         ]),
-        const SizedBox(height: 5),
-        Text(themeNames[t]!, style: ui(11.5, w: FontWeight.w700, h: 1.2)),
         Text(rec ? widget.reason : _themeNotes[t]!,
             textAlign: TextAlign.center,
             maxLines: 1,

@@ -83,7 +83,7 @@ class _DatesScreenState extends State<DatesScreen> {
                 onTap: () => Navigator.of(c).pop(y),
                 child: Container(
                   alignment: Alignment.center,
-                  decoration: BoxDecoration(color: y == _m.year ? C.ink : C.card, borderRadius: BorderRadius.circular(12)),
+                  decoration: cardDeco(color: y == _m.year ? C.ink : C.card, r: 12),
                   child: Text('$y', style: nm(14, w: FontWeight.w600, color: y == _m.year ? C.paper : C.ink)),
                 ),
               ),
@@ -131,7 +131,7 @@ class _DatesScreenState extends State<DatesScreen> {
             onTap: _pickYear,
             child: Container(
               padding: const EdgeInsets.fromLTRB(10, 5, 4, 5),
-              decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(999)),
+              decoration: cardDeco(color: C.card, r: 999),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Text('${_m.year}년', style: nm(14, w: FontWeight.w600)),
                 const Icon(Icons.arrow_drop_down_rounded, size: 20, color: C.ink2),
@@ -141,11 +141,15 @@ class _DatesScreenState extends State<DatesScreen> {
           const SizedBox(width: 8),
           Text('${_m.month}월', style: nm(15, w: FontWeight.w600)),
           const Spacer(),
-          for (final (g, dm) in [('‹', -1), ('›', 1)])
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => _show(DateTime(_m.year, _m.month + dm)),
-              child: SizedBox(width: 36, height: 32, child: Center(child: Text(g, style: ui(18, color: C.ink2)))),
+          for (final (g, dm, l) in [(Icons.chevron_left_rounded, -1, '이전 달'), (Icons.chevron_right_rounded, 1, '다음 달')])
+            Semantics(
+              button: true,
+              label: l,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _show(DateTime(_m.year, _m.month + dm)),
+                child: SizedBox(width: 40, height: 40, child: Center(child: Icon(g, size: 24, color: C.ink))),
+              ),
             ),
         ]),
         const SizedBox(height: 6),
@@ -188,7 +192,7 @@ class _DatesScreenState extends State<DatesScreen> {
               Container(
                 width: (c.maxWidth - 12) / 3,
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(12)),
+                decoration: cardDeco(color: C.card, r: 12),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('${d.day} ${weekdays[d.weekday - 1]}', style: nm(11, color: C.ink2)),
                   const SizedBox(height: 2),

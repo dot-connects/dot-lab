@@ -168,7 +168,7 @@ void main() {
     final now = DateTime.now();
     shown.clear();
     await pump(t, DatesScreen(key: UniqueKey(), month: DateTime(now.year, now.month), photos: const {}, onClose: no, onNext: (_, _) {}, onMonth: shown.add));
-    await t.tap(find.text('›'));
+    await t.tap(find.byIcon(Icons.chevron_right_rounded));
     await t.pumpAndSettle();
     expect(shown, isEmpty);
     expect(find.text('${now.month}월'), findsOneWidget);
@@ -278,7 +278,7 @@ void main() {
     expect(find.text('8가지'), findsOneWidget);
     await t.tap(find.text('더 보기'));
     await t.pumpAndSettle();
-    await t.drag(find.byType(SingleChildScrollView), const Offset(0, -300));
+    await t.drag(find.byType(SingleChildScrollView), const Offset(0, -420));
     await t.pumpAndSettle();
     await t.tap(find.text('풍경 위주'));
     await t.pump();

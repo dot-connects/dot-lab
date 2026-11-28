@@ -81,7 +81,7 @@ class _MustPickScreenState extends State<MustPickScreen> {
         child: Container(
           height: 30,
           padding: const EdgeInsets.symmetric(horizontal: 10),
-          decoration: BoxDecoration(color: on ? C.ink : C.card, borderRadius: BorderRadius.circular(15)),
+          decoration: cardDeco(color: on ? C.ink : C.card, r: 15),
           child: Row(mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
             Text('${day.day} ${weekdays[day.weekday - 1]} ', style: nm(12, w: FontWeight.w600, color: on ? C.paper : C.ink2)),
             Text('${ps.length}', style: nm(10.5, color: (on ? C.paper : C.ink2).withValues(alpha: .8))),

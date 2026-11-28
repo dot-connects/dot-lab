@@ -20,7 +20,7 @@ enum ShelfView {
   ShelfView get next => values[(index + 1) % values.length];
 }
 
-const _wall2 = Color(0xFFEEE6D9);
+const _wall2 = Color(0xFFE5DACA);
 const _ease = Cubic(.2, .8, .2, 1);
 
 class Shelf extends StatefulWidget {
@@ -83,17 +83,23 @@ class _ShelfState extends State<Shelf> {
           child: AnimatedOpacity(
             opacity: view == ShelfView.year ? 0 : 1,
             duration: const Duration(milliseconds: 400),
+            // r28: a warm plaster wall -- light from above and a fine grain
             child: const DecoratedBox(
               decoration: BoxDecoration(
-                gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [C.paper, _wall2]),
+                gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Color(0xFFF1EADF), _wall2]),
               ),
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: RadialGradient(
                     center: Alignment.topCenter,
                     radius: 1.2,
-                    colors: [Color(0xFFFAF7F2), Color(0x00FAF7F2)],
+                    colors: [Color(0xFFF7F2EA), Color(0x00F7F2EA)],
                     stops: [0, .7],
+                  ),
+                ),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    image: DecorationImage(image: AssetImage('assets/ui/plaster.png'), repeat: ImageRepeat.repeat, scale: 2),
                   ),
                 ),
               ),
@@ -248,33 +254,51 @@ class _ShelfState extends State<Shelf> {
     return d.year == now.year ? md : '${two(d.year % 100)}.$md';
   }
 
-  Widget _book(ShelfBook b, {double w = 112, double h = 150}) => Builder(
+  Widget _book(ShelfBook b, {double w = 112, double h = 150, bool shelf = false}) => Builder(
         builder: (ctx) => GestureDetector(
           onTap: () => widget.onOpen(b),
           onLongPress: () => _longPress(b, ctx),
-          child: _Edged(b, child: _Cover(b, w: w, h: h)),
+          child: _Edged(b, child: _Cover(b, w: w, h: h, shelf: shelf)),
         ),
       );
 
   // ----- 진열 -----
   /// Two columns per shelf, as in the mockup grid (left 30, gap 30, right 36); the book fills most of its column.
-  ({double col, double w, double h}) _cell(double width) {
-    final col = (width - 30 - 30 - 36) / 2;
-    final w = math.min(136.0, col - 10).roundToDouble();
+  ({double col, double w, double h}) _cell(double width) { // the first Android frame can be 0 wide
+    final col = math.max(0.0, (width - 30 - 30 - 36) / 2);
+    final w = math.max(0.0, math.min(136.0, col - 10)).roundToDouble();
     return (col: col, w: w, h: (w * 4 / 3).roundToDouble());
   }
 
-  /// One shelf: the books stand on the plank's top face (3px into it), each with a soft contact shadow.
+  /// One shelf (mockups/r28-shelf): the books stand on the board's top face, leaning back against the wall; the
+  /// light under the board washes the wall below it (the labels and the next shelf's books).
   Widget _shelfRow(double h, List<Widget> books) => Padding(
         padding: const EdgeInsets.only(top: 34),
         child: SizedBox(
-          height: h + 12,
+          height: h + 20,
           child: Stack(clipBehavior: Clip.none, children: [
-            const Positioned(left: 16, right: 16, bottom: 0, height: 15, child: _Plank()),
+            Positioned(
+              left: 0,
+              right: 0,
+              top: h + 20,
+              height: 300,
+              child: const IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment.topCenter,
+                      radius: .95,
+                      colors: [Color(0xCCFFEAC6), Color(0x00FFF0D7)],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const Positioned(left: 12, right: 12, bottom: 0, height: 34, child: _Plank()),
             Positioned(
               left: 30,
               right: 36,
-              bottom: 12,
+              bottom: 20,
               child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 for (final j in [0, 1]) ...[
                   if (j > 0) const SizedBox(width: 30),
@@ -286,20 +310,30 @@ class _ShelfState extends State<Shelf> {
         ),
       );
 
+  /// A book leaning back against the wall: its shadow is tight and dark where the top touches the wall and widens,
+  /// softer, down to the board; a dark line where it sits on the board.
   Widget _standing(ShelfBook b, double w, double h) => Stack(clipBehavior: Clip.none, children: [
         Positioned(
-          left: w * .04,
-          right: -w * .1,
-          bottom: -5,
-          height: 10,
-          child: ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-            child: Container(
-              decoration: BoxDecoration(color: const Color(0x473C240E), borderRadius: BorderRadius.all(Radius.elliptical(w, 5))),
-            ),
-          ),
+          left: -w * .03,
+          right: -w * .15,
+          top: 5,
+          bottom: 4,
+          child: const IgnorePointer(child: CustomPaint(painter: _LeanShadow())),
         ),
-        _book(b, w: w, h: h),
+        Transform(
+          alignment: Alignment.bottomCenter,
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 1 / 760)
+            ..rotateX(-9 * math.pi / 180),
+          child: _book(b, w: w, h: h, shelf: true),
+        ),
+        Positioned(
+          left: w * .01,
+          right: -w * .03,
+          bottom: -3,
+          height: 8,
+          child: const IgnorePointer(child: CustomPaint(painter: _Contact())),
+        ),
       ]);
 
   Widget _display() => LayoutBuilder(builder: (context, c) {
@@ -309,7 +343,7 @@ class _ShelfState extends State<Shelf> {
           for (var i = 0; i < b.length; i += 2) ...[
             _shelfRow(h, [for (final x in b.skip(i).take(2)) _standing(x, w, h)]),
             Padding(
-              padding: const EdgeInsets.fromLTRB(30, 14, 36, 0),
+              padding: const EdgeInsets.fromLTRB(30, 20, 36, 0),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 for (final j in [0, 1]) ...[
                   if (j > 0) const SizedBox(width: 30),
@@ -574,8 +608,8 @@ class _ShelfState extends State<Shelf> {
 class _Cover extends StatelessWidget {
   final ShelfBook b;
   final double w, h;
-  final bool lifted;
-  const _Cover(this.b, {required this.w, required this.h, this.lifted = false});
+  final bool lifted, shelf;
+  const _Cover(this.b, {required this.w, required this.h, this.lifted = false, this.shelf = false});
   @override
   Widget build(BuildContext context) => Container(
         width: w,
@@ -583,9 +617,12 @@ class _Cover extends StatelessWidget {
         decoration: BoxDecoration(
           color: C.gridBg,
           boxShadow: [
-            lifted
-                ? const BoxShadow(color: Color(0x8028190A), blurRadius: 26, offset: Offset(10, 16))
-                : BoxShadow(color: const Color(0x47462D14), blurRadius: w > 100 ? 14 : 10, offset: w > 100 ? const Offset(6, 8) : const Offset(3, 4)),
+            if (lifted)
+              const BoxShadow(color: Color(0x8028190A), blurRadius: 26, offset: Offset(10, 16))
+            else if (shelf) // the wall shadow is drawn behind the leaning book (_standing)
+              const BoxShadow(color: Color(0x33281A0C), blurRadius: 1, offset: Offset(0, 1))
+            else
+              BoxShadow(color: const Color(0x47462D14), blurRadius: w > 100 ? 14 : 10, offset: w > 100 ? const Offset(6, 8) : const Offset(3, 4)),
           ],
         ),
         child: b.cover != null
@@ -872,27 +909,112 @@ class _ModeIcon extends CustomPainter {
   bool shouldRepaint(_ModeIcon old) => old.v != v;
 }
 
-/// A thin light-oak shelf: a pale top face, then the front edge, and a soft shadow on the wall below.
+/// A thick light-oak floating shelf (mockups/r28-shelf): the top face seen from above (darker where it meets the
+/// wall), a lit rounded front edge, a grained front with darker ends, and a deep soft shadow on the wall below.
 class _Plank extends StatelessWidget {
   const _Plank();
   @override
   Widget build(BuildContext context) => Container(
         decoration: const BoxDecoration(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(2), bottom: Radius.circular(3)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(3), bottom: Radius.circular(4)),
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFEBDCC6), Color(0xFFE3D0B4), Color(0xFFC79F72), Color(0xFFB88E61), Color(0xFFA87E53)],
-            stops: [0, 5 / 15, 5 / 15, .6, 1],
+            colors: [
+              Color(0xFFC9AE88), Color(0xFFDCC5A3), Color(0xFFEBDBC2), Color(0xFFFBF3E6), Color(0xFFF0DFC5), //
+              Color(0xFFDDC39F), Color(0xFFD1B189), Color(0xFFBD9566), Color(0xFFA9814F),
+            ],
+            stops: [0, 4 / 34, 13 / 34, 15 / 34, 16.5 / 34, 19 / 34, .45, .8, 1],
           ),
-          boxShadow: [BoxShadow(color: Color(0x6B462810), blurRadius: 20, spreadRadius: -12, offset: Offset(0, 16))],
+          boxShadow: [
+            BoxShadow(color: Color(0x59462810), blurRadius: 1, offset: Offset(0, 1)),
+            BoxShadow(color: Color(0x59462810), blurRadius: 6, spreadRadius: -2, offset: Offset(0, 3)),
+            BoxShadow(color: Color(0x99462810), blurRadius: 34, spreadRadius: -20, offset: Offset(0, 34)),
+          ],
         ),
-        child: Column(children: [
-          Container(height: 1, color: const Color(0x8CFFFFFF)), // lit top edge
-          const SizedBox(height: 4),
-          Container(height: 1, color: const Color(0x47FFFFFF)), // where the top face meets the front
+        foregroundDecoration: const BoxDecoration(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(3), bottom: Radius.circular(4)),
+          gradient: LinearGradient(
+            colors: [Color(0x2E462810), Color(0x00462810), Color(0x00462810), Color(0x33462810)],
+            stops: [0, .07, .93, 1],
+          ),
+        ),
+        child: const Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          SizedBox(height: 15),
+          ColoredBox(color: Color(0xD9FFFFFF), child: SizedBox(height: 1)), // the lit rounded front edge
+          Expanded(child: CustomPaint(painter: _Grain())),
         ]),
       );
+}
+
+/// Fine long wood grain on the board's front: thin wavy lines, fixed seed so it never shimmers between frames.
+class _Grain extends CustomPainter {
+  const _Grain();
+  @override
+  void paint(Canvas c, Size s) {
+    final r = math.Random(7);
+    final p = Paint()
+      ..style = PaintingStyle.stroke
+      ..blendMode = BlendMode.multiply;
+    for (var i = 0; i < 16; i++) {
+      final y0 = r.nextDouble() * s.height, amp = .4 + r.nextDouble() * 1.4, k = 2 + r.nextDouble() * 5, ph = r.nextDouble() * 6;
+      p
+        ..color = Color.fromARGB(10 + r.nextInt(18), 110, 70, 34)
+        ..strokeWidth = .3 + r.nextDouble() * .5;
+      final path = Path()..moveTo(0, y0);
+      for (var x = 0.0; x <= s.width; x += 6) {
+        path.lineTo(x, y0 + amp * math.sin(ph + x / s.width * k * math.pi));
+      }
+      c.drawPath(path, p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_Grain old) => false;
+}
+
+/// Where the book sits on the board: a thin dark soft line.
+class _Contact extends CustomPainter {
+  const _Contact();
+  @override
+  void paint(Canvas c, Size s) => c.drawOval(
+        Offset.zero & s,
+        Paint()
+          ..color = const Color(0x80281608)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5),
+      );
+
+  @override
+  bool shouldRepaint(_Contact old) => false;
+}
+
+/// A leaning book's shadow on the wall: narrow at the top where the book touches, wider at the board; darkest at
+/// the top edge, a little darker again near the board.
+class _LeanShadow extends CustomPainter {
+  const _LeanShadow();
+  @override
+  void paint(Canvas c, Size s) {
+    final path = Path()
+      ..moveTo(s.width * .07, 0)
+      ..lineTo(s.width * .93, 0)
+      ..lineTo(s.width, s.height)
+      ..lineTo(0, s.height)
+      ..close();
+    c.drawPath(
+      path,
+      Paint()
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5)
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xA6341E0C), Color(0x73341E0C), Color(0x55341E0C), Color(0x73341E0C)],
+          stops: [0, .07, .6, 1],
+        ).createShader(Offset.zero & s),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_LeanShadow old) => false;
 }
 
 

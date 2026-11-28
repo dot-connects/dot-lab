@@ -98,7 +98,7 @@ class Sg<T> extends StatelessWidget {
                 onTap: () => onChanged(it.value),
                 child: Container(
                   padding: EdgeInsets.fromLTRB(4, it.sub == null ? 9 : 8, 4, 9),
-                  decoration: BoxDecoration(color: it.value == value ? C.ink : C.card, borderRadius: BorderRadius.circular(12)),
+                  decoration: cardDeco(color: it.value == value ? C.ink : C.card, r: 12),
                   child: Column(children: [
                     Text.rich(
                       TextSpan(text: it.label, children: [
@@ -207,18 +207,22 @@ class NbScaffold extends StatelessWidget {
         child: Stack(children: [
           Column(children: [
             SizedBox(
-              height: 34,
+              height: 44,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: Row(children: [
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: onBack,
-                    child: SizedBox(
-                      width: 44,
-                      height: 34,
-                      child: Center(
-                        child: back == '✕' ? const Icon(Icons.close, size: 17, color: C.ink2) : Text(back, style: ui(20, color: C.ink2)),
+                  Semantics(
+                    button: true,
+                    label: back == '✕' ? '닫기' : '뒤로',
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: onBack,
+                      child: SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: Center(
+                          child: Icon(back == '✕' ? Icons.close_rounded : Icons.arrow_back_ios_new_rounded, size: back == '✕' ? 22 : 18, color: C.ink),
+                        ),
                       ),
                     ),
                   ),
@@ -273,7 +277,7 @@ class Priv extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         margin: EdgeInsets.only(top: top),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(14)),
+        decoration: cardDeco(color: C.card, r: 14),
         child: Text(kw(text), style: ui(11.5, color: C.body, h: 1.5)),
       );
 }

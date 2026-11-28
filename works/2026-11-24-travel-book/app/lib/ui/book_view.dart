@@ -86,7 +86,7 @@ class BookView extends StatelessWidget {
                 GestureDetector(
                   onTap: onBack,
                   behavior: HitTestBehavior.opaque,
-                  child: SizedBox(width: 30, height: 44, child: Center(child: Text('‹', style: ui(18, color: C.ink)))),
+                  child: const SizedBox(width: 36, height: 44, child: Center(child: Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: C.ink))),
                 ),
                 Expanded(child: Text(title, style: ui(14.5, w: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
                 if (onSpread != null) ...[
@@ -220,7 +220,7 @@ class PageSheet extends StatelessWidget {
             onTap: f,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-              decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(14)),
+              decoration: cardDeco(color: C.card, r: 14),
               child: Row(children: [
                 Container(
                   width: 36,

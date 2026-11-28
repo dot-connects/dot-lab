@@ -28,7 +28,7 @@ class NotesScreen extends StatelessWidget {
             onTap: f,
             child: Container(
               padding: const EdgeInsets.fromLTRB(4, 12, 4, 10),
-              decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(14)),
+              decoration: cardDeco(color: C.card, r: 14),
               child: Column(children: [
                 Icon(ic, size: 18, color: C.ink),
                 const SizedBox(height: 6),
@@ -64,7 +64,7 @@ class NotesScreen extends StatelessWidget {
               onTap: () => onTapItem(i),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-                decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(14)),
+                decoration: cardDeco(color: C.card, r: 14),
                 child: Row(children: [
                   it.thumb != null
                       ? Photo(it.thumb!, w: 36, h: 36, r: 7)
@@ -96,7 +96,7 @@ class NotesScreen extends StatelessWidget {
         Container(
           margin: const EdgeInsets.only(top: 14),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(14)),
+          decoration: cardDeco(color: C.card, r: 14),
           child: Text(kw('넣은 글과 손글씨 사진은 글을 쓸 때만 AI로 보내요. 어디에도 저장하지 않아요.'), style: ui(11.5, color: C.body, h: 1.5)),
         ),
       ]),
