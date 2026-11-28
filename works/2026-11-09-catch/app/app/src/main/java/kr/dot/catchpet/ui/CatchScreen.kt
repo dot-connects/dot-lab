@@ -718,7 +718,7 @@ private class CatchGame(
             val fresh = all.filter { family(it.kind) == family(target.kind) }.maxByOrNull { iou(it, target) }
             val m = (fresh?.takeIf { iou(it, target) > 0f } ?: target).pieceNear(gx, gy)
             val g = group(f, m, all)
-            if (g == null) makeGrip(f, m) else makeGrip(f, g.first, hiRes = g.second.split('+').all { it == "person" }, kind = g.second)
+            if (g == null) makeGrip(f, m, clawCell = gx to gy) else makeGrip(f, g.first, hiRes = g.second.split('+').all { it == "person" }, kind = g.second)
         }
     }
 
@@ -746,9 +746,14 @@ private class CatchGame(
         return if (n == 0) 0f else i.toFloat() / n
     }
 
-    private fun makeGrip(f: Bitmap, m: Mask, hiRes: Boolean = true, kind: String? = null): Grip {
+    private fun makeGrip(f: Bitmap, m: Mask, hiRes: Boolean = true, kind: String? = null, clawCell: Pair<Int, Int>? = null): Grip {
         val hi = if (hiRes && m.kind == Mask.Kind.PERSON) CutOut.srcOf(f, m, 0.15f)?.let { src ->
             runCatching { seg.personAlpha(f, src) }.onFailure { Log.w(TAG, "hi-res cut", it) }.getOrNull()?.let { a -> CutOut.make(f, src, a, clip = m).also { a.recycle() } }
+        } else if (hiRes && kind == null) CutOut.srcOf(f, m, 0.15f)?.let { src ->
+            // one animal (research/seg-quality-2026-11-27.md): magic touch + crop DeepLab, no grid clip (the box clips)
+            val inner = CutOut.srcOf(f, m, 0f) ?: src
+            val tip = clawCell?.let { (x, y) -> android.graphics.PointF((x + 0.5f) * f.width / m.w, (y + 0.5f) * f.height / m.h) }
+            runCatching { seg.animalAlpha(f, src, inner, tip) }.onFailure { Log.w(TAG, "animal cut", it) }.getOrNull()?.let { a -> CutOut.make(f, src, a).also { a.recycle() } }
         } else null
         val cut = hi ?: CutOut.make(f, m)
         return Grip(cut, cut?.let { CutOut.opaque(it.bmp) } ?: 0f, kind)
