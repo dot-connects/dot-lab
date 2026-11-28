@@ -8,16 +8,17 @@
 // each is tried in turn, twice, within ~4 min (the app waits up to 5)
 const OVERPASS = ["https://maps.mail.ru/osm/tools/overpass/api/interpreter", "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
-const MAX_SPAN = 12, MIN_SPAN = 0.005;
+const MAX_SPAN = 12, MAX_DETAIL_SPAN = 0.6, MIN_SPAN = 0.005;   // a close-up asks every street: small boxes only
 const PLACE_RANK = { city: 4, town: 2.5, suburb: 1.5, village: 1 };
 const ROAD_CLASS = { motorway: 1, trunk: 1, primary: 2, secondary: 3, tertiary: 4, unclassified: 5, residential: 5 };
 
 /** The box as the app may send it, rounded outward to 0.01°, or null. */
-export function cleanBox(box) {
+export function cleanBox(box, detail = false) {
   if (!Array.isArray(box) || box.length !== 4 || !box.every(v => typeof v === "number" && Number.isFinite(v))) return null;
   const [s, w, n, e] = [Math.floor(box[0] * 100) / 100, Math.floor(box[1] * 100) / 100, Math.ceil(box[2] * 100) / 100, Math.ceil(box[3] * 100) / 100];
   if (s < -85 || n > 85 || w < -180 || e > 180 || n - s < MIN_SPAN || e - w < MIN_SPAN) return null;
-  if (n - s > MAX_SPAN || e - w > MAX_SPAN) return null;
+  const max = detail ? MAX_DETAIL_SPAN : MAX_SPAN;
+  if (n - s > max || e - w > max) return null;
   return [s, w, n, e].map(v => +v.toFixed(2));
 }
 
@@ -29,7 +30,7 @@ export function mapQuery([s, w, n, e], detail) {
   // a wide box keeps only named lakes (thousands of ponds otherwise)
   const water = span > 0.8 && !detail ? `way["natural"="water"]["name"]${b};relation["natural"="water"]["name"]${b};`
     : `way["natural"="water"]${b};relation["natural"="water"]${b};`;
-  return `[out:json][timeout:80][maxsize:268435456];` +
+  return `[out:json][timeout:80][maxsize:67108864];` +
     `way["natural"="coastline"]${b}->.c;.c out geom;` +
     `(way["highway"~"^(${roads})$"]${b};${water})->.r;.r out tags geom${b};` +
     `(way["place"~"^(island|islet)$"]["name"]${b};relation["place"="island"]["name"]${b};)->.i;.i out tags bb;` +
@@ -192,7 +193,7 @@ export function shapeMap(osm, box, detail) {
 
 /** POST /map {box, detail}: cached by box; Overpass is asked only on a miss. */
 export async function handleMap(body, ctx, fetcher = fetch) {
-  const box = cleanBox(body?.box), detail = body?.detail === true;
+  const detail = body?.detail === true, box = cleanBox(body?.box, detail);
   if (!box) return { status: 400, body: { error: "box" } };
   const cacheKey = new Request(`https://map.cache/v3/${box.join(",")}/${detail ? 1 : 0}`);
   const cache = typeof caches !== "undefined" ? caches.default : null;

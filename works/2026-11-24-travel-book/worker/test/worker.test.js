@@ -333,6 +333,7 @@ test("map: a box is rounded outward and bounded", () => {
   assert.equal(cleanBox([0, 0, 20, 20]), null);          // wider than 12°
   assert.equal(cleanBox([1, 2, 3]), null);
   assert.equal(cleanBox([0, 0, "1", 1]), null);
+  assert.equal(cleanBox([0, 0, 1, 1], true), null);       // a street-level close-up is small only
 });
 
 test("map: ways that continue each other join in any order", () => {
