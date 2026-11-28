@@ -248,6 +248,20 @@ object FeltArt {
         }
     }
 
+    private var clothShader: BitmapShader? = null
+    private var clothScale = 0f
+
+    /** Wool over a whole page (the menus' background): the texture [tile] px wide in soft light. */
+    fun cloth(cv: Canvas, w: Float, h: Float, tile: Float) {
+        val t = tex ?: return
+        val sh = clothShader?.takeIf { clothScale == tile } ?: BitmapShader(t, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT).also {
+            it.setLocalMatrix(Matrix().apply { setScale(tile / t.width, tile / t.width) }); clothShader = it; clothScale = tile
+        }
+        fill.color = Color.BLACK; fill.shader = sh; fill.blendMode = BlendMode.SOFT_LIGHT; fill.alpha = 230
+        cv.drawRect(0f, 0f, w, h, fill)
+        fill.shader = null; fill.blendMode = null; fill.alpha = 255
+    }
+
     /** The wooden rail across the top, centred on [y]. */
     fun rail(cv: Canvas, w: Float, y: Float) {
         fill.shader = null; fill.color = 0x555A3A1A

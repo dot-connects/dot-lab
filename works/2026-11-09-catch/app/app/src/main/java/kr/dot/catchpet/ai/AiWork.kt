@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kr.dot.catchpet.BuildConfig
@@ -95,6 +96,68 @@ object AiWork {
             Dex.saveSheet(app, e.id, it.image, ext(it.mime), style, twelve = it.twelve)
             Done.notify(app, e.name, style)   // the 1-3 minutes may pass on another screen
         }.onFailure { if ((it as? AiClient.Fail)?.code == "free") lower(app, "q_sheet", 0) }
+    }
+
+    /**
+     * Both looks from one request (operator 11-28: one free sheet, or one 700-won purchase). [token]: the dev app's
+     * token; null = a free sheet. An older Worker that does not know style "both" (400, or 413 for two looks) gets the two single requests.
+     */
+    fun buyBoth(ctx: Context, e: Dex.Entry, token: String?) = run(ctx, e, "sheet-both") { app ->
+        val png = cutOut(app, e)
+        val looks = STYLES.mapNotNull { s -> look(app, e, s)?.let { s to it } }.toMap()
+        val r = client(app).sheetBoth(png, e.kind, e.id, token, looks)
+        val f = r.exceptionOrNull() as? AiClient.Fail
+        if (f != null && (f.status == 400 && f.code == "bad request" || f.status == 413)) {   // 413: the old body cap had room for one look
+            // ponytail: an older Worker spends two free sheets here; delete once the "both" Worker is deployed
+            for (s in STYLES) client(app).sheet(png, e.kind, e.id, token, s, looks[s]).onSuccess { keep(app, e, s, it) }
+                .onFailure { if ((it as? AiClient.Fail)?.code == "free") lower(app, "q_sheet", 0) }.getOrThrow()
+            Done.notify(app, e.name, "both")
+            Result.success(Unit)
+        } else r.onSuccess { m ->
+            for (s in STYLES) keep(app, e, s, m.getValue(s))   // fluff first: it becomes the pet's look
+            Done.notify(app, e.name, "both")
+        }.onFailure { if ((it as? AiClient.Fail)?.code == "free") lower(app, "q_sheet", 0) }
+    }
+
+    private val STYLES = listOf("fluff", "figure")
+
+    private fun keep(app: Context, e: Dex.Entry, style: String, rep: AiClient.Reply) {
+        rep.freeLeft?.let { n -> lower(app, "q_sheet", n) }
+        Dex.saveSheet(app, e.id, rep.image, ext(rep.mime), style, twelve = rep.twelve)
+    }
+
+    private val carded = java.util.Collections.synchronizedSet(HashSet<String>())
+
+    /**
+     * The AI card line for a fresh real catch (spec-release 10), saved on its dex entry. Asked once per catch; null on
+     * any failure, and the card keeps its fixed line (never retried in a loop).
+     */
+    suspend fun card(ctx: Context, name: String, kind: String, pic: android.graphics.Bitmap): Pair<String, List<String>>? {
+        if (!carded.add(name)) return null
+        val app = ctx.applicationContext
+        // the app scope: closing the card does not drop an answer on its way
+        return scope.async {
+            val r = client(app).card(jpeg512(pic), kind, if (dev) BuildConfig.DEBUG_PURCHASE else null)
+                .onFailure { Log.w("AiWork", "card failed: ${it.message}") }.getOrNull() ?: return@async null
+            // the dex writes on its own thread: the entry may land a moment after the catch
+            repeat(10) {
+                Dex.list(app).firstOrNull { it.name == name && it.critterId == null }?.let { Dex.saveCard(app, it.id, r.first, r.second); return@async r }
+                kotlinx.coroutines.delay(500)
+            }
+            r
+        }.await()
+    }
+
+    /** At most 512 px on its long side, on white (JPEG has no alpha). */
+    private fun jpeg512(pic: android.graphics.Bitmap): ByteArray {
+        val k = minOf(1f, 512f / maxOf(pic.width, pic.height))
+        val w = maxOf(1, (pic.width * k).toInt()); val h = maxOf(1, (pic.height * k).toInt())
+        val out = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        android.graphics.Canvas(out).apply {
+            drawColor(android.graphics.Color.WHITE)
+            drawBitmap(pic, null, android.graphics.Rect(0, 0, w, h), android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG))
+        }
+        return java.io.ByteArrayOutputStream().use { o -> out.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, o); out.recycle(); o.toByteArray() }
     }
 
     /** The preview shown for this look (the detail screen's rule), if one was drawn and fits the Worker's 800 k chars. */

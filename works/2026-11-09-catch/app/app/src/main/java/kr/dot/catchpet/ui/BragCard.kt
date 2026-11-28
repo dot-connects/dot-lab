@@ -52,7 +52,13 @@ import kotlinx.coroutines.withContext
 fun BragCard(b: Brag, onClose: () -> Unit, onDex: () -> Unit, onShare: () -> Unit) {
     val ctx = LocalContext.current
     val card by produceState<ImageBitmap?>(null, b) {
-        value = withContext(Dispatchers.Default) { runCatching { ShareCard.render(b.ready(ctx)).asImageBitmap() }.getOrNull() }
+        suspend fun draw() = withContext(Dispatchers.Default) { runCatching { ShareCard.render(b.ready(ctx)).asImageBitmap() }.getOrNull() }
+        value = draw()
+        // the AI line (spec-release 10) arrives later and redraws the card; a person's photo never leaves for it
+        val pic = b.pic
+        if (b.line == null && b.critterId == null && !b.person && pic != null) {
+            kr.dot.catchpet.ai.AiWork.card(ctx, b.name, b.kind, pic)?.let { (l, t) -> b.line = l; b.tags = t; value = draw() }
+        }
     }
     // entrance (mockup firstCard): the dim, the card springs up, the ribbon drops in, the buttons rise
     val fade = remember { Animatable(0f) }
@@ -76,7 +82,7 @@ fun BragCard(b: Brag, onClose: () -> Unit, onDex: () -> Unit, onShare: () -> Uni
             Box(Modifier.graphicsLayer {
                 val k = ribK.value
                 alpha = k.coerceIn(0f, 1f); translationY = (1f - k) * -50.dp.toPx(); rotationZ = -2f - 12f * (1f - k)
-            }.felt(0xFFE0794A.toInt(), 12f).padding(horizontal = 24.dp, vertical = 6.dp)) {
+            }.felt(Color(0xFFE0794A), 12.dp, stitch = true).padding(horizontal = 24.dp, vertical = 6.dp)) {
                 Text("새로 뽑았다!", fontFamily = Book.Display, fontSize = 26.sp, color = Color(0xFFFFFAF0))
             }
             Spacer(Modifier.height(16.dp))
@@ -90,7 +96,7 @@ fun BragCard(b: Brag, onClose: () -> Unit, onDex: () -> Unit, onShare: () -> Uni
             Column(Modifier.fillMaxWidth(0.86f).padding(top = 18.dp).graphicsLayer {
                 alpha = btnK.value; translationY = (1f - btnK.value) * 14.dp.toPx()
             }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).felt(FeltArt.SUN, 999f).clickable(onClick = onShare)
+                Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(50)).felt(Book.Sun, 999.dp).clickable(onClick = onShare)
                     .padding(vertical = 13.dp), contentAlignment = Alignment.Center) {
                     Text("자랑하기", fontFamily = Book.Display, fontSize = 18.sp, color = Color(0xFF3B2E22))
                 }
@@ -103,16 +109,5 @@ fun BragCard(b: Brag, onClose: () -> Unit, onDex: () -> Unit, onShare: () -> Uni
                 )
             }
         }
-    }
-}
-
-/** The felt pill (FeltArt) behind a composable: colour, wool texture, dashed stitch. */
-private fun Modifier.felt(color: Int, radiusDp: Float) = drawBehind {
-    drawIntoCanvas { c ->
-        val cv = c.nativeCanvas
-        cv.save(); cv.scale(density, density)
-        val w = size.width / density; val h = size.height / density
-        FeltArt.pill(cv, android.graphics.RectF(0f, 0f, w, h), color, radius = minOf(radiusDp, h / 2))
-        cv.restore()
     }
 }

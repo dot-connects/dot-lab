@@ -25,15 +25,22 @@ import kotlin.math.max
 class Brag(val name: String, val kind: String, val pic: Bitmap?, val critterId: String?, val cap: Int, val at: Long = System.currentTimeMillis()) {
     val person get() = Dex.hasPerson(kind)
 
+    /** The AI card line + two traits (Worker /card), set when it arrives; null = the fixed line. */
+    @Volatile var line: String? = null
+    @Volatile var tags: List<String> = emptyList()
+
     /** A critter's catch carries no picture: read its front cell (off the main thread). */
-    fun ready(ctx: Context): Brag = if (pic == null && critterId != null) Brag(name, kind, Frames.asset(ctx, critterId, "front"), critterId, cap, at) else this
+    fun ready(ctx: Context): Brag = if (pic == null && critterId != null)
+        Brag(name, kind, Frames.asset(ctx, critterId, "front"), critterId, cap, at).also { it.line = line; it.tags = tags } else this
 
     companion object {
         /** A dex entry: a critter's front picture, a real thing's cut-out photo (its first pose). */
         fun of(ctx: Context, e: Dex.Entry): Brag {
             val pic = if (e.critterId != null) Frames.asset(ctx, e.critterId, "front")
             else e.poses.firstOrNull()?.let { BitmapFactory.decodeFile(Dex.file(ctx, e.id, "$it.png").path) }
-            return Brag(e.name, e.kind, pic, e.critterId, e.cap ?: CapColors.of(e.no), e.caughtAt)
+            return Brag(e.name, e.kind, pic, e.critterId, e.cap ?: CapColors.of(e.no), e.caughtAt).also { b ->
+                Dex.card(ctx, e.id)?.let { (l, t) -> b.line = l; b.tags = t }
+            }
         }
     }
 }
@@ -77,7 +84,16 @@ object ShareCard {
         t.color = INK; c.drawText(title, W / 2f, 182f, t)
         t.typeface = Typeface.DEFAULT; t.textSize = 40f; t.color = 0xFF5D6B57.toInt()
         val date = SimpleDateFormat("yyyy.MM.dd", Locale.KOREA).format(Date(b.at))
-        c.drawText("$date · ${if (b.critterId != null) "털뭉치" else Dex.kindName(b.kind)}", W / 2f, 252f, t)
+        val what = "$date · ${if (b.critterId != null) "털뭉치" else Dex.kindName(b.kind)}"
+        val line = b.line
+        if (line == null) c.drawText(what, W / 2f, 252f, t)
+        else {   // the AI line (spec-release 10), then date · kind · the two traits
+            t.color = INK; t.textSize = 44f
+            while (t.measureText(line) > W - 100f && t.textSize > 26f) t.textSize -= 2f
+            c.drawText(line, W / 2f, 256f, t)
+            t.color = 0xFF5D6B57.toInt(); t.textSize = 34f
+            c.drawText((listOf(what) + b.tags).joinToString(" · "), W / 2f, 310f, t)
+        }
 
         // a soft shadow on the grass, then the catch itself (the capsule left the card, felt mockup v5.2)
         val r = 330f; val cx = W / 2f; val cy = 690f

@@ -15,10 +15,14 @@ object Done {
         if (!nm.areNotificationsEnabled()) return
         nm.createNotificationChannel(NotificationChannel("drawn", "펫 그림 완성", NotificationManager.IMPORTANCE_DEFAULT))
         val open = PendingIntent.getActivity(ctx, 1, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        val look = if (style == "figure") "피규어" else "털뭉치"
+        val title = when (style) {
+            "both" -> "$name 털뭉치·피규어가 다 됐어요!"   // mockup v5.2 screen 5
+            "figure" -> "$name 피규어 펫이 다 그려졌어요"
+            else -> "$name 털뭉치 펫이 다 그려졌어요"
+        }
         nm.notify(name.hashCode(), Notification.Builder(ctx, "drawn")
             .setSmallIcon(android.R.drawable.ic_menu_gallery)
-            .setContentTitle("$name $look 펫이 다 그려졌어요")
+            .setContentTitle(title)
             .setContentText("도감에서 펫으로 쓸 수 있어요")
             .setContentIntent(open).setAutoCancel(true).build())
     }

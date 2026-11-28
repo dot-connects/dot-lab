@@ -90,4 +90,18 @@ class DexTest {
         assertEquals("사람 셋을", Dex.withObject(Dex.kindName("person+person+person")))
         assertTrue(Dex.hasPerson("cat+person") && !Dex.hasPerson("cat+cat"))
     }
+
+    // favourites first in star order, then newest first; a star on a deleted entry is skipped
+    @Test fun orderPinsFavouritesThenNewestFirst() {
+        val a = Dex.add(ctx, "dog", png, null, "front", now = 1000)
+        val b = Dex.add(ctx, "cat", png, null, "front", now = 3000)
+        val c = Dex.add(ctx, "dog", png, null, "front", now = 2000)
+        val d = Dex.add(ctx, "critter", null, "monggeul", "dir0", now = 4000)
+        val all = Dex.list(ctx)
+        assertEquals(listOf(d.id, b.id, c.id, a.id), Dex.ordered(all, emptyList()).map { it.id })
+        assertEquals(listOf(a.id, c.id, d.id, b.id), Dex.ordered(all, listOf(a.id, "e99", c.id)).map { it.id })
+        Dex.setFav(ctx, c.id, true); Dex.setFav(ctx, a.id, true); Dex.setFav(ctx, c.id, false); Dex.setFav(ctx, c.id, true)
+        assertEquals(listOf(a.id, c.id), Dex.favs(ctx))
+        Dex.setFav(ctx, a.id, false); Dex.setFav(ctx, c.id, false)
+    }
 }

@@ -65,7 +65,29 @@ class AiClient(private val base: String, private val deviceId: String, private v
         }.getOrDefault(false)
     }
 
-    private suspend fun post(path: String, json: String, token: String?): Result<Reply> = withContext(Dispatchers.IO) {
+    private suspend fun post(path: String, json: String, token: String?): Result<Reply> = postJson(path, json, token, "image").mapCatching { o ->
+        Reply(Base64.decode(o.getString("image"), Base64.DEFAULT), o.optString("mime", "image/webp"), if (o.has("left")) o.getInt("left") else null, o.optString("layout") == "12",
+            if (o.has("free_left")) o.getInt("free_left") else null)
+    }
+
+    /**
+     * Both looks' pose sheets from one request (spec-release 10): one free sheet, or one sheet_both purchase.
+     * [looks] = each style's chosen preview. An older Worker answers 400 "bad request" (the caller falls back).
+     */
+    suspend fun sheetBoth(png: ByteArray, kind: String, entry: String, token: String?, looks: Map<String, ByteArray>): Result<Map<String, Reply>> {
+        val o = JSONObject(body(png, mapOf("kind" to kind, "device" to deviceId, "entry" to entry, "style" to "both", "layout" to "12")))
+        if (looks.isNotEmpty()) o.put("looks", JSONObject(looks.mapValues { Base64.encodeToString(it.value, Base64.NO_WRAP) }))
+        return postJson("/sheet", o.toString(), token, "sheets").mapCatching { parseBoth(it) }
+    }
+
+    /** The catch card's AI line and two traits (spec-release 10); [jpeg] at most 512 px. */
+    suspend fun card(jpeg: ByteArray, kind: String, devToken: String? = null): Result<Pair<String, List<String>>> =
+        postJson("/card", body(jpeg, mapOf("kind" to kind, "device" to deviceId)), devToken, "line").mapCatching { o ->
+            val t = o.optJSONArray("tags")
+            o.getString("line") to (0 until (t?.length() ?: 0)).map { t!!.getString(it) }
+        }
+
+    private suspend fun postJson(path: String, json: String, token: String?, need: String): Result<JSONObject> = withContext(Dispatchers.IO) {
         runCatching {
             // the Integrity token is bound to this exact body (the Worker hashes the text it received)
             val proof = if (token == null) integrity?.invoke(RequestHash.of(path, deviceId, json)) else null
@@ -87,9 +109,8 @@ class AiClient(private val base: String, private val deviceId: String, private v
                 } catch (e: IOException) { throw Fail("net", 0) }
                 val text = (if (status in 200..299) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() } ?: ""
                 val o = runCatching { JSONObject(text) }.getOrNull()
-                if (status !in 200..299 || o == null || !o.has("image")) throw Fail(o?.optString("error")?.ifEmpty { null } ?: "http", status)
-                Reply(Base64.decode(o.getString("image"), Base64.DEFAULT), o.optString("mime", "image/webp"), if (o.has("left")) o.getInt("left") else null, o.optString("layout") == "12",
-                    if (o.has("free_left")) o.getInt("free_left") else null)
+                if (status !in 200..299 || o == null || !o.has(need)) throw Fail(o?.optString("error")?.ifEmpty { null } ?: "http", status)
+                o
             } catch (e: IOException) {
                 throw Fail("net", 0)
             } finally { c.disconnect() }
@@ -97,6 +118,17 @@ class AiClient(private val base: String, private val deviceId: String, private v
     }
 
     companion object {
+        /** A style "both" answer: { sheets: { fluff: {mime, image}, figure: {...} }, layout, free_left? } -> style -> Reply. */
+        fun parseBoth(o: JSONObject): Map<String, Reply> {
+            val s = o.getJSONObject("sheets")
+            val twelve = o.optString("layout") == "12"
+            val free = if (o.has("free_left")) o.getInt("free_left") else null
+            return listOf("fluff", "figure").associateWith { k ->
+                val x = s.getJSONObject(k)
+                Reply(Base64.decode(x.getString("image"), Base64.DEFAULT), x.optString("mime", "image/webp"), null, twelve, free)
+            }
+        }
+
         /** The JSON request body: the picture as one base64 line (the Worker's regex has no room for newlines). */
         fun body(png: ByteArray, fields: Map<String, String>): String {
             val o = JSONObject()

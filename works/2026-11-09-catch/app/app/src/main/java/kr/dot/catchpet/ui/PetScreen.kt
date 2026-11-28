@@ -149,7 +149,7 @@ fun PetScreen(onBack: () -> Unit) {
                     val sel = e.id == chosen && (look == null || look == petLook)
                     Column(
                         Modifier.width(76.dp).clip(RoundedCornerShape(14.dp))
-                            .let { if (sel) it.background(Book.Sun.copy(alpha = 0.35f)).border(2.dp, Book.Ink, RoundedCornerShape(14.dp)) else it }
+                            .let { if (sel) it.felt(Color(0xFFFFE9A6), 14.dp, stitch = false).border(2.dp, Color(0x996E5640), RoundedCornerShape(14.dp)) else it.background(Book.Paper) }
                             .clickable {
                                 setPet(ctx, e.id); chosen = e.id
                                 if (look != null) { Dex.setPetStyle(ctx, e.id, look); petLook = look }
@@ -176,7 +176,7 @@ fun PetScreen(onBack: () -> Unit) {
                         Modifier.clip(RoundedCornerShape(14.dp)).clickable { size = dp; PetPrefs.setSize(ctx, dp); restartIfOn() }.padding(4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Box(Modifier.size(dp.dp).let { if (sel) it.border(3.dp, Book.Sun, RoundedCornerShape(12.dp)) else it }, contentAlignment = Alignment.BottomCenter) {
+                        Box(Modifier.size(dp.dp).let { if (sel) it.background(Color(0xFFFFF4CF), RoundedCornerShape(12.dp)).border(3.dp, Book.Sun, RoundedCornerShape(12.dp)) else it }, contentAlignment = Alignment.BottomCenter) {
                             if (pic != null) Image(pic, label, Modifier.fillMaxSize().padding(3.dp), contentScale = ContentScale.Fit)
                             else Box(Modifier.fillMaxSize().padding(6.dp).background(Book.Field, CircleShape))
                         }
@@ -195,7 +195,7 @@ fun PetScreen(onBack: () -> Unit) {
                 var talk by remember { mutableStateOf(PetPrefs.talkOn(ctx)) }
                 InkSwitch(talk) { talk = it; PetPrefs.setTalkOn(ctx, it) }
             }
-            Note("잠금을 풀거나 충전기를 꽂을 때 녀석이 가끔 혼잣말을 해요. 두 번 톡톡 눌러 여는 말풍선은 그대로예요.")
+            Note("잠금을 풀거나 충전기를 꽂을 때 녀석이 가끔 혼잣말을 해요. 끄면 날씨 말풍선(\"비 와! 우산 챙겨\" 같은)도 같이 꺼져요. 두 번 톡톡 눌러 여는 말풍선은 그대로예요.")
         }
 
         Panel {

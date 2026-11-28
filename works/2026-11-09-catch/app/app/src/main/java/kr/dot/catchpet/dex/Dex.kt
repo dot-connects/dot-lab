@@ -164,6 +164,41 @@ object Dex {
         return (if (d.renameTo(gone)) gone else d).deleteRecursively().also { kr.dot.catchpet.widget.PetWidgets.refresh(ctx) }
     }
 
+    /**
+     * The dex grid's order (mockup v5.2 screen 4): favourites in the order they were starred, then the rest newest
+     * first. Starred ids that are gone are skipped (ids are never reused, so a stale star can't land on a new one).
+     */
+    fun ordered(entries: List<Entry>, favs: List<String>): List<Entry> {
+        val byId = entries.associateBy { it.id }
+        val pinned = favs.distinct().mapNotNull { byId[it] }
+        val pinnedIds = pinned.map { it.id }.toSet()
+        return pinned + entries.filter { it.id !in pinnedIds }.sortedWith(compareByDescending<Entry> { it.caughtAt }.thenByDescending { it.no })
+    }
+
+    private fun prefs(ctx: Context) = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE)
+
+    /** Starred entry ids, oldest star first. */
+    fun favs(ctx: Context): List<String> = prefs(ctx).getString("favs", "")!!.split(',').filter { it.isNotEmpty() }
+
+    /** Star or unstar; a new star goes last so it sits after the earlier ones. */
+    @Synchronized
+    fun setFav(ctx: Context, id: String, on: Boolean) {
+        val now = favs(ctx) - id
+        prefs(ctx).edit().putString("favs", (if (on) now + id else now).joinToString(",")).apply()
+    }
+
+    /** The AI card line + two traits for a catch (Worker /card), cached in the entry; null = none yet. */
+    fun card(ctx: Context, id: String): Pair<String, List<String>>? = runCatching {
+        val o = JSONObject(file(ctx, id, "card.json").readText())
+        val tags = o.getJSONArray("tags")
+        o.getString("line") to (0 until tags.length()).map { tags.getString(it) }
+    }.getOrNull()
+
+    fun saveCard(ctx: Context, id: String, line: String, tags: List<String>) {
+        if (!dir(ctx, id).isDirectory) return
+        atomicWrite(file(ctx, id, "card.json"), JSONObject().put("line", line).put("tags", JSONArray(tags)).toString().toByteArray())
+    }
+
     private var names: Map<String, String>? = null
 
     /** Every critter id in index.json order (the dex shows the ones not met yet as "?"). */

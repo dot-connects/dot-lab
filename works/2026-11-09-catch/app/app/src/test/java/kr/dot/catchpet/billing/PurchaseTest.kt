@@ -11,6 +11,15 @@ class PurchaseTest {
         assertTrue(Purchase.locked(""))
         assertTrue(Purchase.locked("  "))
         assertFalse(Purchase.locked("x"))
-        assertEquals(500, Purchase.PRICE_WON)
+        assertEquals(700, Purchase.PRICE_WON)
+    }
+
+    // one button makes both looks: free uses while any are left, then the price (operator 11-28)
+    @Test fun makeLabelCountsFreeUsesThenThePrice() {
+        assertEquals("펫 만들기 · 무료 5장", Purchase.makeLabel(5, dev = false))
+        assertEquals("펫 만들기 · 무료 1장", Purchase.makeLabel(1, dev = false))
+        assertEquals("펫 만들기 · 700원", Purchase.makeLabel(0, dev = false))
+        assertEquals("펫 만들기 · 무료", Purchase.makeLabel(-1, dev = false))   // not heard from the Worker yet
+        assertEquals("펫 만들기 · 개발판 무료", Purchase.makeLabel(0, dev = true))
     }
 }

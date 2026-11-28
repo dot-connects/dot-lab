@@ -44,4 +44,17 @@ class AiClientTest {
         Settings.Secure.putString(ctx.contentResolver, Settings.Secure.ANDROID_ID, "ffff000011112222")
         assertTrue(id != AiClient.deviceId(ctx))
     }
+
+    // style "both" answers with both sheets under "sheets" (spec-release 10)
+    @Test fun parseBothReadsEachLook() {
+        val f = byteArrayOf(1, 2, 3); val g = byteArrayOf(4, 5)
+        fun b64(x: ByteArray) = Base64.encodeToString(x, Base64.NO_WRAP)
+        val o = JSONObject().put("layout", "12").put("free_left", 2).put("sheets", JSONObject()
+            .put("fluff", JSONObject().put("mime", "image/webp").put("image", b64(f)))
+            .put("figure", JSONObject().put("mime", "image/png").put("image", b64(g))))
+        val m = AiClient.parseBoth(o)
+        assertArrayEquals(f, m.getValue("fluff").image); assertArrayEquals(g, m.getValue("figure").image)
+        assertEquals("image/png", m.getValue("figure").mime)
+        assertTrue(m.getValue("fluff").twelve); assertEquals(2, m.getValue("fluff").freeLeft)
+    }
 }
