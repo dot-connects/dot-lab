@@ -172,8 +172,16 @@ class _MakingFlowState extends State<MakingFlow> {
     try {
       try {
         r = await app.pipe.write(b, notes: notes, onStage: (s, d, t) => stage.value = (s, d, t));
-      } catch (_) {} // stays failed: the book gets its pages without text and [다시 시도]
-      if (r != AiState.ok) await app.pipe.finish(b); // pages without text; [다시 시도] on the book
+      } catch (e) {
+        debugPrint('write failed: $e'); // stays failed: the book gets its pages without text and [다시 시도]
+      }
+      if (r != AiState.ok) {
+        try {
+          await app.pipe.finish(b); // pages without text; [다시 시도] on the book
+        } catch (e) {
+          debugPrint('finish failed: $e'); // still open the book screen below instead of hanging on the writing screen
+        }
+      }
     } finally {
       // always: an error above must not leave the "책 만드는 중" service and its notification running
       app.making.remove(b.id);

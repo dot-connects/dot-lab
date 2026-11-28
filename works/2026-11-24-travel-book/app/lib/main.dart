@@ -33,9 +33,10 @@ Future<void> main() async {
   final docs = await getApplicationDocumentsDirectory();
   // page images and PDFs from earlier exports (10-40 MB a book): the share sheet has its own copy by now
   final exports = Directory('${(await getTemporaryDirectory()).path}/export');
-  unawaited(() async {
+  try {
+    // awaited: an export started right after launch must not lose its fresh folder to this delete
     if (await exports.exists()) await exports.delete(recursive: true);
-  }().catchError((_) {}));
+  } catch (_) {}
   final store = BookStore(Directory('${docs.path}/books'));
   final src = PhoneSource();
   galleryThumbs = (id, long) => src.jpeg(id, long);
