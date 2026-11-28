@@ -47,7 +47,7 @@ test("purchase states", () => {
 });
 
 test("products map to styles", () => {
-  assert.deepEqual(PRODUCT_STYLE, { sheet_fluff: "fluff", sheet_figure: "figure" });
+  assert.deepEqual(PRODUCT_STYLE, { sheet_fluff: "fluff", sheet_figure: "figure", sheet_both: "both" });
 });
 
 test("requestHash matches the shared vector", async () => {

@@ -138,6 +138,32 @@ Gmail (test purchases cost nothing) → in-app products `sheet_fluff`, `sheet_fi
 - Added to the lab site list like the other works; `manifest.json` (kind work, reel, cover, caption, blog_html,
   link = the landing page, status ready only once the opt-in link works). content-system posts blog/Instagram/Threads.
 
+## 10. Worker API added 2026-11-28 (T-0204: AI card line, both sheets)
+
+Same headers as `/sheet` and `/transform`: `x-app: catchpet`, `x-integrity` (request hash over the exact body, path
+`/card` for the card), or the dev `x-purchase` token (no integrity, no day limits, DEV_MONTH_CENTS).
+
+**POST /card** `{ device, kind, image }` - `kind` as in `/transform` (groups `person+cat` too), `image` = base64 JPEG
+(or PNG/WebP) of the catch, at most 512 px, <= 300 000 base64 chars.
+→ 200 `{ "line": "소파 구석에서 동그랗게 자다 뽑힘. 꿈에서 츄르 먹던 중", "tags": ["잠꾸러기", "말랑함"] }`
+(line <= 34 chars and tags <= 8 chars each, cut by the Worker; always exactly 2 tags).
+Errors: 400 bad request · 403 integrity · 429 `device` (CARD_DAY a day, default 40) / `all` (CARD_ALL_DAY, 1000) /
+`slow down` · 503 `off` / `busy` · 502 `model` (also when the model's answer was not a usable card).
+**On any non-200 the app shows its fixed line**; never retry in a loop. Model `gpt-5.4-mini` (llm-registry
+`lab.catch_card`), detail low; 1 cent reserved on MONTH_CENTS per call (real ~0.2-0.4 cents, ~3-6 won).
+
+**POST /sheet with `style: "both"`** - fur-ball and figurine pose sheets from ONE request: one free sheet, or one
+purchase of product `sheet_both` (700 won). Body as today plus optional `looks: { fluff, figure }` (each style's chosen
+preview, base64 webp <= 800 000 chars; a missing one is drawn from the photo).
+→ 200 `{ "sheets": { "fluff": {mime, image}, "figure": {mime, image} }, "layout": "12", "free_left": 2 }`
+(`free_left` only on a free sheet). All or nothing: if either half fails the answer is 502 `model` / 503 `off`,
+a purchase is not consumed, and the retry with the same token draws only the missing half (the other is kept in R2).
+A free sheet comes back only when no half was refused or billed (same rule as single sheets).
+The single-style request (`style` fluff | figure | absent, products `sheet_fluff` / `sheet_figure`) is unchanged.
+`sheet_both` must go with `style: "both"` and vice versa (else 400). Cost: 2 x 8 cents reserved.
+
+Operator: Play Console → in-app product `sheet_both`, 700 won, active (consumable, like the other two).
+
 ## Open (not blocking the plan)
 
 - Free sheets after production: `FREE_SHEETS = 0` by default; the operator may pick a launch freebie later.

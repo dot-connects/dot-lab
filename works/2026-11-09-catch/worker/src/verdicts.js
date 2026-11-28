@@ -1,6 +1,7 @@
 // Pure judgements over Google's answers: is this purchase usable, is this integrity verdict our real app on a real phone.
 
-export const PRODUCT_STYLE = { sheet_fluff: "fluff", sheet_figure: "figure" };
+// sheet_both = fur-ball + figurine sheets from one purchase (operator 11-28, 700 won)
+export const PRODUCT_STYLE = { sheet_fluff: "fluff", sheet_figure: "figure", sheet_both: "both" };
 
 /** Play Developer API v3 ProductPurchase -> "ok" (paid, not consumed) | "pending" | "bad". */
 export function purchaseVerdict(p) {

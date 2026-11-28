@@ -595,3 +595,139 @@ test("a counter failure answers busy 503, never 'your free ones are gone' (revie
   assert.equal(sh.status, 503); assert.equal(sh.body.error, "busy");
   assert.equal(calls.length, 0, "no model call");
 });
+
+// ---------- 11-28: both sheets in one request, the AI card line ----------
+
+const both = (extra = {}, headers = APP) => paid({ style: "both", ...extra }, headers);
+
+test("both (free): one request draws fluff and figure, uses ONE free sheet, reserves both costs", async () => {
+  const r = await both();
+  assert.equal(r.status, 200);
+  assert.deepEqual(Object.keys(r.body.sheets), ["fluff", "figure"]);
+  assert.deepEqual(r.body.sheets.fluff, { mime: "image/webp", image: "Zm9v" });
+  assert.equal(r.body.free_left, 2, "one free sheet for both");
+  assert.equal(r.body.layout, "12");
+  assert.deepEqual(calls.map(c => c.ref), [true, false], "fluff with the style picture, figure without");
+  assert.equal(counts.m.get("usd|2026-11"), 16);
+});
+
+test("both: each style draws from its own chosen preview", async () => {
+  await both({ looks: { fluff: "Zmx1ZmY=", figure: "ZmlndXJl" } });
+  assert.deepEqual(calls.map(c => c.look), ["Zmx1ZmY=", "ZmlndXJl"]);
+  calls.length = 0;
+  await both({ looks: { fluff: "Zmx1ZmY=" } });
+  assert.deepEqual(calls.map(c => c.look), ["Zmx1ZmY=", undefined], "no figure preview: drawn from the photo");
+});
+
+test("both (free): a 5xx half gives the slot back, a refused or billed half keeps it", async () => {
+  const half = err => async job => { calls.push(job); if (!job.ref) throw Object.assign(new Error("x"), { sent: true, ...err }); return { mime: "image/webp", data: "Zm9v" }; };
+  env.callModel = half({});
+  assert.equal((await both()).status, 502);
+  assert.equal(await ledger.freeLeft("dev-aaaaaaaa", 3), 3);
+  env.callModel = half({ rejected: true });
+  assert.equal((await both()).status, 502);
+  assert.equal(await ledger.freeLeft("dev-aaaaaaaa", 3), 2);
+  assert.equal((await paid({ style: "bad" })).status, 400);
+});
+
+test("both (paid): sheet_both draws both, stores two parts, consumes once; the token again gets both stored", async () => {
+  purchases.set("PB1", { purchaseState: 0, consumptionState: 0 });
+  assert.equal((await both({ product: "sheet_fluff", purchaseToken: "PB1" })).status, 400, "a single product cannot buy both");
+  const r = await both({ product: "sheet_both", purchaseToken: "PB1" });
+  assert.equal(r.status, 200);
+  assert.deepEqual(Object.keys(r.body.sheets), ["fluff", "figure"]);
+  assert.equal(r.body.free_left, undefined);
+  assert.deepEqual([...env.SHEETS.m.keys()].map(k => k.split(".")[1]), ["fluff", "figure"]);
+  assert.deepEqual(google.consumed, ["PB1"]);
+  assert.equal(counts.m.get("paidusd|2026-11"), 16);
+  const again = await both({ product: "sheet_both", purchaseToken: "PB1" });
+  assert.equal(again.status, 200);
+  assert.deepEqual(again.body.sheets.figure, { mime: "image/webp", image: "Zm9v" });
+  assert.equal(calls.length, 2, "drawn once");
+  assert.equal((await paid({ product: "sheet_both", purchaseToken: "PB1" })).status, 400, "a both token is not a fluff sheet");
+});
+
+test("both (paid): one half failing is not consumed; the retry draws only the missing half", async () => {
+  purchases.set("PB2", { purchaseState: 0, consumptionState: 0 });
+  env.callModel = async job => { calls.push(job); if (!job.ref) throw Object.assign(new Error("x"), { sent: true }); return { mime: "image/webp", data: "Zm9v" }; };
+  assert.equal((await both({ product: "sheet_both", purchaseToken: "PB2" })).status, 502);
+  assert.deepEqual(google.consumed, []);
+  env.callModel = async job => { calls.push(job); return { mime: "image/webp", data: "Zmln" }; };
+  const r = await both({ product: "sheet_both", purchaseToken: "PB2" });
+  assert.equal(r.status, 200);
+  assert.equal(calls.length, 3, "2 first, then the figure only");
+  assert.equal(calls[2].ref, false);
+  assert.deepEqual({ fl: r.body.sheets.fluff.image, fi: r.body.sheets.figure.image }, { fl: "Zm9v", fi: "Zmln" });
+  assert.deepEqual(google.consumed, ["PB2"]);
+});
+
+test("both (dev): draws both, no limits", async () => {
+  const r = await sheet(sheetBody({ style: "both" }));
+  assert.equal(r.status, 200);
+  assert.equal(calls.length, 2);
+  assert.equal(counts.m.get("devusd|2026-11"), 16);
+});
+
+test("cardLine: trims, cuts to 34 characters, keeps two tags of at most 8, refuses what is not a card", async () => {
+  const { cardLine } = await import("../src/index.js");
+  assert.deepEqual(cardLine({ line: " \"소파 구석에서\n동그랗게 자다 뽑힘.\" ", tags: ["#잠꾸러기", "말랑함", "셋째"] }),
+    { line: "소파 구석에서 동그랗게 자다 뽑힘.", tags: ["잠꾸러기", "말랑함"] });
+  const long = cardLine({ line: "가".repeat(50), tags: ["아주아주아주긴성격태그", "둘"] });
+  assert.equal(long.line.length, 34);
+  assert.equal(long.tags[0].length, 8);
+  for (const bad of [null, {}, { line: "", tags: ["a", "b"] }, { line: "x", tags: ["a"] }, { line: "x", tags: ["a", " "] }, { line: 3, tags: ["a", "b"] }])
+    assert.equal(cardLine(bad), null, JSON.stringify(bad));
+});
+
+const cardBody = (extra = {}) => ({ kind: "cat", device: "dev-aaaaaaaa", image: "/9j/" + "A".repeat(100), ...extra });
+const cardCall = (b = cardBody(), headers = APP) => call(b, { path: "/card", headers });
+
+test("/card: returns {line, tags}, integrity first, 1 cent on the public month ceiling", async () => {
+  const seen = [];
+  env.callCard = async job => { seen.push(job); return { line: "창틀에서 비둘기 감시하다 뽑힘", tags: ["경비대장", "새멍"] }; };
+  assert.equal((await cardCall(cardBody(), { "x-app": "catchpet" })).status, 403);
+  const r = await cardCall();
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.body, { line: "창틀에서 비둘기 감시하다 뽑힘", tags: ["경비대장", "새멍"] });
+  assert.deepEqual(seen.map(j => j.kind), ["cat"]);
+  assert.equal(counts.m.get("usd|2026-11"), 1);
+  assert.equal(calls.length, 0, "no image call");
+  for (const b of [cardBody({ kind: "dragon" }), cardBody({ device: "x" }), cardBody({ image: "A".repeat(300_001) }), cardBody({ image: "<x>" })])
+    assert.equal((await cardCall(b)).status, 400);
+  env.MONTH_CENTS = "1";
+  assert.deepEqual((await cardCall()).body, { error: "off" });
+});
+
+test("/card: CARD_DAY a device; a failed call is 502 and gives the slot back unless refused or billed", async () => {
+  env.CARD_DAY = "2";
+  env.callCard = async () => { throw Object.assign(new Error("x"), { sent: true }); };
+  assert.deepEqual((await cardCall()).body, { error: "model" });
+  env.callCard = async () => ({ line: "a", tags: ["b", "c"] });
+  assert.equal((await cardCall()).status, 200);
+  env.callCard = async () => { throw Object.assign(new Error("x"), { sent: true, billed: true }); };
+  assert.equal((await cardCall()).status, 502);
+  env.callCard = async () => ({ line: "a", tags: ["b", "c"] });
+  assert.deepEqual((await cardCall()).body, { error: "device" });
+  assert.equal((await cardCall(cardBody({ device: "dev-bbbbbbbb" }))).status, 200);
+  env.CARD_ALL_DAY = "0";
+  assert.deepEqual((await cardCall(cardBody({ device: "dev-cccccccc" }))).body, { error: "all" });
+  const dev = await call(cardBody(), { path: "/card", headers: { "x-app": "catchpet", "x-purchase": "tok-123" } });
+  assert.equal(dev.status, 200, "the dev app has no day limits");
+});
+
+test("callCard posts to the Responses API with a small image and a JSON schema; bad answers are billed failures", async () => {
+  const { callCard } = await import("../src/index.js");
+  const answer = obj => reply(200, { output: [{ type: "reasoning" }, { type: "message", content: [{ type: "output_text", text: JSON.stringify(obj) }] }] });
+  fakeFetch(answer({ line: "침대 위에서 웃다 뽑힘", tags: ["해맑음", "혀빼꼼"] }));
+  assert.deepEqual(await callCard({ kind: "person+dog", image: "/9j/AAAA" }, { OPENAI_KEY: "sk-x" }), { line: "침대 위에서 웃다 뽑힘", tags: ["해맑음", "혀빼꼼"] });
+  assert.equal(sent[0].url, "https://api.openai.com/v1/responses");
+  const body = JSON.parse(sent[0].init.body);
+  assert.equal(body.model, "gpt-5.4-mini");
+  assert.equal(body.text.format.type, "json_schema");
+  assert.equal(body.input[1].content[0].text, "종류: 사람 + 강아지");
+  assert.deepEqual({ d: body.input[1].content[1].detail, u: body.input[1].content[1].image_url.slice(0, 23) }, { d: "low", u: "data:image/jpeg;base64," });
+  fakeFetch(answer({ line: "x", tags: [] }));
+  await assert.rejects(callCard({ kind: "cat", image: "AAAA" }, { OPENAI_KEY: "k" }), e => e.sent && e.billed);
+  fakeFetch(reply(400, { error: { code: "invalid_image" } }));
+  await assert.rejects(callCard({ kind: "cat", image: "AAAA" }, { OPENAI_KEY: "k" }), e => e.sent && e.rejected);
+});
