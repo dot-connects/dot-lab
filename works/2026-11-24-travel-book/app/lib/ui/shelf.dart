@@ -109,7 +109,7 @@ class _ShelfState extends State<Shelf> {
         Positioned.fill(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 500),
-            child: view == ShelfView.one && ordered.isNotEmpty ? _Glow(ordered[_page], key: const ValueKey('glow')) : const SizedBox.expand(),
+            child: view == ShelfView.one && ordered.isNotEmpty ? RepaintBoundary(child: _Glow(ordered[_page], key: const ValueKey('glow'))) : const SizedBox.expand(),
           ),
         ),
         SafeArea(

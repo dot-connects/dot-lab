@@ -10,6 +10,9 @@ import android.provider.MediaStore
 import android.view.WindowManager
 import androidx.exifinterface.media.ExifInterface
 import androidx.media3.common.MediaItem
+import androidx.media3.effect.Presentation
+import androidx.media3.transformer.EditedMediaItem
+import androidx.media3.transformer.Effects
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
@@ -66,7 +69,9 @@ class MediaChannel(private val activity: Activity) : MethodChannel.MethodCallHan
                 val d = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US).parse(it)!!
                 SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(d)
             }.getOrNull() }
-            return mapOf("wall" to wall, "offset" to e.getAttribute(ExifInterface.TAG_OFFSET_TIME_ORIGINAL))
+            val ll = e.latLong // GPS from the same open: no second read of the file for the position
+            return mapOf("wall" to wall, "offset" to e.getAttribute(ExifInterface.TAG_OFFSET_TIME_ORIGINAL),
+                "lat" to ll?.get(0)?.toString(), "lng" to ll?.get(1)?.toString())
         }
     }
 
@@ -91,6 +96,34 @@ class MediaChannel(private val activity: Activity) : MethodChannel.MethodCallHan
             .setClippingConfiguration(MediaItem.ClippingConfiguration.Builder().setStartPositionMs(startMs).setEndPositionMs(endMs).build())
             .build()
         File(out).parentFile?.mkdirs()
+        // The clip is re-encoded anyway (cuts rarely land on a keyframe): encode at 720p on the short side, not at the
+        // camera's 4K. Smaller files, far less heat while making and while the book loops the clip.
+        io.execute {
+            val h = runCatching { outHeight(uri) }.getOrNull()
+            val edited = EditedMediaItem.Builder(item)
+                .apply { if (h != null) setEffects(Effects(listOf(), listOf(Presentation.createForHeight(h)))) }
+                .build()
+            main.post { start(edited, out, result) }
+        }
+    }
+
+    /** Output height that puts the displayed short side at 720, or null when the video is already that small. */
+    private fun outHeight(uri: Uri): Int? {
+        val r = MediaMetadataRetriever()
+        try {
+            r.setDataSource(activity, uri)
+            fun key(k: Int) = r.extractMetadata(k)?.toIntOrNull() ?: 0
+            var w = key(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+            var h = key(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+            if (key(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION) % 180 != 0) w = h.also { h = w }
+            if (w <= 0 || h <= 0 || minOf(w, h) <= 720) return null
+            return if (h <= w) 720 else (720L * h / w).toInt() / 2 * 2
+        } finally {
+            r.release()
+        }
+    }
+
+    private fun start(item: EditedMediaItem, out: String, result: MethodChannel.Result) {
         val t = Transformer.Builder(activity)
             .addListener(object : Transformer.Listener {
                 override fun onCompleted(composition: Composition, exportResult: ExportResult) = result.success(out)
@@ -98,6 +131,6 @@ class MediaChannel(private val activity: Activity) : MethodChannel.MethodCallHan
                     result.error("trim", exportException.message, null)
             })
             .build()
-        main.post { t.start(item, out) }
+        t.start(item, out)
     }
 }

@@ -840,7 +840,12 @@ class Pipeline {
         final v = File('${dir.path}/vid/${fileId(id)}.mp4');
         if (clip != null && !await v.exists()) {
           await v.parent.create(recursive: true);
-          await src.trim(id, clip.startMs, clip.endMs, v.path);
+          try {
+            await src.trim(id, clip.startMs, clip.endMs, v.path);
+          } catch (_) {
+            // a failed cut must not stop the book (the page keeps its still frame); drop any half-written file
+            if (await v.exists()) await v.delete();
+          }
         }
       }
     }

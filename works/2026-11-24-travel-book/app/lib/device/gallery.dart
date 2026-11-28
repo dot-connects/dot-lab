@@ -57,9 +57,10 @@ Shot _shot(AssetEntity a, {double? lat, double? lng}) => Shot(
     );
 
 /// Every album, each with this trip's shots ([from]..[to] are local trip days, inclusive).
-/// [exif] fills the camera wall clock / offset per shot (MediaChannel); GPS comes from latlngAsync.
+/// [exif] fills the camera wall clock / offset and GPS per photo in one file read (MediaChannel); without it GPS comes
+/// from latlngAsync.
 Future<List<Album>> scanTrip(DateTime from, DateTime to,
-    {Future<({DateTime? wall, Duration? offset})> Function(AssetEntity a)? exif}) async {
+    {Future<({DateTime? wall, Duration? offset, double? lat, double? lng})> Function(AssetEntity a)? exif}) async {
   final end = DateTime(to.year, to.month, to.day).add(const Duration(days: 1, hours: 4)); // 04:00 day boundary
   final start = DateTime(from.year, from.month, from.day, 4);
   final all = await PhotoManager.getAssetPathList(hasAll: false, type: RequestType.common);
@@ -73,15 +74,17 @@ Future<List<Album>> scanTrip(DateTime from, DateTime to,
   }
   // position + camera clock per photo: 32 at a time (one by one took 12 s for 2,282 shots on the operator's phone)
   Future<Shot> read(AssetEntity a) async {
-    final ll = a.type == AssetType.image ? await a.latlngAsync() : null;
-    final ok = ll != null && (ll.latitude != 0 || ll.longitude != 0);
-    var s = _shot(a, lat: ok ? ll.latitude : null, lng: ok ? ll.longitude : null);
-    if (exif != null && a.type == AssetType.image) {
-      final e = await exif(a);
-      s = Shot(id: s.id, utc: s.utc, wall: e.wall, exifOffset: e.offset, isVideo: s.isVideo, durationMs: s.durationMs,
-          lat: s.lat, lng: s.lng, relPath: s.relPath, w: s.w, h: s.h);
+    if (a.type != AssetType.image) return _shot(a);
+    if (exif == null) {
+      final ll = await a.latlngAsync();
+      final ok = ll != null && (ll.latitude != 0 || ll.longitude != 0);
+      return _shot(a, lat: ok ? ll.latitude : null, lng: ok ? ll.longitude : null);
     }
-    return s;
+    final e = await exif(a); // heat check 11-28: one open per photo, not two (latlngAsync + exif)
+    final ok = e.lat != null && e.lng != null && (e.lat != 0 || e.lng != 0);
+    final s = _shot(a, lat: ok ? e.lat : null, lng: ok ? e.lng : null);
+    return Shot(id: s.id, utc: s.utc, wall: e.wall, exifOffset: e.offset, isVideo: s.isVideo, durationMs: s.durationMs,
+        lat: s.lat, lng: s.lng, relPath: s.relPath, w: s.w, h: s.h);
   }
 
   final shotOf = <String, Shot>{};

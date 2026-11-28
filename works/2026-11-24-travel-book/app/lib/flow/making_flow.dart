@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:photo_manager/photo_manager.dart' show PhotoManager;
 
 import '../core/book.dart';
 import '../core/library.dart' show freeBooks;
@@ -167,15 +168,24 @@ class _MakingFlowState extends State<MakingFlow> {
     app.making.add(b.id);
     unawaited(makingStart(b.title)); // leaving the app keeps it going; "다 됐어요" if they are away at the end
     final stage = app.stages.putIfAbsent(b.id, () => ValueNotifier(null));
-    final r = await app.pipe.write(b, notes: notes, onStage: (s, d, t) => stage.value = (s, d, t));
-    app.making.remove(b.id);
-    app.stages.remove(b.id);
-    if (r != AiState.ok) await app.pipe.finish(b); // pages without text; [다시 시도] on the book
-    // away = out of the app, or back on the shelf: either way they were told "다 되면 알려 드릴게요"
-    final away = !mounted || WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed;
-    unawaited(r == AiState.ok && away ? makingDone(b.title, b.id) : makingStop());
-    app.writes.remove(b.id);
-    app.shelfChanged.value++;
+    var r = AiState.failed;
+    try {
+      try {
+        r = await app.pipe.write(b, notes: notes, onStage: (s, d, t) => stage.value = (s, d, t));
+      } catch (_) {} // stays failed: the book gets its pages without text and [다시 시도]
+      if (r != AiState.ok) await app.pipe.finish(b); // pages without text; [다시 시도] on the book
+    } finally {
+      // always: an error above must not leave the "책 만드는 중" service and its notification running
+      app.making.remove(b.id);
+      app.stages.remove(b.id);
+      // away = out of the app, or back on the shelf: either way they were told "다 되면 알려 드릴게요"
+      final away = !mounted || WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed;
+      unawaited(r == AiState.ok && away ? makingDone(b.title, b.id) : makingStop());
+      app.writes.remove(b.id);
+      app.shelfChanged.value++;
+      // the thumbnails of this pick (Glide re-encodes each size to disk, up to 250 MB) are not needed again
+      if (app.making.isEmpty) unawaited(PhotoManager.clearFileCache().catchError((_) {}));
+    }
     return r;
   }
 

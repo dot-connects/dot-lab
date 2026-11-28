@@ -31,6 +31,11 @@ import 'ui/tokens.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final docs = await getApplicationDocumentsDirectory();
+  // page images and PDFs from earlier exports (10-40 MB a book): the share sheet has its own copy by now
+  final exports = Directory('${(await getTemporaryDirectory()).path}/export');
+  unawaited(() async {
+    if (await exports.exists()) await exports.delete(recursive: true);
+  }().catchError((_) {}));
   final store = BookStore(Directory('${docs.path}/books'));
   final src = PhoneSource();
   galleryThumbs = (id, long) => src.jpeg(id, long);

@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart' show Clipboard;
@@ -234,11 +235,16 @@ class _ExtrasState extends State<_Extras> {
     final f = (await FilePicker.pickFiles(type: FileType.image)).firstOrNull;
     final path = f?.path;
     if (f == null || path == null) return null;
-    final im = img.decodeImage(await File(path).readAsBytes());
-    if (im == null) return NoteItem(f.name, '이 파일만 빼고 만들어요. txt · md · html · pdf · 사진은 읽을 수 있어요', bad: true);
-    final small = im.width >= im.height ? img.copyResize(im, width: 1024) : img.copyResize(im, height: 1024);
+    // a 12-50 MP photo: decode, shrink and encode off the UI thread (seconds of jank and a big memory spike there)
+    final jpg = await Isolate.run(() {
+      final im = img.decodeImage(File(path).readAsBytesSync());
+      if (im == null) return null;
+      final small = im.width >= im.height ? img.copyResize(im, width: 1024) : img.copyResize(im, height: 1024);
+      return img.encodeJpg(small, quality: 85);
+    });
+    if (jpg == null) return NoteItem(f.name, '이 파일만 빼고 만들어요. txt · md · html · pdf · 사진은 읽을 수 있어요', bad: true);
     return NoteItem('손글씨 사진 1장', '글 쓸 때 읽어요 · 날짜를 못 찾으면 책 전체에 써요',
-        thumb: path, input: NoteInput(image: img.encodeJpg(small, quality: 85)));
+        thumb: path, input: NoteInput(image: jpg));
   }
 
   void _notes() => _push((back) => StatefulBuilder(builder: (_, set) {

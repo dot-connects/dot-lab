@@ -231,13 +231,22 @@ class _FilmState extends State<_Film> with SingleTickerProviderStateMixin {
     return SizedBox(
       height: s,
       child: ClipRect(
+        // the strip is built once and only slid: rebuilding 2n photos every frame for minutes ran the phone warm
         child: AnimatedBuilder(
           animation: _c,
-          builder: (_, _) => Stack(clipBehavior: Clip.none, children: [
-            for (var k = 0; k < 2; k++)
-              for (final (i, p) in widget.photos.indexed)
-                Positioned(left: k * run + i * (s + gap) - _c.value * run, top: 0, child: Photo(p, w: s, h: s, r: 4)),
-          ]),
+          builder: (_, strip) => Transform.translate(offset: Offset(-_c.value * run, 0), child: strip),
+          child: OverflowBox(
+            alignment: Alignment.centerLeft,
+            minWidth: 0,
+            maxWidth: 2 * run,
+            child: RepaintBoundary(
+              child: Row(children: [
+                for (var k = 0; k < 2; k++)
+                  for (final p in widget.photos)
+                    Padding(padding: const EdgeInsets.only(right: gap), child: Photo(p, w: s, h: s, r: 4)),
+              ]),
+            ),
+          ),
         ),
       ),
     );

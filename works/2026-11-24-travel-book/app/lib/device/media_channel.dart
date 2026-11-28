@@ -13,15 +13,19 @@ Duration? parseOffset(String? s) {
 }
 
 /// Camera wall clock and EXIF offset of one photo (null fields when the file has none).
-Future<({DateTime? wall, Duration? offset})> exifOf(AssetEntity a) async {
+typedef Exif = ({DateTime? wall, Duration? offset, double? lat, double? lng});
+
+Future<Exif> exifOf(AssetEntity a) async {
+  const none = (wall: null, offset: null, lat: null, lng: null);
   try {
     final uri = await a.getMediaUrl();
-    if (uri == null) return (wall: null, offset: null);
+    if (uri == null) return none;
     final r = await _ch.invokeMapMethod<String, String?>('exif', {'uri': uri});
     final w = r?['wall'];
-    return (wall: w == null ? null : DateTime.tryParse(w), offset: parseOffset(r?['offset']));
+    double? n(String k) => r?[k] == null ? null : double.tryParse(r![k]!);
+    return (wall: w == null ? null : DateTime.tryParse(w), offset: parseOffset(r?['offset']), lat: n('lat'), lng: n('lng'));
   } on PlatformException {
-    return (wall: null, offset: null);
+    return none;
   }
 }
 
