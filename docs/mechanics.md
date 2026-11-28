@@ -144,3 +144,15 @@ Rule from Chindogu: it really works, and nobody needs it.
 | 모두의 버튼 | One Million Checkboxes, r/thebutton (from memory) | one nationwide counter; needs a server |
 
 Dropped from the 10-21 artifact sketch: dalgona-by-finger-on-screen and the bungeoppang tycoon (operator: too simple).
+
+## Seasonal (2026-11-28, operator)
+
+Operator wants one web work in the style of the current 멍때리기 trend, timed to blow up on a fixed date. Pick one
+date; the page must be live and shared before it. Check overlap with 폰 멍때리기 대회 above (same verb: leave it still).
+
+| Work | Date | Mechanic | Payoff |
+|---|---|---|---|
+| 크리스마스 멍때리기 | 12-25 (ship by ~12-18) | leave the phone still in front of a Christmas scene (tree, fire, snow) -> seconds held; still = the scene grows | at 12-25 00:00 the scene "터진다" for everyone watching |
+| 새해 카운트다운 멍 | 1-1 00:00 (ship by ~12-26) | 멍 while a shared countdown runs; staying still adds to the scene | at 00:00 KST it bursts (fireworks), held seconds on a keepsake card |
+
+Open: which date (or both with one engine), whether "everyone watching" needs a server count (모두의 버튼 note).
