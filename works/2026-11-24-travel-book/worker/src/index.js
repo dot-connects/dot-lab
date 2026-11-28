@@ -26,7 +26,6 @@ const ROUTES = {
 const MAX_CATALOG = 80, MAX_PREV = 100_000;
 // /names worst case on the small model: ~2000 input tokens (12 names x 60 chars + prompt) + 600 output, rounded up;
 // reserved and never settled (over-counts by a few mills), and at most NAMES_DAY calls a day for everyone
-const NAMES_OUT = 600, NAMES_MILLS = Math.ceil(2000 * MINI_IN + NAMES_OUT * MINI_OUT), NAMES_DAY = 300;
 const SYSTEM_NAMES = "여행 책 지도에 쓸 지명을 한국어로 바꾼다. 받은 순서대로 같은 개수의 이름을 낸다. " +
   "한국에서 흔히 쓰는 표기가 있으면 그것(예: 섬 이름은 '~ 섬'을 붙이지 않고 고유 이름만), 없으면 현지 발음대로 한글로 적는다. " +
   "이미 한국어면 그대로. 설명은 붙이지 않는다.";
@@ -37,6 +36,7 @@ const MAX_B64 = 400_000;           // one 512 px JPEG is ~40-80 KB as base64
 const IN_MILLS = 0.0025, OUT_MILLS = 0.015;
 // gpt-5.4-mini (assumed $0.75 / $4.50 per M, check against the OpenAI price page): /scout settles at these
 const MINI_IN = 0.00075, MINI_OUT = 0.0045;
+const NAMES_OUT = 600, NAMES_MILLS = Math.ceil(2000 * MINI_IN + NAMES_OUT * MINI_OUT), NAMES_DAY = 300;
 const IMG_TOKENS = 400;            // a 512 px preview at detail "low" is well under this; rounded up for the reservation
 const KEEPALIVE_MS = 10_000;
 const OPENAI_URL = "https://api.openai.com/v1/responses";
