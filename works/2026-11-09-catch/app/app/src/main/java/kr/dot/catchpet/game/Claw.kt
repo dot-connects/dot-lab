@@ -23,10 +23,11 @@ fun sameThing(a: Mask, b: Mask): Boolean =
  * up to half when the target moved while the claw closed (camera shake counts). A won target that leaves the claw's
  * column on the way up for 200 ms slips out (operator 11-13: shaking the phone must not still win).
  *
- * Feel (operator 11-13, Fable design note): on contact the claw digs into the body (DIG_MS) before the prongs close,
- * and the prongs stop at the body's width (minOpen) instead of closing on air. A lost roll slips out on the way up,
- * later the closer the roll was (dropLift), sliding for SLIP_LEAD px first (slip01) so the player sees it coming;
- * it then falls slowly (FALL_G).
+ * Motion (felt mockup v5, mockups/next7v4/core.js, operator 11-28 "천천히 묵직하게"): the drop is planned to where the
+ * tips will touch now (sine ease, 650 ms + 2.4 ms per px, at most 1.7 s), presses PRESS px in and settles back while
+ * the prongs close. A lost roll rises (easing out) to dropLift and the claw waits there ([fallHold]) while the game
+ * shows the slip, then rises empty. The game can [hold] the lift while the capsule closes round the catch.
+ * Every position is a function of the state's clock, so no frame jumps.
  */
 class Claw(
     val screenW: Float,
@@ -50,29 +51,55 @@ class Claw(
     var carryDy = 0f; private set
     /** ms in the current state. */
     var t = 0f; private set
-    /** 0..1 while a held thing is sliding out of the prongs (just before FALL), else 0. */
+    /** 0..1 while a won thing is out from under the claw (it slips out at 1), else 0. */
     var slip01 = 0f; private set
-    /** Fall speed (px/ms) while FALLing. */
-    var vy = 0f; private set
     /** The grabbed body's size on screen (px), 0 when grabbing air. */
     var bodyH = 0f; private set
     var bodyW = 0f; private set
     /** How far the lift goes before a lost roll falls out (px). */
     var dropLift = 0f; private set
-    /** How far the prongs close on the grabbed body (0 = shut, for air). */
-    var minOpen = 0f; private set
+    /** The game holds the lift while the capsule closes round the catch (UP waits, its clock too). */
+    var hold = false
+    /** FALL: ms the claw stays where the catch fell out before it rises empty (the game's slip show). */
+    var fallHold = 0f
+    /** DOWN: share of the planned descent done (0..1), for the sway. */
+    val downK get() = if (st == St.DOWN && downMs > 0f) (t / downMs).coerceIn(0f, 1f) else 0f
     private var base = 0f
-    private var contactY = 0f
-    private var dig = 0f
     private var anchorX = 0f
     private var anchorY = 0f
     private var halfW = 1f
     private var motion = 0f
     private var outMs = 0f
+    private var goal = Float.NaN    // hub y the eased descent heads for
+    private var downMs = 0f
+    private var stopY = Float.NaN   // hub y where it stops once it has touched (contact + PRESS)
+    private var fallY = 0f
+    /** ms the current empty rise takes (air, or after a fall), by its distance. */
+    var riseMs = RISE_EMPTY_MS; private set
 
     fun aim(x01: Float) { if (st == St.AIM) { x = x01.coerceIn(0.06f, 0.94f); aimed = true } }
 
-    fun release() { if (st == St.AIM) { st = St.DOWN; t = 0f } }
+    fun release() { if (st == St.AIM) { st = St.DOWN; t = 0f; goal = Float.NaN; stopY = Float.NaN } }
+
+    /** What the tips (or the hub's underside) touch with the hub at [hubY]: the topmost thing and the row touched. */
+    private fun touch(hubY: Float, targets: List<Mask>, toMask: (Float, Float) -> Pair<Int, Int>): Pair<Mask, Int>? {
+        val (mx, my) = toMask(x * screenW, hubY + TIP)
+        // the hub's underside stops on a body's top too (a side hit must not sink the hub into it)
+        // (the body under the hub's own width, not its bounding box: review 11-15)
+        val hubRow = toMask(x * screenW, hubY + HUB_BOTTOM).second
+        val hubHalf = max(2, mx - toMask(x * screenW - HUB_HALF, hubY).first)
+        var best: Pair<Mask, Int>? = null
+        for (m in targets) {
+            val col = m.firstRowInColumn(mx)
+            val under = m.firstRowInColumn(mx, hubHalf)
+            val row = when { col != null && my >= col -> col; under != null && hubRow >= under -> under; else -> continue }
+            if (best == null || row < best.second) best = m to row
+        }
+        return best
+    }
+
+    /** The lowest the hub goes: tips 30 px above the bottom (grabbing air). */
+    private val floorHub get() = screenH - 30f - TIP
 
     /**
      * targets: everything grabbable this frame; toMask maps a screen point to mask (col, row).
@@ -85,23 +112,20 @@ class Claw(
             St.AIM -> if (!aimed) x = max(HOME_X, x - dtMs * HOME_SPEED)
             St.CARRY, St.DONE -> {}
             St.DOWN -> {
-                y += dtMs * DOWN_SPEED
-                val tipY = y + TIP
-                val (mx, my) = toMask(x * screenW, tipY)
-                // the hub's underside stops on a body's top too (a side hit must not sink the hub into it)
-                // (the body under the hub's own width, not its bounding box: review 11-15)
-                val hubRow = toMask(x * screenW, y + HUB_BOTTOM).second
-                val hubHalf = max(2, mx - toMask(x * screenW - HUB_HALF, y).first)
-                var best: Pair<Mask, Int>? = null
-                for (m in targets) {
-                    val col = m.firstRowInColumn(mx)
-                    val under = m.firstRowInColumn(mx, hubHalf)
-                    val row = when { col != null && my >= col -> col; under != null && hubRow >= under -> under; else -> continue }
-                    if (best == null || row < best.second) best = m to row
+                if (goal.isNaN()) {
+                    // plan the drop to where it would touch now; the touch itself is still tested every frame
+                    var hy = restY
+                    while (hy < floorHub && touch(hy, targets, toMask) == null) hy += 2f
+                    goal = if (hy >= floorHub) floorHub else min(floorHub, hy + PRESS)
+                    downMs = min(DOWN_MAX_MS, DOWN_BASE_MS + (goal - restY) * DOWN_PER_PX)
                 }
+                // past the plan (the thing moved away) it keeps going down slowly
+                y = if (t <= downMs) restY + (goal - restY) * Ease.sine(t / downMs) else min(floorHub, y + dtMs * DOWN_SPEED)
+                if (!stopY.isNaN()) { if (y >= stopY || t >= downMs) { y = min(y, stopY); grip() }; return }
+                val best = touch(y, targets, toMask)
                 if (best != null) {
                     val m = best.first
-                    result = Result(win = false, p = chance(m, mx, best.second), target = m, hitRow = best.second)
+                    result = Result(win = false, p = chance(m, toMask(x * screenW, y + TIP).first, best.second), target = m, hitRow = best.second)
                     m.box?.let {
                         anchorX = (it.x0 + it.x1) / 2f; anchorY = (it.y0 + it.y1) / 2f; halfW = max(3f, it.w / 2f)
                         // grid cells per screen px, to size the body on screen
@@ -109,28 +133,19 @@ class Claw(
                         val cx = max(1e-3f, (gx1 - gx0) / 100f); val cy = max(1e-3f, (gy1 - gy0) / 100f)
                         bodyW = it.w / cx; bodyH = (it.y1 - it.y0 + 1) / cy
                     }
-                    dig = min(DIG_SHARE * bodyH, DIG_MAX)
-                    // never dig the hub more than a tenth of the body below its top
-                    m.box?.let { bx ->
-                        val (_, gy0) = toMask(0f, 0f); val cy = max(1e-3f, (toMask(0f, 100f).second - gy0) / 100f)
-                        val topPx = (bx.y0 - gy0) / cy
-                        dig = dig.coerceAtMost(max(0f, topPx + 0.1f * bodyH - (y + HUB_BOTTOM)))
-                    }
-                    minOpen = ((0.75f * bodyW / 2f - 8f) / 20f).coerceIn(0f, 0.6f)
-                    contactY = y
                     motion = 0f
-                    grip()
-                } else if (tipY > screenH - 30f) {
+                    stopY = min(y + PRESS, max(y, goal))
+                    if (y >= stopY || t >= downMs) grip()
+                } else if (y + TIP >= screenH - 30.5f) {
                     result = Result(win = false, p = 0f, target = null, hitRow = null)
-                    bodyW = 0f; bodyH = 0f; dig = 0f; minOpen = 0f; contactY = y
+                    bodyW = 0f; bodyH = 0f; stopY = y
                     grip()
                 }
             }
             St.GRIP -> {
-                // dig in, then close (ease-in) down to the body's width
-                if (t < DIG_MS) { val k = t / DIG_MS; y = contactY + dig * (1f - (1f - k) * (1f - k)) } else y = contactY + dig
-                val k = ((t - DIG_MS) / CLOSE_MS).coerceIn(0f, 1f)
-                open = 1f - (1f - minOpen) * k * k
+                // settle back a little from the press, then the prongs close
+                y = stopY - SETTLE * Ease.outQ((t / SETTLE_MS).coerceIn(0f, 1f))
+                open = 1f - Ease.outC(((t - SETTLE_MS) / CLOSE_MS).coerceIn(0f, 1f))
                 val r = result!!
                 val tg = r.target
                 if (tg != null) targets.firstOrNull { sameThing(tg, it) }?.box?.let {
@@ -148,10 +163,17 @@ class Claw(
                 }
             }
             St.UP -> {
-                y = max(restY, y - dtMs * UP_SPEED)
-                carryDy = y - base
+                if (hold) { t = 0f; return }
                 var r = result!!
                 val tg = r.target
+                val lost = tg != null && !r.win
+                // a lost roll rises (sine: no jerk off the floor) to where it falls out; a win or air eases all the way up
+                val end = if (lost) base - dropLift else restY
+                if (tg == null && t <= dtMs) riseMs = riseEmptyMs(base - restY)
+                val ms = when { tg == null -> riseMs; lost -> LOST_UP_MS; else -> upMs(base - restY) }
+                val k = (t / ms).coerceIn(0f, 1f)
+                y = base + (end - base) * (if (lost) Ease.sine(k) else Ease.io(k))
+                carryDy = y - base
                 if (r.win && tg != null) {
                     val mx = toMask(x * screenW, y).first
                     val under = targets.any { o -> sameThing(tg, o) && o.box.let { b -> b != null && mx in b.x0 - 2..b.x1 + 2 } }
@@ -163,38 +185,43 @@ class Claw(
                         return
                     }
                 }
-                if (tg != null && !r.win) {
-                    val lifted = base - y
-                    slip01 = ((lifted - (dropLift - SLIP_LEAD)) / SLIP_LEAD).coerceIn(0f, 1f)
-                    open = minOpen + (0.8f - minOpen) * slip01
-                    if (lifted >= dropLift) { fall(); return }
-                }
-                if (y <= restY) st = if (r.win) St.CARRY else St.DONE
+                if (k >= 1f) { if (lost) fall() else st = if (r.win) St.CARRY else St.DONE }
             }
             St.FALL -> {
-                vy += dtMs * FALL_G
-                carryDy = min(0f, carryDy + vy * dtMs)
-                y = max(restY, y - dtMs * UP_SPEED)
-                if (carryDy >= 0f) st = St.DONE
+                // the claw waits while the game shows the slip, then rises empty
+                if (t < fallHold) return
+                val k = ((t - fallHold) / riseMs).coerceIn(0f, 1f)
+                y = fallY + (restY - fallY) * Ease.io(k)
+                if (k >= 1f) st = St.DONE
             }
         }
     }
 
-    private fun fall() { st = St.FALL; vy = 0f; open = 0.8f; slip01 = 0f; t = 0f }
+    private fun fall() { st = St.FALL; fallY = y; slip01 = 0f; t = 0f; riseMs = riseEmptyMs(fallY - restY) }
 
     /** The capsule took the catch away (CARRY -> DONE). */
     fun handedOff() { if (st == St.CARRY) { st = St.DONE; open = 1f } }
 
     /** Straight back to aiming: no result screen, no button. */
     fun next() {
-        st = St.AIM; aimed = false; open = 1f; y = restY; result = null; carryDy = 0f; t = 0f; slip01 = 0f; vy = 0f
+        st = St.AIM; aimed = false; open = 1f; y = restY; result = null; carryDy = 0f; t = 0f; slip01 = 0f
+        hold = false; fallHold = 0f; goal = Float.NaN; stopY = Float.NaN
     }
 
     private fun grip() { st = St.GRIP; t = 0f }
 
     companion object {
-        const val DOWN_SPEED = 0.26f   // px/ms
-        const val UP_SPEED = 0.15f
+        const val DOWN_SPEED = 0.26f   // px/ms, only past the planned descent (the thing moved away)
+        const val DOWN_BASE_MS = 650f
+        const val DOWN_PER_PX = 2.4f
+        const val DOWN_MAX_MS = 1700f
+        const val PRESS = 19f          // the tips go 14 px into the body plus 5 they settle back (mockup)
+        const val SETTLE = 5f
+        const val SETTLE_MS = 200f
+        const val CLOSE_MS = 120f
+        const val GRIP_MS = 560f
+        const val RISE_EMPTY_MS = 600f
+        const val LOST_UP_MS = 600f
         const val TIP = 44f
         const val HOME_X = 0.1f      // rest at the left, back there after every round (operator 11-14)
         const val HOME_SPEED = 0.0008f   // screen widths per ms (~1 s across)
@@ -202,13 +229,13 @@ class Claw(
         const val HUB_BOTTOM = 10f   // the hub's underside below its centre
         const val MOTION_CUT = 0.5f    // moved half its width (or more) while gripping -> chance halved
         const val SLIP_MS = 200f
-        const val DIG_MS = 140f
-        const val CLOSE_MS = 380f
-        const val GRIP_MS = 560f
-        const val DIG_SHARE = 0.3f     // dig into the body by 30 % of its height ...
-        const val DIG_MAX = 26f        // ... at most 26 px
-        const val SLIP_LEAD = 37.5f    // px of visible sliding before a lost roll falls out (250 ms of lift)
-        const val FALL_G = 0.0014f     // px/ms², slow and floaty (was 0.0045)
+        const val SLIP_LEAD = 37.5f    // the least lift before a lost roll falls out (px)
+
+        /** An empty claw's rise: 600 ms (mockup) for short ones, longer for far ones so it never whips up. */
+        fun riseEmptyMs(dist: Float) = (350f + 1.2f * dist).coerceIn(RISE_EMPTY_MS, 1000f)
+
+        /** A win's lift: about 820 ms for the mockup's 280 px, brisker for short ones. */
+        fun upMs(lift: Float) = (400f + 1.5f * lift).coerceIn(500f, 1100f)
 
         /**
          * A lost roll falls out after this much lift: the nearer the roll came to winning, the higher (90 % of the

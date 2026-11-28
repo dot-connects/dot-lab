@@ -6,6 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.abs
 import kotlin.math.PI
 
 class MaskTest {
@@ -171,16 +172,88 @@ class ClawTest {
 }
 
 class CapsuleTest {
-    @Test fun wrapsDropsRollsAndLeaves() {
+    @Test fun hangsDropsBouncesRollsAndLeaves() {
         val c = Capsule(100f, 80f, floorY = 600f, screenW = 300f)
+        c.step(16f)
+        assertEquals(Capsule.Phase.HANG, c.phase)
+        c.hang(120f, 90f, 5f)
+        assertEquals(120f, c.x, 1e-3f)
+        c.drop()
         var t = 0f
-        while (c.phase == Capsule.Phase.WRAP && t < 2000f) { c.step(16f); t += 16f }
-        assertEquals(Capsule.R, c.r, 1e-3f)
-        t = 0f
-        while (c.phase == Capsule.Phase.DROP && t < 5000f) { c.step(16f); t += 16f; assertTrue(c.y <= 600f - c.r + 1e-3f) }
+        while (c.phase == Capsule.Phase.DROP && t < 5000f) { c.step(16f); t += 16f; assertTrue(c.y <= 600f - Capsule.R + 1e-3f) }
+        assertEquals(3, c.bounces)
         assertEquals(Capsule.Phase.ROLL, c.phase)
         t = 0f
         while (c.phase == Capsule.Phase.ROLL && t < 5000f) { c.step(16f); t += 16f }
         assertEquals(Capsule.Phase.GONE, c.phase)
+    }
+}
+
+/** The felt show must never jump a frame (operator 11-28 "뚝뚝 끊긴다"): positions are continuous in time. */
+class ShowTest {
+    private val toMask: (Float, Float) -> Pair<Int, Int> = { x, y -> x.toInt() to y.toInt() }
+    private fun body(x0: Int, x1: Int, y0: Int, y1: Int): Mask {
+        val b = BooleanArray(90 * 400)
+        for (y in y0..y1) for (x in x0..x1) b[y * 90 + x] = true
+        return Mask(90, 400, b, Mask.Kind.CAT)
+    }
+
+    /** No 16 ms frame of a round changes the claw's speed abruptly, across every state change (a jump would). */
+    private fun noJumps(roll: Float, targets: (Claw.St) -> List<Mask>, hold: Float = 0f) {
+        val c = Claw(90f, 400f, 4f) { roll }
+        c.aim(0.5f); c.release()
+        var prev = c.y
+        var v = 0f
+        var held = 0f
+        val seen = mutableListOf(c.st)
+        repeat(1000) {
+            if (c.st == Claw.St.UP && held < hold) { c.hold = true; held += 16f } else c.hold = false
+            if (c.st == Claw.St.FALL) c.fallHold = 300f
+            c.step(16f, targets(c.st), toMask)
+            if (c.st != seen.last()) seen += c.st
+            // a teleport shows as a spike in the frame-to-frame speed; eased motion changes it a little each frame
+            val dv = c.y - prev
+            assertTrue("jerk ${dv - v} px in ${c.st} ($seen)", abs(dv - v) <= 6f)
+            v = dv; prev = c.y
+            if (c.st == Claw.St.CARRY) c.handedOff()
+        }
+        assertEquals(Claw.St.DONE, c.st)
+    }
+
+    @Test fun aWinMovesSmoothly() = noJumps(0f, { listOf(body(30, 60, 300, 380)) }, hold = 900f)
+    @Test fun aLostRollMovesSmoothly() = noJumps(0.99f, { listOf(body(30, 60, 300, 380)) })
+    @Test fun airMovesSmoothly() = noJumps(0f, { emptyList() })
+    @Test fun aSlipMovesSmoothly() {
+        val m = body(30, 60, 300, 380); val away = body(70, 89, 300, 380)
+        noJumps(0f, { if (it == Claw.St.UP || it == Claw.St.FALL) listOf(away) else listOf(m) })
+    }
+
+    @Test fun theDescentIsSlowAndHeavy() {
+        val c = Claw(90f, 400f, 4f) { 0f }
+        c.aim(0.5f); c.release()
+        var t = 0f
+        while (c.st == Claw.St.DOWN && t < 5000f) { c.step(16f, listOf(body(30, 60, 300, 380)), toMask); t += 16f }
+        // mockup: 650 ms + 2.4 ms per px of travel (here about 245 px), sine-eased
+        assertTrue("descent took $t ms", t in 1150f..1450f)
+    }
+
+    @Test fun theLidShutsWithoutAJump() {
+        val cc = CapClose(300f)
+        var prev = cc.lid(0f)
+        assertEquals(CapClose.LID_OPEN, prev, 1e-4f)
+        var t = 0f
+        while (t < cc.end + 50f) { t += 1f; val l = cc.lid(t); assertTrue("lid jumped at $t", abs(l - prev) < 1.5f); prev = l }
+        assertEquals(0f, prev, 1e-4f)
+        assertEquals(1f, cc.squash(cc.end), 1e-4f)
+        val (s, dy, a) = cc.pop(240f)
+        assertEquals(1f, s, 1e-4f); assertEquals(0f, dy, 1e-4f); assertEquals(1f, a, 1e-4f)
+    }
+
+    @Test fun theHopStartsAtTheCapsuleAndFadesOnTheBody() {
+        val a = SlipShow.hop(0f, 100f, 200f, 0.25f, 40f, 300f, 0.36f)
+        assertEquals(100f, a[0], 1e-3f); assertEquals(200f, a[1], 1e-3f); assertEquals(0.25f, a[2], 1e-3f); assertEquals(1f, a[3], 1e-3f)
+        val b = SlipShow.hop(1f, 100f, 200f, 0.25f, 40f, 300f, 0.36f)
+        assertEquals(40f, b[0], 1e-3f); assertEquals(300f, b[1], 1e-2f); assertEquals(0.36f, b[2], 1e-3f); assertEquals(0f, b[3], 1e-3f)
+        assertEquals(0f, SlipShow.shudder(0f), 1e-4f)
     }
 }

@@ -20,6 +20,7 @@ import kr.dot.catchpet.pet.Frames
 import kr.dot.catchpet.seg.CutOut
 import kr.dot.catchpet.seg.ScreenMap
 import kr.dot.catchpet.ui.CritterSource
+import kr.dot.catchpet.ui.FeltArt
 import org.json.JSONArray
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -27,9 +28,8 @@ import kotlin.random.Random
 
 /**
  * Fur critters, each pinned to a world azimuth (rotation-vector yaw): turning the phone pans them across the view,
- * tilting it up / down moves them down / up. Camera mode: three. Scene mode (camera off, SceneSource draws the Yard that
- * pans the same way, operator 11-13 "the AR feel stays"): six, a bit bigger (SCENE_SIZE), drawn in depth order with the
- * yard's trees, bushes and grass; every other spawn hides behind one of its own (a cover) and bobs up to look out.
+ * tilting it up / down moves them down / up. Camera mode: three. Scene mode (camera off, operator 11-13 "the AR feel
+ * stays"): six, a bit bigger (SCENE_SIZE), on the felt panorama that pans the same way (felt mockup v5, 11-28).
  * Both use perspective (operator 11-13): the higher a critter stands (further away), the smaller it is, times a
  * random size each. Each spawn faces a random way (dir0..7, R16); a caught one leaves and another appears.
  */
@@ -38,7 +38,7 @@ class Critters(
     private val scene: Boolean = false,
     private val rnd: Random = Random.Default,
 ) : CritterSource, SensorEventListener {
-    private class One(val id: String, val dir: Int, var az: Float, val feet01: Float, val size: Float, val pic: Bitmap, val cover: Yard.Thing? = null) {
+    private class One(val id: String, val dir: Int, var az: Float, val feet01: Float, val size: Float, val pic: Bitmap) {
         val rect = RectF()   // view px at rest (masks use it), updated each frame
         var onScreen = false
         val seed = Random.nextFloat()
@@ -51,7 +51,6 @@ class Critters(
     private val ids: List<String> by lazy { Companion.ids(ctx) }
     private val live = mutableListOf<One>()
     private var lastCaughtAz: Float? = null
-    private var spawns = 0
     private var yaw = 0f
     private var yawGoal = 0f
     private var lastRaw = Float.NaN
@@ -70,6 +69,8 @@ class Critters(
     private var heldId: String? = null
 
     private val prefs = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE)
+
+    init { if (scene) FeltArt.loadPano(ctx.resources) }
     /** critter_scale x the web figure (a creature ~40% of the screen height): the nearest one at 0.25 is 10 % of it. */
     private val heightFrac get() = prefs.getFloat("critter_scale", 0.25f) * 0.4f
 
@@ -140,15 +141,16 @@ class Critters(
         }
     }
 
-    /** Scene mode: the yard, then critters, the yard's standing things and the covers, far first. */
+    /**
+     * Scene mode (felt mockup v5 world): the felt panorama as a 360° ring pinned to azimuths like the critters, then the
+     * critters far first. Painted here, on the same canvas and frame as the critters (one redraw, never out of step).
+     */
     private fun drawScene(cv: Canvas, map: ScreenMap, held: String?) {
         val v = Yard.View(map.viewW, map.viewH, yaw, shift01, SystemClock.uptimeMillis() / 1000f, Yard.palNow())
-        Yard.back(cv, v)   // the yard is painted here, on the same canvas and frame as the critters (one redraw, never out of step)
-        val things = ArrayList<Pair<Float, Any>>(Yard.standing.size + live.size * 2)
-        for (th in Yard.standing) things += th.feet to th
-        for (c in live) { if (c.id != held) things += c.feet01 + 0.0001f to c; c.cover?.let { things += it.feet to it } }
-        things.sortBy { it.first }
-        for ((_, o) in things) if (o is Yard.Thing) Yard.draw(cv, v, o) else critter(cv, v, o as One)
+        FeltArt.pano(cv, v.w, v.h, v.x(0f), 360f * v.degW, v.hz)
+        // the felt picture is daylight: dusk and night tint it
+        if (v.pal !== Yard.DAY) cv.drawColor(if (v.pal.dark) 0x8C1C2356.toInt() else 0x33FF8E6E)
+        for (c in live.sortedBy { it.feet01 }) if (c.id != held) critter(cv, v, c)
     }
 
     private fun shadowAt(cv: Canvas, v: Yard.View?, cx: Float, feet: Float, w: Float, h: Float, scale: Float) {
@@ -156,14 +158,13 @@ class Critters(
         else { shadow.alpha = (0x33 * scale).toInt(); cv.drawOval(cx - w * 0.4f * scale, feet - h * 0.06f * scale, cx + w * 0.4f * scale, feet + h * 0.06f * scale, shadow) }
     }
 
-    /** A critter on the floor with its life pose (hiding ones bob up from behind their cover). */
+    /** A critter on the floor with its life pose. */
     private fun critter(cv: Canvas, v: Yard.View?, c: One) {
         if (!c.onScreen) return
         val r = c.rect
         val p = c.pose
         shadowAt(cv, v, r.centerX(), r.bottom, r.width(), r.height(), Posed.shadowScale(-p.dy * r.height(), r.height()))
-        val peek = if (c.cover != null && c.landAt < 0) (0.5f + 0.5f * kotlin.math.sin(c.clock / 1000f * 1.4f + c.az)) * 0.14f else 0f
-        Posed.draw(cv, picOf(c, p.look), r, if (peek != 0f) p.copy(dy = p.dy + peek) else p, paint)
+        Posed.draw(cv, picOf(c, p.look), r, p, paint)
         if (c.landAt >= 0) Posed.dust(cv, r, (SystemClock.uptimeMillis() - c.landAt).toFloat(), v?.pal?.dark == true)
     }
 
@@ -185,6 +186,8 @@ class Critters(
         tmp.set(r); tmp.offset(cx - r.centerX(), dy)
         Posed.draw(cv, c.pic, tmp, pose, paint)
     }
+
+    override fun rectOf(id: String): RectF? = live.firstOrNull { it.id == id }?.rect
 
     override fun landed(id: String, cx: Float) {
         val c = live.firstOrNull { it.id == id } ?: return
@@ -216,12 +219,7 @@ class Critters(
             }
             val dir = FACING[rnd.nextInt(FACING.size)]
             val pic = Frames.asset(ctx, id, "dir$dir")?.let(Frames::trim) ?: return
-            // scene mode: every other spawn hides behind a bush, a tree or a grass clump just in front of it
-            val n = spawns++
-            val cover = if (scene && n % 2 == 1) intArrayOf(Yard.BUSH, Yard.TREE, Yard.GRASS)[(n / 2) % 3].let { k ->
-                Yard.Thing(k, az + if (k == Yard.TREE) 1.5f else 0.5f, feet + 0.025f, 1.1f, n.toFloat())
-            } else null
-            live += One(id, dir, az, feet, 0.8f + rnd.nextFloat() * 0.4f, pic, cover)
+            live += One(id, dir, az, feet, 0.8f + rnd.nextFloat() * 0.4f, pic)
         }
     }
 

@@ -96,6 +96,8 @@ class ArCritters(private val ctx: Context, private val ar: ArSource, private val
         Posed.draw(cv, c.pic, r, pose, paint)
     }
 
+    override fun rectOf(id: String): RectF? = shown.firstOrNull { it.id == id }?.rect
+
     // ponytail: an AR critter keeps its anchor, so it lands back on its own spot, not where it fell
     private val landAt = HashMap<String, Long>()
     override fun landed(id: String, cx: Float) { landAt[id] = SystemClock.uptimeMillis() }

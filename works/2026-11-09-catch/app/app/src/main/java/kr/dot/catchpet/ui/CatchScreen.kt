@@ -1,44 +1,31 @@
 package kr.dot.catchpet.ui
 
 import kr.dot.catchpet.R
-import kotlin.math.abs
 
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.Path
+import android.graphics.PointF
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
-import android.graphics.SweepGradient
-import android.graphics.Typeface
 import android.util.Log
+import android.view.HapticFeedbackConstants
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -50,7 +37,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
@@ -58,29 +44,32 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kr.dot.catchpet.ar.ArCritters
+import kr.dot.catchpet.ar.Critters
 import kr.dot.catchpet.camera.ArSource
 import kr.dot.catchpet.camera.CameraXSource
 import kr.dot.catchpet.camera.FrameSource
 import kr.dot.catchpet.camera.SceneSource
-import kr.dot.catchpet.ar.Critters
 import kr.dot.catchpet.dex.Dex
+import kr.dot.catchpet.game.CapClose
 import kr.dot.catchpet.game.Capsule
-import android.view.HapticFeedbackConstants
-import kr.dot.catchpet.ar.Posed
 import kr.dot.catchpet.game.Claw
-import kr.dot.catchpet.game.Dangle
-import kr.dot.catchpet.game.Pose
-import kr.dot.catchpet.game.sameThing
+import kr.dot.catchpet.game.Ease
 import kr.dot.catchpet.game.Mask
+import kr.dot.catchpet.game.Pose
+import kr.dot.catchpet.game.SlipShow
 import kr.dot.catchpet.game.iou
+import kr.dot.catchpet.game.pend
+import kr.dot.catchpet.game.sameThing
 import kr.dot.catchpet.seg.CutOut
 import kr.dot.catchpet.seg.ScreenMap
 import kr.dot.catchpet.seg.Segmenter
 import java.util.concurrent.Future
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
@@ -104,6 +93,8 @@ interface CritterSource {
     fun draw(cv: android.graphics.Canvas, map: ScreenMap, held: String?, wary: Float?) {}
     /** The critter on the claw: centred at cx (view px), lifted dy px, posed (hanging, struggling, falling). */
     fun drawHeld(cv: android.graphics.Canvas, map: ScreenMap, held: String, cx: Float, dy: Float, pose: Pose) {}
+    /** Its resting rect this frame (view px), null when it is not there. */
+    fun rectOf(id: String): android.graphics.RectF? = null
     /** A dropped critter hit the floor at cx (view px): it lands there (squash, bounce, shake). */
     fun landed(id: String, cx: Float) {}
     /** It was caught: the pose label it showed (dirN) and its picture for the capsule. Another one appears. */
@@ -200,7 +191,7 @@ private fun CatchView(
         game.hint = !p.getBoolean("hinted", false)
         game.hinted = { p.edit().putBoolean("hinted", true).apply() }
     }
-    remember { Sfx.init(ctx) }
+    remember { Sfx.init(ctx); FeltArt.load(ctx.resources) }
     val openDex by rememberUpdatedState(onOpenDex)
     val camera by rememberUpdatedState(onCamera)
 
@@ -229,7 +220,7 @@ private fun CatchView(
                         if (y < game.rail) {          // the rail bar: "도감 N" on the right, the camera switch on the left
                             if (waitForUpOrCancellation() != null) {
                                 if (x > game.w / 2) { if (game.idle) openDex() }
-                                else if (x < 96f && y > game.rail - 46f && game.idle) camera()   // not mid-round: a catch in flight would be lost
+                                else if (x < game.camChip.right + 8f && game.idle) camera()   // not mid-round: a catch in flight would be lost
                             }
                             return@awaitEachGesture
                         }
@@ -260,9 +251,9 @@ private fun CatchView(
             drawIntoCanvas { game.render(it.nativeCanvas) }
         }
         if (game.askPerson != null) PersonConsent(PersonUse.DEX) { game.keepPerson(it) }
-        // operator 11-16: the card stays on screen until [닫기] or [자랑하기]
+        // operator 11-16: the card stays on screen until [계속 뽑기] or [자랑하기]
         game.bragCard?.let { b ->
-            BragCard(b, onClose = { game.bragCard = null }) {
+            BragCard(b, onClose = { game.bragCard = null }, onDex = { game.bragCard = null; openDex() }) {
                 game.bragCard = null
                 if (b.person) bragPerson = b else ShareCard.share(ctx, b)
             }
@@ -272,8 +263,15 @@ private fun CatchView(
 }
 
 /**
- * One catch screen's game: the Claw state machine, the GRIP cut-out, the capsule, toasts, and the drawing
- * (mockups/claw-endings.html, capsule ending). Everything is in dp; the view is scaled by [d] when drawn.
+ * One catch screen's game: the Claw state machine, the GRIP cut-out, the capsule, toasts, and the drawing. Everything is
+ * in dp; the view is scaled by [d] when drawn.
+ *
+ * The look and motion are the felt mockup v5.2 (operator 11-28, mockups/next7v4 core.js / screens.js / world.js); the
+ * rules stay the app's (Claw). A real thing is caught "잡자마자 작게": once the prongs shut its cut-out is sucked into
+ * an open capsule under the claw and the lid snaps shut before the lift; a lost one shudders, pops open and the little
+ * one hops back onto its body. A critter hangs from the tips and is wrapped in the capsule at the top; a lost one slides
+ * and falls in the pose it hung in. Every position is computed from the claw's clock in [step], so the claw, the
+ * capsule and the catch move together and nothing jumps a frame.
  */
 private class CatchGame(
     private val src: FrameSource,
@@ -287,12 +285,22 @@ private class CatchGame(
     var dexCount = 0
     var cameraOn = false
     var pressed = false
-    /** The 집기 button: a chrome-ringed arcade dome on a screwed steel plate, bottom right (mockups/button.html B+A). */
-    val btnX get() = w - 16f - PLATE_SIDE - BTN_R
-    val btnY get() = h - bottomInset - 14f - PLATE_FOOT - BTN_R
+
+    // layout (felt mockup v5): the wooden rail, felt chips under it, the claw hanging from the rail, the button bottom right
+    private val railVis get() = topInset + 12f
+    private val chipY get() = topInset + 43f
+    /** Taps above this line are the chips. */
+    val rail get() = topInset + 62f
+    /** The claw's rail for its rules: it rests with its picture just under the chips, like the mockup. */
+    private val clawRail get() = rail + 26f
+    private val btnL get() = w - 18f - FeltArt.BTN_W
+    private val btnT get() = h - bottomInset - 46f - FeltArt.btnH
+    private val btnX get() = btnL + FeltArt.BTN_W / 2
+    private val btnY get() = btnT + FeltArt.btnH * 0.42f
     fun onButton(x: Float, y: Float) =
-        x >= btnX - BTN_R - PLATE_SIDE - 8f && x <= btnX + BTN_R + PLATE_SIDE + 8f &&
-            y >= btnY - BTN_R - PLATE_SIDE - 8f && y <= btnY + BTN_R + PLATE_FOOT + 8f
+        x >= btnL - 8f && x <= btnL + FeltArt.BTN_W + 8f && y >= btnT - 8f && y <= btnT + FeltArt.btnH + 24f
+    /** The camera chip (top left), set when drawn. */
+    val camChip = RectF()
     /** Nothing in flight: aiming, no capsule, no person waiting for consent. */
     val idle get() = claw?.st == Claw.St.AIM && capsule == null && pendingPerson == null && askPerson == null
     var hint = true
@@ -301,33 +309,19 @@ private class CatchGame(
     private var railTickX = -1f
     var w = 0f; private set
     var h = 0f; private set
-    val rail get() = topInset + 54f
     var claw: Claw? = null; private set
     /** Haptic feedback (HapticFeedbackConstants), set by the view. */
     var buzz: (Int) -> Unit = {}
-    // feel (operator 11-13, Fable design note): the hanging catch, the claw's jolt on contact, a dropped photo's landing
-    private val dangle = Dangle { Random.nextFloat() }
-    private var heldPose = Pose.REST
-    private var arms = ClawArt.idle(1f)
-    private var clawScale = 1f       // a big catch (a person up close) gets a bigger claw, eased in
-    private var hugTop = 0f          // dp, the grabbed body's top below the hub (fixed once it is lifted)
-    private var heldCx = 0f          // dp, where the held thing's centre is drawn
-    private var grabOff = 0f         // dp, thing centre minus claw x when it was grabbed (swings in under the claw)
-    private var joltT = -1f          // ms since the tips touched, -1 = none
-    private var closedBuzz = false
-    private var landT = -1f          // ms since a dropped photo landed, -1 = none
-    private var landFrozen: Bitmap? = null
-    private var landGrip: Grip? = null
 
     private class Toast(val text: String, val good: Boolean) {
         var t = 0f
-        val life get() = 1400f
+        val life get() = 1500f
     }
     /** What the next win toast offers to share, kept from the catch (the cut-out is gone after reset, review 11-16). */
     private var capBrag: Brag? = null
-    /** The card shown over the game after a catch, until [닫기] or [자랑하기] (operator 11-16, mockup 2-A). */
+    /** The card shown over the game after a catch, until [계속 뽑기] or [자랑하기] (operator 11-16, mockup 2-A). */
     var bragCard by mutableStateOf<Brag?>(null)
-    private class Grip(val cut: CutOut.Cut?, val hole: Bitmap?, val opaque: Float, val kind: String? = null)
+    private class Grip(val cut: CutOut.Cut?, val opaque: Float, val kind: String? = null)
 
     private var map: ScreenMap? = null
     private var targets: List<Mask> = emptyList()
@@ -342,8 +336,9 @@ private class CatchGame(
     /** Something on screen moves fast enough to need 60 fps (else 30: idle breathing and swaying read the same). */
     fun lively(): Boolean {
         val c = claw ?: return false
-        return touching || c.st != Claw.St.AIM || capsule != null || toast != null || landT >= 0f || pulse > 0f ||
-            abs(vsw) > 2e-4f || abs(swing) > 0.004f || abs(c.x - lastX) > 1e-4f
+        return touching || c.st != Claw.St.AIM || capsule != null || faller != null || toast != null || pulse > 0f ||
+            FeltArt.busy || abs(vsw) > 2e-4f || abs(swing) > 0.004f || abs(c.x - lastX) > 1e-4f ||
+            abs(close) > 0.01f || abs(rigSwing) > 0.05f
     }
     private var frozen: Bitmap? = null
     private var grip: Future<Grip>? = null
@@ -357,13 +352,50 @@ private class CatchGame(
     private val shown get() = held?.takeIf { it.cut != null && it.opaque >= 0.05f } ?: quickHeld ?: held
     private var capsule: Capsule? = null
     private var capColor = CapColors.CAP_COLORS[0]
-    private var capT = 0f
     private var capText = ""
-    private var saved = false   // the catch is already in the dex but the capsule still rolls: show N-1 until GONE
     private var pendingPerson: Bitmap? = null
     private var pendingKind = "person"
     /** A caught person waiting for the player's "허락받았어요" (the game holds still meanwhile). */
     var askPerson by mutableStateOf<Bitmap?>(null); private set
+
+    // ---------- the show (felt mockup), all dp / ms / degrees ----------
+    private enum class Kind { NONE, AIR, REAL, CRITTER }
+    private var kind = Kind.NONE
+    private var close = 0f           // the prongs: 0 open .. 1 shut (1.32 snapped on air), eased every frame
+    private var squash = 0f
+    private var rigSwing = 0f        // the claw's pendulum on the rail
+    private var rigDeg = 0f          // everything that turns the claw this frame
+    private var tipX = 0f            // the prong tips this frame (turned with the claw)
+    private var tipY = 0f
+    private var swingT = 0f          // ms since the lift started: the catch's pendulum clock
+    private var toasted = false      // this round's toast is said
+    private var closedBuzz = false
+    // a real catch: its cut-out comes out of the photo and into the capsule
+    private var catchT = -1f         // ms since it started coming out (after the prongs shut), -1 = not yet
+    private var waitCut = 0f
+    private val heldFrom = RectF()   // where the cut-out was (dp)
+    private var capClose: CapClose? = null
+    private var capT = 0f            // ms since the capsule appeared
+    private var flashT = -1f
+    private var flashX = 0f
+    private var flashY = 0f
+    private var topT = -1f           // ms waiting at the top before the prongs let go
+    private var released = false
+    private var popped = false
+    private val popAt = PointF()
+    private val landAt = PointF()
+    private var popRot = 0f
+    // a critter: hangs by its top from the tips, gets wrapped at the top, or falls
+    private val crit = RectF()       // its resting rect (dp) this frame
+    private var critPic: Bitmap? = null
+    private var critGone = false     // caught() took it out of the world
+    private var critDropped = false
+    private class Faller(val id: String, val x: Float, var top: Float, val grip: Float) { var vy = 0f; var a = 0f }
+    private var faller: Faller? = null
+    private val look = FeltArt.CapLook()
+    // "○○ 찾았다!" over each real thing the camera sees (mockup: always shown, hidden while catching)
+    private class Label(var x: Float, var y: Float, var text: String) { var a = 0f; var seen = true }
+    private val labels = HashMap<String, Label>()
 
     fun keepPerson(keep: Boolean) {
         val b = askPerson ?: return
@@ -379,15 +411,17 @@ private class CatchGame(
     fun setSize(wDp: Float, hDp: Float) {
         if (wDp == w && hDp == h) return
         w = wDp; h = hDp
-        claw = Claw(w, h - bottomInset, rail) { Random.nextFloat() }
+        claw = Claw(w, h - bottomInset, clawRail) { Random.nextFloat() }
         reset()
     }
+
+    private val floorY get() = h - bottomInset - 24f
 
     fun step(dt: Float) {
         if (askPerson != null) return
         var c = claw ?: return
-        if (c.railY != rail && c.st == Claw.St.AIM) {   // insets arrived after the first layout
-            c = Claw(w, h - bottomInset, rail) { Random.nextFloat() }; claw = c
+        if (c.railY != clawRail && c.st == Claw.St.AIM) {   // insets arrived after the first layout
+            c = Claw(w, h - bottomInset, clawRail) { Random.nextFloat() }; claw = c
         }
         time += dt
         map = src.map(w * d, h * d)
@@ -408,104 +442,263 @@ private class CatchGame(
         if (c.st == Claw.St.AIM) { if (railTickX < 0f || abs(px - railTickX) > 22f) { if (railTickX >= 0f) Sfx.play(R.raw.sfx_rail, 0.25f); railTickX = px } }
         val before = c.st
         c.step(dt, targets) { x, y -> m?.toGrid(x * d, y * d) ?: (-1 to -1) }
-        Sfx.motor(when (c.st) { Claw.St.DOWN -> 0.85f; Claw.St.UP -> 1.15f; else -> 0f })
+        Sfx.motor(when { c.st == Claw.St.DOWN -> 0.85f; c.st == Claw.St.UP && !c.hold -> 1.15f; c.st == Claw.St.FALL && c.t > c.fallHold -> 1.15f; else -> 0f })
         if (before == Claw.St.AIM && c.st == Claw.St.DOWN) Sfx.play(R.raw.sfx_drop, 0.5f)
-        if (before == Claw.St.GRIP && c.st == Claw.St.UP) Sfx.play(R.raw.sfx_lift, 0.45f)
         if (before == Claw.St.DOWN && c.st == Claw.St.GRIP) {
-            onGrip(c.result!!)
-            closedBuzz = false; dangle.reset()
-            if (c.result?.target != null) { joltT = 0f; buzz(HapticFeedbackConstants.CLOCK_TICK) }
+            val r = c.result!!
+            kind = when { r.target == null -> Kind.AIR; r.target.kind == Mask.Kind.CRITTER -> Kind.CRITTER; else -> Kind.REAL }
+            onGrip(r)
+            closedBuzz = false; toasted = false; catchT = -1f; waitCut = 0f; capClose = null; topT = -1f
+            released = false; popped = false; critPic = null; critGone = false; critDropped = false; swingT = 0f
+            if (kind == Kind.REAL) c.hold = true   // the capsule closes round it before the lift
+            if (r.target != null) buzz(HapticFeedbackConstants.CLOCK_TICK)
         }
-        if (joltT >= 0f) { joltT += dt; if (joltT > 200f) joltT = -1f }
-        if (c.st == Claw.St.GRIP && !closedBuzz && c.t > Claw.DIG_MS + Claw.CLOSE_MS) { closedBuzz = true; buzz(HapticFeedbackConstants.CONTEXT_CLICK); Sfx.play(R.raw.sfx_grip, 0.6f) }
-        feel(c, before, dt, m)
-        if (landT >= 0f) { landT += dt; if (landT > 320f) { landT = -1f; landFrozen = null; landGrip = null } }
-        when (c.st) {
-            Claw.St.CARRY -> if (capsule == null) onCarry(c)
-            Claw.St.DONE -> if (capsule == null) {
-                val r = c.result!!
-                if (before == Claw.St.FALL) landedAfterFall(r)
-                say(when {
-                    r.target == null -> AIR.random()
-                    r.slipped -> SLIPPED.random()
-                    else -> NEAR.random()
-                }, false)
-                if (before != Claw.St.FALL) Sfx.play(R.raw.sfx_miss, 0.4f)
-                next()
-            }
+        if (c.st == Claw.St.GRIP && !closedBuzz && c.t > Claw.SETTLE_MS + Claw.CLOSE_MS) {
+            closedBuzz = true; buzz(HapticFeedbackConstants.CONTEXT_CLICK); Sfx.play(R.raw.sfx_grip, 0.6f)
+        }
+        if (before == Claw.St.GRIP && c.st == Claw.St.UP) {
+            Sfx.play(R.raw.sfx_lift, 0.45f)
+            if (kind == Kind.AIR) { say(AIR.random(), false); toasted = true }
+        }
+        if (before != Claw.St.FALL && c.st == Claw.St.FALL) onFall(c)
+        if ((c.st == Claw.St.UP && !c.hold) || c.st == Claw.St.CARRY || c.st == Claw.St.FALL) swingT += dt
+
+        show(c, dt)
+        when (kind) {
+            Kind.REAL -> real(c, dt)
+            Kind.CRITTER -> critter(c, dt)
             else -> {}
         }
+        if (c.st == Claw.St.DONE && capsule == null) {
+            val r = c.result!!
+            if (!toasted) say(when { r.target == null -> AIR.random(); r.slipped -> SLIPPED.random(); else -> NEAR.random() }, false)
+            if (before != Claw.St.FALL) Sfx.play(R.raw.sfx_miss, 0.4f)
+            next()
+        }
         capsule?.let { cap ->
-            val was = cap.phase
-            cap.step(dt); capT += dt
-            if (was == Capsule.Phase.WRAP && cap.phase == Capsule.Phase.DROP) c.handedOff()   // claw lets go
+            if (cap.phase == Capsule.Phase.HANG) return@let
+            val b = cap.bounces
+            cap.step(dt)
+            if (cap.bounces > b && cap.bounces == 1) Sfx.play(R.raw.sfx_land, 0.4f)
             if (cap.phase == Capsule.Phase.GONE) {
-                if (pendingPerson == null) { say(capText, true); bragCard = capBrag; pulse = 1f; Sfx.play(R.raw.sfx_win, 0.6f) }
+                if (pendingPerson == null) { bragCard = capBrag; Sfx.play(R.raw.sfx_win, 0.6f) }
                 capBrag = null
                 next()
                 pendingPerson?.let { askPerson = it; pendingPerson = null }
             }
         }
+        faller?.let { fallStep(it, dt) }
+        FeltArt.stepBits(dt)
+        if (flashT >= 0f) { flashT += dt; if (flashT > 360f) flashT = -1f }
+        stepLabels(c, dt, m)
     }
 
-    /** The held thing's pose and place this frame: contact squash, swing, struggle, slide, slow fall. */
-    private fun feel(c: Claw, before: Claw.St, dt: Float, m: ScreenMap?) {
-        val r = c.result
-        val tg = r?.target
-        if (tg == null || m == null || c.st !in LIFTED) { heldPose = Pose.REST; arms = ClawArt.idle(c.open); clawScale += (1f - clawScale) * min(1f, dt / 140f); return }
-        val critter = tg.kind == Mask.Kind.CRITTER
-        val now = targets.firstOrNull { sameThing(tg, it) }?.box
-        val thingX = now?.let { m.gridToViewX((it.x0 + it.x1 + 1) / 2f) / d }
-        val clawX = c.x * w
-        if (before == Claw.St.GRIP && c.st == Claw.St.UP) { dangle.reset(); grabOff = (thingX ?: clawX) - clawX; dangle.kick(-grabOff * 0.002f) }
-        if (before == Claw.St.UP && c.st == Claw.St.CARRY) dangle.kick(if (dangle.rot >= 0f) 0.03f else -0.03f)   // the stop at the top
-        val cap = if (critter) Dangle.CAP_CRITTER else Dangle.CAP_PHOTO
-        // the arms: spread past the body's sides as the claw settles on it, then close in under its widest point
-        if (before == Claw.St.DOWN) hugTop = Claw.TIP * 0.5f
-        if (c.st == Claw.St.GRIP) now?.let { hugTop = m.gridToViewY(it.y0.toFloat()) / d - c.y }
-        // the big-catch claw shrinks back once the capsule takes the catch: a 1.5x claw round a 46 dp capsule looked odd (operator 11-17)
-        val wantScale = if (c.bodyW > 0f && c.st != Claw.St.AIM && capsule == null) (c.bodyW / 2f / 56f).coerceIn(1f, 1.5f) else 1f
-        clawScale += (wantScale - clawScale) * min(1f, dt / 140f)
-        val s = clawScale
-        if (c.bodyW > 0f) {
-            val o = ((c.open - c.minOpen) / max(1e-3f, 1f - c.minOpen)).coerceIn(0f, 1f)
-            val on = ClawArt.on(ClawArt.Body(c.bodyW / 2f / s, hugTop / s, c.bodyH / s), o)
-            arms = if (c.st == Claw.St.GRIP && c.t < Claw.DIG_MS) ClawArt.mix(ClawArt.idle(1f), on, c.t / Claw.DIG_MS) else on
-        } else arms = ClawArt.idle(c.open)
+    /** The claw's prongs, squash and swing for this frame, then where its tips are (everything hangs from them). */
+    private fun show(c: Claw, dt: Float) {
+        val k = when (kind) { Kind.AIR -> 1.32f; Kind.CRITTER -> 0.72f; else -> 1f }
+        var cl = 0f; var sq = 0f; var sw = 0f
+        val shut = Claw.SETTLE_MS + Claw.CLOSE_MS
         when (c.st) {
+            Claw.St.AIM, Claw.St.DONE -> {}
+            Claw.St.DOWN -> sw = -0.8f * sin(PI.toFloat() * c.downK)
             Claw.St.GRIP -> {
-                // on the floor: squashed by the tips, then a wriggle once the prongs bite
-                heldCx = thingX ?: clawX
-                val k = (1f - c.t / 120f).coerceAtLeast(0f)
-                val (sr, sdx, ssq) = if (critter && c.t > Claw.DIG_MS) dangle.also { it.step(dt, 0f, cap) }.struggle(0.5f) else Triple(0f, 0f, 0f)
-                heldPose = if (critter) Pose(dx = sdx, rot = sr, sx = 1f + 0.06f * k - ssq * 0.5f, sy = 1f - 0.10f * k + ssq) else Pose.REST
+                cl = (1f - c.open) * k
+                val tc = c.t - shut
+                if (kind == Kind.AIR) { if (tc in 0f..200f) { val q = tc / 200f; sw = sin(q * 30f) * 2.2f * (1f - q); sq = 0.05f * sin(PI.toFloat() * q) } }
+                else if (c.t >= Claw.SETTLE_MS && tc < 140f) sq = 0.04f
             }
-            Claw.St.UP, Claw.St.CARRY -> {
-                dangle.step(dt, (thingX ?: clawX) - clawX, cap)
-                val lifted = -c.carryDy
-                val win = r.win
-                val amp = if (win && c.slip01 == 0f) 1f - 0.6f * (lifted / max(1f, lifted + (c.y - c.restY))) else 1f + 0.6f * c.slip01
-                val (sr, sdx, ssq) = if (critter) dangle.struggle(amp) else Triple(0f, 0f, 0f)
-                val side = if (win && thingX != null) Math.signum(thingX - clawX) * 0.25f * c.bodyW * c.slip01 else 0f
-                heldCx = clawX + grabOff * kotlin.math.exp(-c.t / 250f) + side
-                val stretch = if (critter) 0.05f + 0.03f * (1f - c.t / 90f).coerceAtLeast(0f) else 0f
-                heldPose = Pose(dx = sdx, dy = if (!win) 0.08f * c.slip01 else 0f, rot = sr * 0.7f,
-                    sx = 1f - stretch * 0.8f - ssq * 0.5f, sy = 1f + stretch + ssq, pivot = 0.6f)
+            Claw.St.UP -> {
+                cl = k
+                if (kind == Kind.AIR) { sw = pend(2.5f, c.t, 0.013f, 300f); if (c.t > c.riseMs - 160f) cl = 0f }
+                else sw = pend(1.2f, swingT, 0.012f, 500f)
             }
+            Claw.St.CARRY -> { cl = if (released) 0f else k; sw = 0.6f * pend(1.2f, swingT, 0.012f, 500f) }
             Claw.St.FALL -> {
-                dangle.step(dt, 0f, cap)
-                heldPose = Pose(rot = dangle.rot, sx = if (critter) 0.98f else 1f, sy = if (critter) 1.03f else 1f, pivot = 0.5f)
+                val t = c.t
+                if (kind == Kind.REAL && capsule != null) {
+                    cl = when { t < SlipShow.SHUDDER -> 1f; t < SlipShow.POP -> 1f - 0.5f * Ease.outQ(((t - SlipShow.SHUDDER) / 140f).coerceAtMost(1f)); else -> 0.5f }
+                    if (t < SlipShow.SHUDDER) sw = SlipShow.shudder(t) * 0.12f
+                } else cl = if (t < CRIT_SLIDE) 0.72f - 0.37f * Ease.inQ(t / CRIT_SLIDE) else 0.35f
+                if (t > c.fallHold) { sw = pend(2.5f, t - c.fallHold, 0.013f, 300f); if (t > c.fallHold + c.riseMs - 160f) cl = 0f }
             }
-            else -> {}
+        }
+        val e = 1f - exp(-dt / 35f)
+        close += (cl - close) * e; squash += (sq - squash) * e; rigSwing += (sw - rigSwing) * e
+        rigDeg = Math.toDegrees((if (c.st == Claw.St.AIM) swing else swing * 0.6f).toDouble()).toFloat() + rigSwing
+        val a = Math.toRadians(rigDeg.toDouble()); val l = c.y + Claw.TIP - railVis
+        tipX = c.x * w - sin(a).toFloat() * l
+        tipY = railVis + cos(a).toFloat() * l
+    }
+
+    /** The capsule's angle while it hangs from the tips. */
+    private fun capAngle(c: Claw): Float = when {
+        kind != Kind.REAL -> 0f
+        c.st == Claw.St.UP -> pend(7f, swingT, 0.012f, 500f)
+        c.st == Claw.St.CARRY -> pend(7f, swingT, 0.012f, 500f) + if (topT >= 0f) pend(-6f, topT, 0.016f, 260f) else 0f
+        c.st == Claw.St.FALL -> pend(7f, swingT, 0.012f, 500f) + SlipShow.shudder(c.t)
+        else -> 0f
+    }
+
+    private fun hangCapsule(c: Claw) {
+        val cap = capsule ?: return
+        val a = capAngle(c)
+        val l = HANG + if (c.st == Claw.St.FALL && kind == Kind.REAL) SlipShow.slide(c.t) else 0f
+        val r = Math.toRadians(a.toDouble())
+        cap.hang(tipX - sin(r).toFloat() * l, tipY + cos(r).toFloat() * l, a)
+    }
+
+    /** A real thing: out of the photo into the capsule, the lift, the top, or the slip. */
+    private fun real(c: Claw, dt: Float) {
+        if (catchT < 0f && (c.st == Claw.St.UP || (c.st == Claw.St.GRIP && c.t >= Claw.SETTLE_MS + Claw.CLOSE_MS))) {
+            // the cut-out is usually ready by now (quick cut); wait a little for it, then go on without
+            waitCut += dt
+            val cut = shown?.cut
+            if (cut != null || waitCut > 600f) {
+                catchT = 0f
+                val m = map
+                if (cut != null && m != null) cutRect(m, cut, heldFrom)
+                else { val tg = c.result?.target?.box; if (tg != null && m != null) heldFrom.set(m.gridToViewX(tg.x0.toFloat()) / d, m.gridToViewY(tg.y0.toFloat()) / d, m.gridToViewX(tg.x1 + 1f) / d, m.gridToViewY(tg.y1 + 1f) / d) else heldFrom.set(tipX - 40f, tipY, tipX + 40f, tipY + 80f) }
+                flashT = 0f; flashX = heldFrom.centerX(); flashY = heldFrom.centerY()
+            }
+        } else if (catchT >= 0f) catchT += dt
+        if (catchT >= ANTICIPATE && capsule == null && !released && (c.st == Claw.St.GRIP || c.st == Claw.St.UP)) {
+            capsule = Capsule(tipX, tipY + HANG, floorY, w); capClose = CapClose(300f)
+            capColor = CapColors.random()   // a different capsule each catch (operator 11-15), stored with it
+        }
+        val cc = capClose
+        if (capsule != null && cc != null) {
+            capT = catchT - ANTICIPATE
+            if (c.hold && capT >= cc.end + 70f) c.hold = false
+        }
+        if (c.st == Claw.St.CARRY && !released) {
+            if (topT < 0f) topT = 0f else topT += dt
+            if (topT >= 260f) carryReal(c)
+        }
+        if (c.st == Claw.St.FALL && capsule != null) {
+            if (!popped && c.t >= SlipShow.POP) {
+                popped = true
+                val cap = capsule!!
+                popAt.set(cap.x, cap.y); popRot = cap.rot
+                say(if (c.result?.slipped == true) SLIPPED.random() else NEAR.random(), false); toasted = true
+                FeltArt.puff(cap.x, cap.y, 10, 40f); FeltArt.sparkle(cap.x, cap.y - 20f, 3)
+                Sfx.play(R.raw.sfx_land, 0.5f)
+                // it hops back onto its body: where the camera sees it now, else where it was
+                val tg = c.result?.target
+                val now = tg?.let { t -> targets.firstOrNull { it.kind != Mask.Kind.CRITTER && sameThing(t, it) } }?.box
+                val m = map
+                if (now != null && m != null) landAt.set(m.gridToViewX((now.x0 + now.x1 + 1) / 2f) / d, m.gridToViewY((now.y0 + now.y1 + 1) / 2f) / d - 20f)
+                else landAt.set(heldFrom.centerX(), heldFrom.centerY() - 20f)
+            }
+            if (c.t >= SlipShow.END) { FeltArt.puff(landAt.x, landAt.y + 30f, 7, 30f); capsule = null }
+        }
+        if (!popped) hangCapsule(c)
+    }
+
+    /** At the top with a real win: wait for the precise cut (max 1.5 s, then the quick one), save, let go. */
+    private fun carryReal(c: Claw) {
+        val target = c.result!!.target!!
+        val g = grip
+        if (held == null && g != null && !g.isDone && time - gripAt < 1500f) return
+        if (held == null) {
+            g?.cancel(false)
+            // main thread: no model call here
+            held = quickHeld ?: frozen?.let { f -> runCatching { makeGrip(f, target, hiRes = false) }.onFailure { Log.w(TAG, "cut failed", it) }.getOrNull() }
+        }
+        val got = shown
+        if (got?.cut == null || got.opaque < 0.05f) {
+            capsule = null; c.handedOff(); say(NEAR.random(), false); toasted = true; next()
+            return
+        }
+        val kind = got.kind ?: target.dexKind   // a group: "person+cat"
+        if (Dex.hasPerson(kind)) {
+            // a person goes into the dex only after the consent dialog (shown when the capsule is gone); the
+            // cheer waits for it too (review 11-15: it celebrated, then "버리기")
+            pendingPerson = got.cut.bmp; pendingKind = kind
+            letGo(c, "")
+            return
+        }
+        val r = sink.onCaught(kind, got.cut.bmp, null, "front", capColor)
+        capBrag = Brag(r.name, kind, got.cut.bmp, null, capColor)
+        letGo(c, caughtText(kind, r.name))
+    }
+
+    /** The prongs let go: the capsule drops, bounces and rolls off; the toast says what it was. */
+    private fun letGo(c: Claw, text: String) {
+        released = true
+        capsule?.drop()
+        c.handedOff()
+        buzz(HapticFeedbackConstants.CONFIRM)
+        if (text.isNotEmpty()) { say(text, true); toasted = true; pulse = 1f }
+    }
+
+    /** A critter: hanging from the tips, wrapped at the top, or sliding out and falling. */
+    private fun critter(c: Claw, dt: Float) {
+        val id = c.result?.target?.critterId ?: return
+        val m = map
+        if (!critGone) critters.rectOf(id)?.let { r -> crit.set(r.left / d, r.top / d, r.right / d, r.bottom / d) }
+        if (c.st == Claw.St.CARRY && capsule == null && !released && m != null) {
+            // at the top: it goes into the capsule (core.js WRAP at the top)
+            val (label, pic) = critters.caught(id, m)
+            critGone = true; critPic = pic?.bmp
+            capColor = CapColors.random()
+            val r = sink.onCaught("critter", null, id, label, capColor)
+            capBrag = Brag(r.name, "critter", null, id, capColor)   // its picture is read when shared
+            capText = if (r.grew) "새 친구! ${r.name}" else "${r.name} 또 왔네!"
+            capsule = Capsule(tipX, tipY + HANG, floorY, w); capClose = CapClose(260f); capT = 0f
+        } else if (c.st == Claw.St.CARRY && !released) {
+            capT += dt
+            if (capT >= (capClose?.end ?: 0f) + 80f) letGo(c, capText)
+        }
+        if (c.st == Claw.St.FALL && !critDropped && c.t >= CRIT_SLIDE) {
+            critDropped = true
+            say(if (c.result?.slipped == true) SLIPPED.random() else NEAR.random(), false); toasted = true
+            val g = gripDepth()
+            faller = Faller(id, tipX, tipY - g - 6f + 22f, g)
+        }
+        if (capsule?.phase == Capsule.Phase.HANG) hangCapsule(c)
+    }
+
+    private fun gripDepth() = min(22f, crit.height() * 0.25f)
+
+    private fun fallStep(f: Faller, dt: Float) {
+        // it falls in the pose it hung in, tipping a little; the world takes it back where it lands (world.js)
+        critters.rectOf(f.id)?.let { r -> crit.set(r.left / d, r.top / d, r.right / d, r.bottom / d) }
+        f.vy += dt * Capsule.G
+        f.top = min(crit.top, f.top + f.vy * dt)
+        f.a = min(14f, f.a + dt * 0.03f)
+        if (f.top >= crit.top) {
+            faller = null
+            critters.landed(f.id, f.x * d)
+            FeltArt.puff(f.x, crit.bottom - 4f, 6, 28f)
+            buzz(HapticFeedbackConstants.VIRTUAL_KEY); Sfx.play(R.raw.sfx_land, 0.6f)
         }
     }
 
-    /** A dropped thing reached the floor: a critter lands where it fell, a photo bounces once before it fades. */
-    private fun landedAfterFall(r: Claw.Result) {
-        val tg = r.target ?: return
-        buzz(HapticFeedbackConstants.VIRTUAL_KEY); Sfx.play(R.raw.sfx_land, 0.6f)
-        if (tg.kind == Mask.Kind.CRITTER) tg.critterId?.let { critters.landed(it, heldCx * d) }
-        else if (shown?.cut != null) { landT = 0f; landFrozen = frozen; landGrip = shown }
+    private fun onFall(c: Claw) {
+        when {
+            kind == Kind.REAL && capsule != null -> c.fallHold = SlipShow.END
+            kind == Kind.CRITTER -> c.fallHold = CRIT_SLIDE
+            else -> c.fallHold = 0f
+        }
+    }
+
+    /** "○○ 찾았다!" labels follow the real things the camera sees; they fade out while the claw is busy. */
+    private fun stepLabels(c: Claw, dt: Float, m: ScreenMap?) {
+        for (l in labels.values) l.seen = false
+        val on = c.st == Claw.St.AIM && capsule == null && m != null
+        if (m != null) for ((i, t) in seg.masks.withIndex()) {
+            if (t.kind == Mask.Kind.CRITTER) continue
+            val b = t.box ?: continue
+            val x = m.gridToViewX((b.x0 + b.x1 + 1) / 2f) / d
+            val y = m.gridToViewY(b.y0.toFloat()) / d - 22f
+            val key = "${t.kind}$i"
+            val l = labels.getOrPut(key) { Label(x, y, "") }
+            l.text = Dex.kindName(t.dexKind) + " 찾았다!"
+            val k = 1f - exp(-dt / 120f)
+            l.x += (x - l.x) * k; l.y += (max(rail + 20f, y) - l.y) * k; l.seen = true
+        }
+        val fade = 1f - exp(-dt / 70f)
+        labels.values.removeAll { l -> l.a += ((if (on && l.seen) 1f else 0f) - l.a) * fade; !l.seen && l.a < 0.02f }
     }
 
     /** The tips touched something: freeze that frame and re-segment it on the model thread (plan R7, R16). */
@@ -558,54 +751,7 @@ private class CatchGame(
             runCatching { seg.personAlpha(f, src) }.onFailure { Log.w(TAG, "hi-res cut", it) }.getOrNull()?.let { a -> CutOut.make(f, src, a, clip = m).also { a.recycle() } }
         } else null
         val cut = hi ?: CutOut.make(f, m)
-        return Grip(cut, CutOut.hole(f, m), cut?.let { CutOut.opaque(it.bmp) } ?: 0f, kind)
-    }
-
-    /** At the top with a win: wait for the GRIP cut (max 1.5 s, then the old mask), save, then the capsule. */
-    private fun onCarry(c: Claw) {
-        val target = c.result!!.target!!
-        if (target.kind == Mask.Kind.CRITTER) {
-            val id = target.critterId ?: ""
-            val (label, pic) = map?.let { critters.caught(id, it) } ?: ("front" to null)
-            held = Grip(pic, null, 1f)
-            capColor = CapColors.random()   // a different capsule each catch (operator 11-15), stored with it
-            val r = sink.onCaught("critter", null, id, label, capColor)
-            capBrag = Brag(r.name, "critter", null, id, capColor)   // its picture is read when shared
-            startCapsule(c, if (r.grew) "새 친구! ${r.name}" else "${r.name} 또 왔네!", r.grew)
-            return
-        }
-        val g = grip
-        if (held == null && g != null && !g.isDone && time - gripAt < 1500f) return
-        if (held == null) {
-            g?.cancel(false)
-            // main thread: no model call here
-            held = quickHeld ?: frozen?.let { f -> runCatching { makeGrip(f, target, hiRes = false) }.onFailure { Log.w(TAG, "cut failed", it) }.getOrNull() }
-        }
-        val got = shown
-        if (got?.cut == null || got.opaque < 0.05f) {
-            c.handedOff(); next(); say(NEAR.random(), false)
-            return
-        }
-        val kind = got.kind ?: target.dexKind   // a group: "person+cat"
-        capColor = CapColors.random()
-        if (Dex.hasPerson(kind)) {
-            // a person goes into the dex only after the consent dialog (shown when the capsule is gone); the
-            // cheer waits for it too (review 11-15: it celebrated, then "버리기")
-            pendingPerson = got.cut.bmp; pendingKind = kind
-            startCapsule(c, grew = false, text = "")
-            return
-        }
-        val r = sink.onCaught(kind, got.cut.bmp, null, "front", capColor)
-        capBrag = Brag(r.name, kind, got.cut.bmp, null, capColor)
-        startCapsule(c, grew = r.grew, text = caughtText(kind, r.name))
-    }
-
-    private fun startCapsule(c: Claw, text: String, grew: Boolean) {
-        buzz(HapticFeedbackConstants.CONFIRM)
-        saved = grew
-        capText = text
-        capT = 0f
-        capsule = Capsule(c.x * w, c.y + 70f, floorY = h - bottomInset - 18f, screenW = w)
+        return Grip(cut, cut?.let { CutOut.opaque(it.bmp) } ?: 0f, kind)
     }
 
     private fun next() {
@@ -614,7 +760,7 @@ private class CatchGame(
     }
 
     private fun reset() {
-        frozen = null; grip = null; held = null; capsule = null; saved = false
+        frozen = null; grip = null; held = null; capsule = null; capClose = null; catchT = -1f; kind = Kind.NONE
         quick?.cancel(false); quick = null; quickHeld = null
     }
 
@@ -624,200 +770,264 @@ private class CatchGame(
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val bmpPaint = Paint(Paint.FILTER_BITMAP_FLAG)
-    private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = Typeface.DEFAULT_BOLD; textAlign = Paint.Align.CENTER }
-    private val path = Path()
+    private val text get() = FeltArt.text
     private val rect = RectF()
 
     fun render(cv: android.graphics.Canvas) {
         val c = claw ?: return
-        canvas = cv
         cv.save()
         cv.scale(d, d)
         val m = map
-        // the frozen GRIP frame over the live preview, with the hole the catch leaves once the cut is ready
-        val f = frozen
-        if (f != null && m != null && c.st != Claw.St.AIM) {
-            imageRect(m)
-            cv.drawBitmap(f, null, rect, bmpPaint)
-            shown?.hole?.let { cv.drawBitmap(it, null, rect, bmpPaint) }
-        }
-        // a dropped photo bouncing once in its hole before the live view takes over
-        val lf = landFrozen; val lg = landGrip
-        if (lf != null && lg?.cut != null && m != null && c.st == Claw.St.AIM) {
-            imageRect(m); cv.drawBitmap(lf, null, rect, bmpPaint)
-            cutRect(m, lg.cut)
-            val k = (landT / 320f).coerceIn(0f, 1f)
-            rect.offset(0f, -0.08f * rect.height() * 4f * k * (1f - k))
-            cv.drawBitmap(lg.cut.bmp, null, rect, bmpPaint)
-        }
-        val heldId = c.result?.target?.takeIf { it.kind == Mask.Kind.CRITTER && c.st in LIFTED }?.critterId
+        val f = faller
+        val heldId = f?.id ?: c.result?.target?.takeIf {
+            kind == Kind.CRITTER && !critGone && !critDropped && c.st in LIFTED
+        }?.critterId
         if (m != null) {
             val wary = if (c.st == Claw.St.DOWN || c.st == Claw.St.GRIP) c.x * w * d else null
             cv.save(); cv.scale(1 / d, 1 / d)
             critters.draw(cv, m, heldId, wary)
             cv.restore()
         }
-        // subtle glass
-        fill.shader = LinearGradient(0f, 0f, w, h * 0.7f, intArrayOf(argb(.07f, 255, 255, 255), 0), floatArrayOf(0f, 0.4f), Shader.TileMode.CLAMP)
-        cv.drawRect(0f, 0f, w, h, fill); fill.shader = null
-
+        FeltArt.rail(cv, w, railVis)
+        // the claw's back (string and all three prongs), the catch, the capsule, then the middle prong over them
         val cx = c.x * w
-
-        // the claw's back half (cable, hub, back prong), then the catch, then the front arms around it. Claw and
-        // catch swing together from the rail (a crane's pendulum); a falling catch tumbles on its own.
-        val sw = (if (c.st == Claw.St.AIM) swing else swing * 0.6f) + jolt()
-        val hang = if (c.st == Claw.St.UP || c.st == Claw.St.CARRY) dangle.rot * 0.35f else 0f
-        val deg = Math.toDegrees(sw.toDouble()).toFloat() + hang
-        cv.save(); cv.rotate(deg, cx, rail)
-        cv.save(); cv.scale(clawScale, clawScale, cx, c.y)
-        ClawArt.back(cv, cx, c.y, rail, arms)
+        val top = c.y + Claw.TIP - FeltArt.CLAW_TIP
+        cv.save(); cv.rotate(rigDeg, cx, railVis)
+        FeltArt.string(cv, cx, railVis, top + 6f)
+        FeltArt.claw(cv, cx, top, close, squash, front = false)
         cv.restore()
-        val hanging = c.st == Claw.St.UP || c.st == Claw.St.CARRY   // on the floor (GRIP) or falling it is not on the cable
-        if (hanging) drawCatch(c, heldId, m)
+        drawCritter(cv, c, m)
+        drawReal(cv, c)
+        drawFlash(cv)
+        drawLabels(cv)
+        capsule?.let { drawCapsule(cv, c, it) }
+        cv.save(); cv.rotate(rigDeg, cx, railVis)
+        FeltArt.claw(cv, cx, top, close, squash, front = true)
         cv.restore()
-        if (!hanging) drawCatch(c, heldId, m)
-        capsule?.let { drawCapsule(cv, it, shown?.cut, m) }
-        cv.save(); cv.rotate(deg, cx, rail); cv.scale(clawScale, clawScale, cx, c.y)
-        ClawArt.front(cv, cx, c.y, arms)
-        cv.restore()
+        FeltArt.drawBits(cv)
         topBar(cv)
-        drawButton(cv, c)
+        FeltArt.button(cv, btnL, btnT, ready = c.st == Claw.St.AIM && capsule == null, pressed = pressed)
         if (hint) {
-            // a slow ring around the button points at it
+            // a slow ring around the button points at it, and the felt hint bottom left (mockup k-hint)
             val k = (time % 1400f) / 1400f
             stroke.pathEffect = null; stroke.strokeWidth = 3f; stroke.color = argb(.8f * (1f - k), 255, 216, 77)
-            cv.drawCircle(btnX, btnY, BTN_R + 10f + 22f * k, stroke)
-            text.textSize = 17f; text.color = argb(.92f, 255, 255, 255); text.setShadowLayer(8f, 0f, 0f, Color.BLACK)
-            cv.drawText("끌어서 맞추고 집기를 누르세요", w / 2, btnY - BTN_R - PLATE_SIDE - 16f, text)
-            text.clearShadowLayer()
+            cv.drawCircle(btnX, btnY, 34f + 22f * k, stroke)
+            text.textSize = 14f
+            val tw = text.measureText(HINT) + 28f
+            rect.set(16f, h - bottomInset - 44f - 32f, 16f + tw, h - bottomInset - 44f)
+            FeltArt.pill(cv, rect, 0xE6FFFAF0.toInt())
+            text.color = FeltArt.INK; cv.drawText(HINT, rect.centerX(), rect.bottom - 11f, text)
         }
         drawToast(cv)
         cv.restore()
     }
 
-    private fun imageRect(m: ScreenMap) {
-        rect.set(m.left / d, m.top / d, (m.left + m.imgW * m.scale) / d, (m.top + m.imgH * m.scale) / d)
-    }
-
-    private fun cutRect(m: ScreenMap, cut: CutOut.Cut) {
-        rect.set(
+    private fun cutRect(m: ScreenMap, cut: CutOut.Cut, out: RectF) {
+        out.set(
             m.imageToViewX(cut.src.left.toFloat()) / d, m.imageToViewY(cut.src.top.toFloat()) / d,
             m.imageToViewX(cut.src.right.toFloat()) / d, m.imageToViewY(cut.src.bottom.toFloat()) / d,
         )
     }
 
-    /** The catch on the claw: a critter (Critters draws it) or the cut-out photo. */
-    private fun drawCatch(c: Claw, heldId: String?, m: ScreenMap?) {
-        if (m == null || capsule != null) return
-        val cv = canvas ?: return
-        if (heldId != null) {
-            cv.save(); cv.scale(1 / d, 1 / d)
-            critters.drawHeld(cv, m, heldId, heldCx * d, c.carryDy * d, heldPose)
-            cv.restore()
+    /** A picture centred at (x, y), w x h, turned [rot] and faded to [a]. */
+    private fun pic(cv: android.graphics.Canvas, b: Bitmap, x: Float, y: Float, pw: Float, ph: Float, rot: Float, a: Float) {
+        cv.save(); cv.translate(x, y); cv.rotate(rot)
+        rect.set(-pw / 2, -ph / 2, pw / 2, ph / 2)
+        bmpPaint.alpha = (255 * a).toInt().coerceIn(0, 255)
+        cv.drawBitmap(b, null, rect, bmpPaint)
+        bmpPaint.alpha = 255
+        cv.restore()
+    }
+
+    /** The real catch's cut-out: lifting out of the photo and sucked into the capsule, or hopping back after a pop. */
+    private fun drawReal(cv: android.graphics.Canvas, c: Claw) {
+        if (kind != Kind.REAL || catchT < 0f) return
+        val b = shown?.cut?.bmp ?: return
+        val bw = heldFrom.width(); val bh = heldFrom.height()
+        val mini = FeltArt.contentScale(bw, bh)
+        val cap = capsule
+        val cc = capClose
+        if (popped) {
+            val r = ((c.t - SlipShow.POP) / SlipShow.HOP)
+            if (r >= 1f) return
+            val (x, y, s, a) = SlipShow.hop(r.coerceAtLeast(0f), popAt.x, popAt.y, mini, landAt.x, landAt.y, 0.36f)
+            pic(cv, b, x, y, bw * s, bh * s, -10f * (1f - Ease.io(r.coerceAtLeast(0f))), a)
+            return
         }
-        val cut = shown?.cut
-        if (cut != null && c.st in listOf(Claw.St.UP, Claw.St.FALL, Claw.St.CARRY)) {
-            cutRect(m, cut)
-            rect.offset(0f, c.carryDy)
-            Posed.draw(cv, cut.bmp, rect, heldPose, bmpPaint)
+        if (cap != null && cc != null && capT >= cc.fillAt + cc.fillMs) return   // inside the capsule now
+        val bx = heldFrom.centerX(); val by = heldFrom.centerY()
+        if (cap == null || cc == null || capT < cc.fillAt) {
+            val e = Ease.outQ((catchT / ANTICIPATE).coerceAtMost(1f))
+            pic(cv, b, bx, by - 6f * e, bw * (1f + 0.05f * e), bh * (1f + 0.05f * e), 0f, 1f)
+        } else {
+            val r = cc.fill(capT); val st = sin(PI.toFloat() * r); val t = Ease.inC(r)
+            val s = 1.05f + (mini - 1.05f) * t
+            pic(cv, b, bx + (cap.x - bx) * t, (by - 6f) + (cap.y + 1.8f - by + 6f) * t - st * 18f,
+                bw * s * (1f - 0.14f * st), bh * s * (1f + 0.2f * st), -10f * t, 1f)
         }
     }
-    private var canvas: android.graphics.Canvas? = null
 
-    /** The hub's shake for 120 ms after the tips touch (radians). */
-    private fun jolt(): Float = if (joltT < 0f) 0f else
-        Math.toRadians(4.0).toFloat() * sin(joltT / 1000f * 14f * 2f * Math.PI.toFloat()) * max(0f, 1f - joltT / 120f)
-
-    /**
-     * Two-tone gashapon (mockup capsule A, operator 11-15): clear top, opaque coloured bottom with a seam band, a lid
-     * tab and three air holes. The catch sits high so the coloured half hides only about its lower third.
-     */
-    private fun drawCapsule(cv: android.graphics.Canvas, cap: Capsule, cut: CutOut.Cut?, m: ScreenMap?) {
-        val r = cap.r
-        val k = min(1f, capT / 420f)
-        CapsuleArt.draw(cv, cap.x, cap.y, r, Math.toDegrees(cap.rot.toDouble()).toFloat(), capColor) { inner ->
-            if (cut == null || m == null) return@draw
-            // the catch shrinks into the capsule, its middle a fifth of the radius above the seam
-            cutRect(m, cut)
-            val bw = rect.width(); val bh = rect.height()
-            val sc = if (r > 0f) min(1f, r * 1.6f / max(bw, bh)) else 1f
-            val s2 = 1f + (sc - 1f) * k
-            inner.save()
-            inner.translate(0f, -0.2f * r * k)
-            inner.scale(s2, s2)
-            inner.translate(-rect.centerX(), -rect.centerY())
-            inner.drawBitmap(cut.bmp, null, rect, bmpPaint)
-            inner.restore()
+    /** A critter hanging by its top from the tips (or falling in that pose), or shrinking into the capsule. */
+    private fun drawCritter(cv: android.graphics.Canvas, c: Claw, m: ScreenMap?) {
+        if (m == null || kind != Kind.CRITTER && faller == null) return
+        val g = gripDepth()
+        val f = faller
+        if (f != null) { held(cv, m, f.id, f.x, f.top, f.a, g); return }
+        val id = c.result?.target?.critterId ?: return
+        if (critDropped) return
+        if (critGone) {
+            // into the capsule at the top (world.js: shrinks to the capsule's mouth while the lid waits)
+            val b = critPic ?: return
+            val cap = capsule ?: return
+            val cc = capClose ?: return
+            if (capT >= cc.fillAt + cc.fillMs) return
+            val r = cc.fill(capT); val t = Ease.inC(r)
+            val s = 1f + (FeltArt.contentScale(crit.width(), crit.height()) - 1f) * t
+            val y0 = tipY - g - 6f + crit.height() / 2
+            pic(cv, b, tipX + (cap.x - tipX) * t, y0 + (cap.y + 1.8f - y0) * t, crit.width() * s, crit.height() * s, 0f, 1f)
+            return
+        }
+        val hangTop = tipY - g - 6f
+        when (c.st) {
+            Claw.St.GRIP -> {
+                // from where it stands to hanging from the tips as the prongs shut, then a little tug
+                val b = Ease.outC(((c.t - Claw.SETTLE_MS) / Claw.CLOSE_MS).coerceIn(0f, 1f))
+                val tug = Ease.outQ(((c.t - Claw.SETTLE_MS - Claw.CLOSE_MS) / 120f).coerceIn(0f, 1f))
+                val top = crit.top + (tipY - g - 6f * tug - crit.top) * b
+                held(cv, m, id, crit.centerX() + (tipX - crit.centerX()) * b, top, 0f, g)
+            }
+            Claw.St.UP, Claw.St.CARRY -> held(cv, m, id, tipX, hangTop, pend(8f, swingT, 0.012f, 480f), g)
+            Claw.St.FALL -> {
+                val k = Ease.inQ((c.t / CRIT_SLIDE).coerceIn(0f, 1f))
+                held(cv, m, id, tipX, hangTop + 22f * k, pend(8f, swingT, 0.012f, 480f) * (1f - k), g)
+            }
+            else -> {}
         }
     }
+
+    private fun held(cv: android.graphics.Canvas, m: ScreenMap, id: String, x: Float, top: Float, rot: Float, g: Float) {
+        if (crit.height() <= 0f) return
+        cv.save(); cv.scale(1 / d, 1 / d)
+        critters.drawHeld(cv, m, id, x * d, (top - crit.top) * d, Pose(rot = rot, pivot = g / crit.height()))
+        cv.restore()
+    }
+
+    private fun drawCapsule(cv: android.graphics.Canvas, c: Claw, cap: Capsule) {
+        val k = look
+        val cc = capClose
+        k.x = cap.x; k.y = cap.y; k.rot = cap.rot; k.color = capColor
+        k.fromBottom = cap.phase != Capsule.Phase.HANG
+        k.sx = cap.sx; k.sy = cap.sy
+        k.floor = if (cap.phase == Capsule.Phase.HANG) Float.NaN else cap.floorY
+        k.content = if (kind == Kind.CRITTER) critPic else shown?.cut?.bmp
+        k.topDx = 0f; k.topDy = 0f; k.topRot = 0f; k.topA = 1f; k.botDx = 0f; k.botDy = 0f; k.botRot = 0f; k.botA = 1f
+        if (cc != null && cap.phase == Capsule.Phase.HANG && !popped) {
+            val (s, dy, a) = cc.pop(capT)
+            k.popS = s; k.popDy = dy; k.popA = a
+            k.lid = cc.lid(capT)
+            val q = cc.squash(capT); k.sx = q; k.sy = 2f - q
+            k.showContent = capT >= cc.fillAt + cc.fillMs
+            if (c.st == Claw.St.FALL && c.t < SlipShow.SHUDDER) { val q2 = 1f + 0.03f * sin(c.t / SlipShow.SHUDDER * 40f); k.sx = q2; k.sy = 2f - q2 }
+            if (capT >= cc.lidEnd && capT - cc.lidEnd < 30f && !lidPuffed) { lidPuffed = true; FeltArt.puff(cap.x, cap.y - 8f, 7, 34f); FeltArt.sparkle(cap.x, cap.y - 30f, 4) }
+        } else { k.popS = 1f; k.popDy = 0f; k.popA = 1f; k.lid = 0f; k.showContent = true }
+        if (cc != null && capT < cc.lidEnd) lidPuffed = false
+        if (popped) {
+            // it popped open: the lid flies up and away, the cup drops, nothing inside
+            val t = c.t - SlipShow.POP
+            val e1 = Ease.outQ((t / 520f).coerceIn(0f, 1f)); val e2 = Ease.inQ((t / 560f).coerceIn(0f, 1f))
+            k.x = popAt.x; k.y = popAt.y; k.rot = popRot; k.showContent = false
+            k.topDx = 34f * e1; k.topDy = -70f * e1; k.topRot = 150f * e1; k.topA = 1f - e1
+            k.botDx = -14f * e2; k.botDy = 140f * e2; k.botRot = -40f * e2; k.botA = 1f - e2
+        }
+        FeltArt.capsule(cv, k)
+    }
+    private var lidPuffed = false
+
+    private fun drawFlash(cv: android.graphics.Canvas) {
+        val t = flashT
+        if (t < 0f) return
+        val a = if (t < 90f) t / 90f * 0.75f else 0.75f * (1f - (t - 90f) / 270f)
+        val r = max(w, h) * 0.9f
+        fill.color = Color.BLACK; fill.shader = RadialGradient(flashX, flashY, r, intArrayOf(argb(a, 255, 255, 255), argb(a * 0.53f, 255, 255, 255), 0), floatArrayOf(0f, 0.3f, 0.7f), Shader.TileMode.CLAMP)
+        cv.drawRect(0f, 0f, w, h, fill); fill.shader = null
+    }
+
+    private fun drawLabels(cv: android.graphics.Canvas) {
+        for (l in labels.values) {
+            if (l.a < 0.02f) continue
+            text.textSize = 14f
+            val tw = text.measureText(l.text) + 40f
+            rect.set(l.x - tw / 2, l.y - 14f, l.x + tw / 2, l.y + 14f)
+            fill.shader = null; fill.color = FeltArt.PAPER; fill.alpha = (255 * l.a).toInt()
+            path.reset(); path.moveTo(l.x - 7f, rect.bottom - 1f); path.lineTo(l.x + 7f, rect.bottom - 1f); path.lineTo(l.x, rect.bottom + 7f); path.close()
+            cv.drawPath(path, fill)
+            FeltArt.pill(cv, rect, FeltArt.PAPER, stitch = false, a = l.a)
+            val blink = 0.55f + 0.45f * (0.5f + 0.5f * cos(time / 1000f * 2f * PI.toFloat()))
+            fill.color = 0xFFE2574C.toInt(); fill.alpha = (255 * l.a * blink).toInt()
+            cv.drawCircle(rect.left + 15f, rect.centerY(), 4f, fill)
+            text.color = Color.argb((255 * l.a).toInt(), 0x3B, 0x2E, 0x22)
+            cv.drawText(l.text, l.x + 7f, rect.centerY() + 5f, text)
+        }
+        fill.alpha = 255
+    }
+    private val path = android.graphics.Path()
 
     private fun topBar(cv: android.graphics.Canvas) {
-        val r = rail
-        fill.shader = LinearGradient(0f, 0f, 0f, r, argb(.88f, 10, 11, 14), argb(.55f, 10, 11, 14), Shader.TileMode.CLAMP)
-        cv.drawRect(0f, 0f, w, r, fill)
-        fill.shader = LinearGradient(0f, r - 6f, 0f, r + 3f, 0xFFF2F4F8.toInt(), 0xFF7D838F.toInt(), Shader.TileMode.CLAMP)
-        cv.drawRect(0f, r - 5f, w, r + 1f, fill)
-        fill.shader = null
-        fill.color = 0xFF5E646F.toInt()
-        var bx = 18f
-        while (bx < w) { cv.drawCircle(bx, r - 2f, 1.6f, fill); bx += 46f }
-        // camera switch, top left
-        cv.save()
-        cv.translate(50f, r - 27f)
-        fill.color = argb(.1f, 255, 255, 255)
-        cv.drawRoundRect(-36f, -15f, 36f, 15f, 15f, 15f, fill)
-        stroke.strokeWidth = 1.6f; stroke.color = Color.WHITE; stroke.pathEffect = null
-        cv.drawRoundRect(-24f, -6f, -6f, 7f, 3f, 3f, stroke)
-        cv.drawCircle(-15f, 0.5f, 3.4f, stroke)
-        cv.drawRect(-19f, -8.5f, -13f, -6f, stroke)
-        if (!cameraOn) cv.drawLine(-25f, 9f, -5f, -9f, stroke)
-        text.textSize = 15f; text.textAlign = Paint.Align.CENTER; text.color = Color.WHITE
-        cv.drawText(if (cameraOn) "끄기" else "켜기", 14f, 5.5f, text)
+        // camera chip, top left: an icon and what tapping does
+        val label = if (cameraOn) "카메라 끄기" else "카메라 켜기"
+        text.textSize = 15f
+        val tw = text.measureText(label)
+        camChip.set(14f, chipY - 15f, 14f + tw + 52f, chipY + 15f)
+        FeltArt.pill(cv, camChip, FeltArt.CREAM)
+        cv.save(); cv.translate(camChip.left + 24f, chipY)
+        stroke.strokeWidth = 1.6f; stroke.color = FeltArt.INK; stroke.pathEffect = null; stroke.strokeCap = Paint.Cap.ROUND
+        cv.drawRoundRect(-9f, -5f, 9f, 7f, 2.5f, 2.5f, stroke)
+        cv.drawCircle(0f, 1f, 3f, stroke)
+        cv.drawLine(-3.5f, -5f, -2f, -7.5f, stroke); cv.drawLine(-2f, -7.5f, 2f, -7.5f, stroke); cv.drawLine(2f, -7.5f, 3.5f, -5f, stroke)
+        if (cameraOn) cv.drawLine(-9f, -9f, 9f, 9f, stroke)
         cv.restore()
-        // dex counter, top right (pulses when a capsule lands)
-        val sc = 1f + 0.25f * sin(min(1f, pulse) * Math.PI.toFloat())
-        cv.save()
-        cv.translate(w - 50f, r - 27f); cv.scale(sc, sc)
-        fill.color = argb(.1f, 255, 255, 255)
-        cv.drawRoundRect(-36f, -15f, 36f, 15f, 15f, 15f, fill)
-        text.textSize = 17f; text.textAlign = Paint.Align.CENTER
-        text.color = if (pulse > 0f) YELLOW else Color.WHITE
-        cv.drawText("도감 ${dexCount - if (saved) 1 else 0}", 0f, 6f, text)
+        text.color = FeltArt.INK
+        cv.drawText(label, camChip.left + 36f + tw / 2, chipY + 5.5f, text)
+        // dex counter, top right (pulses yellow when a catch lands)
+        val dex = "도감 $dexCount"
+        val dw = text.measureText(dex) + 32f
+        val sc = 1f + 0.18f * sin(min(1f, pulse) * PI.toFloat())
+        cv.save(); cv.scale(sc, sc, w - 14f - dw / 2, chipY)
+        rect.set(w - 14f - dw, chipY - 15f, w - 14f, chipY + 15f)
+        FeltArt.pill(cv, rect, if (pulse > 0f) FeltArt.SUN else FeltArt.CREAM)
+        cv.drawText(dex, rect.centerX(), chipY + 5.5f, text)
         cv.restore()
-        text.textAlign = Paint.Align.CENTER
     }
-
-    private fun drawButton(cv: android.graphics.Canvas, c: Claw) =
-        ClawButton.draw(cv, btnX, btnY, BTN_R, PLATE_SIDE, PLATE_FOOT, ready = c.st == Claw.St.AIM && capsule == null, pressed = pressed)
 
     private fun drawToast(cv: android.graphics.Canvas) {
         val t = toast ?: return
-        val a = when { t.t < 150f -> t.t / 150f; t.t > t.life - 300f -> max(0f, 1f - (t.t - t.life + 300f) / 300f); else -> 1f }
+        val inK = (t.t / 300f).coerceIn(0f, 1f)
+        val outK = ((t.t - (t.life - 220f)) / 220f).coerceIn(0f, 1f)
+        val a = min((t.t / 200f).coerceAtMost(1f), 1f - outK)
         if (a <= 0f) return
+        val back = 1f + 2.7f * (inK - 1f).pow(3) + 1.7f * (inK - 1f).pow(2)   // overshoots like the mockup's spring
+        val s = 0.8f + 0.2f * back - 0.2f * outK
         text.textSize = 20f
-        val tw = text.measureText(t.text) + 34f
-        val y = rail + 34f - (1f - a) * 8f
-        // the menus' look (operator 11-15): paper (yellow for a catch), ink outline, a hard drop
-        fill.shader = null
-        fill.color = argb(a, 0x24, 0x33, 0x1F); cv.drawRoundRect(w / 2 - tw / 2, y + 3f, w / 2 + tw / 2, y + 39f, 18f, 18f, fill)
-        fill.color = if (t.good) argb(a, 0xFF, 0xD8, 0x4D) else argb(a, 0xFF, 0xFD, 0xF6)
-        cv.drawRoundRect(w / 2 - tw / 2, y, w / 2 + tw / 2, y + 36f, 18f, 18f, fill)
-        stroke.pathEffect = null; stroke.strokeWidth = 2.5f; stroke.color = argb(a, 0x24, 0x33, 0x1F)
-        cv.drawRoundRect(w / 2 - tw / 2 + 1.25f, y + 1.25f, w / 2 + tw / 2 - 1.25f, y + 34.75f, 17f, 17f, stroke)
-        text.color = Color.argb((255 * a).toInt(), 0x24, 0x33, 0x1F)
-        cv.drawText(t.text, w / 2, y + 25f, text)
+        val tw = text.measureText(t.text) + 40f
+        val cy = h - bottomInset - 150f - 22f
+        cv.save(); cv.scale(s, s, w / 2, cy)
+        rect.set(w / 2 - tw / 2, cy - 22f, w / 2 + tw / 2, cy + 22f)
+        FeltArt.pill(cv, rect, if (t.good) FeltArt.SUN else FeltArt.PAPER, radius = 16f, a = a)
+        text.color = Color.argb((255 * a).toInt(), 0x3B, 0x2E, 0x22)
+        cv.drawText(t.text, w / 2, cy + 7f, text)
+        cv.restore()
     }
 
     companion object {
         private const val TAG = "CatchGame"
-        private val YELLOW = 0xFFFFCF5A.toInt()
         private fun argb(a: Float, r: Int, g: Int, b: Int) = Color.argb((a * 255).roundToInt().coerceIn(0, 255), r, g, b)
         private val LIFTED = setOf(Claw.St.GRIP, Claw.St.UP, Claw.St.FALL, Claw.St.CARRY)
-        // what the toast says on a miss: one voice, a few lines so it does not repeat word for word
-        const val BTN_R = 23f        // dome radius (46 across; operator 11-15: smaller twice)
-        const val PLATE_SIDE = 11f
-        const val PLATE_FOOT = 25f   // the plate runs on below the dome for the label
+        const val HANG = 30f            // the capsule's centre hangs this far below the tips (mockup)
+        const val ANTICIPATE = 110f     // the cut-out lifts and swells toward the claw before the capsule appears
+        const val CRIT_SLIDE = 260f     // a lost critter slides along the prongs before it falls (world.js)
+        const val HINT = "끌어서 맞추고, 꾹!"
         const val MAX_GROUP = 3   // operator 11-15: at most 3 caught together
+        // what the toast says on a miss: one voice, a few lines so it does not repeat word for word
         val AIR = listOf("헛집었다", "허공이었다", "아무것도 없었다")
         val NEAR = listOf("아깝다!", "아슬아슬했다", "한 끗 차이!")
         val SLIPPED = listOf("흔들려서 빠졌다", "미끄러졌다!")

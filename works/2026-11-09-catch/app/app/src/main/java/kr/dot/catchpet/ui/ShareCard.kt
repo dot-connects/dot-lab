@@ -49,8 +49,8 @@ object CapColors {
 }
 
 /**
- * The 4:5 자랑하기 card (spec-extras 3, mockup features 3A): sky over grass, the title, "date · kind", the capsule
- * holding the catch, and a paper footer with the app's name. No link before the Play listing (operator 11-16).
+ * The 4:5 자랑하기 card (spec-extras 3, mockup features 3A): sky over grass, the title, "date · kind", the catch
+ * standing on the grass, and a paper footer with the app's name. No link before the Play listing (operator 11-16).
  */
 object ShareCard {
     private const val W = 1080
@@ -79,15 +79,14 @@ object ShareCard {
         val date = SimpleDateFormat("yyyy.MM.dd", Locale.KOREA).format(Date(b.at))
         c.drawText("$date · ${if (b.critterId != null) "털뭉치" else Dex.kindName(b.kind)}", W / 2f, 252f, t)
 
-        // a soft shadow on the grass, then the capsule with the catch inside
+        // a soft shadow on the grass, then the catch itself (the capsule left the card, felt mockup v5.2)
         val r = 330f; val cx = W / 2f; val cy = 690f
         p.color = 0x33243319; c.drawOval(cx - r * 0.8f, cy + r * 0.86f, cx + r * 0.8f, cy + r * 1.06f, p)
         p.color = Color.BLACK   // opaque again: the shadow left the paint at 20 % alpha (operator 11-16)
-        CapsuleArt.draw(c, cx, cy, r, -8f, b.cap) { cv ->
-            val pic = b.pic ?: return@draw
-            val k = r * 1.6f / max(pic.width, pic.height)
+        b.pic?.let { pic ->
+            val k = r * 1.9f / max(pic.width, pic.height)
             val bw = pic.width * k; val bh = pic.height * k
-            cv.drawBitmap(pic, null, RectF(-bw / 2, -0.2f * r - bh / 2, bw / 2, -0.2f * r + bh / 2), p)
+            c.drawBitmap(pic, null, RectF(cx - bw / 2, cy + r * 0.96f - bh, cx + bw / 2, cy + r * 0.96f), p)
         }
 
         // the footer: paper, an ink line, the app's name
