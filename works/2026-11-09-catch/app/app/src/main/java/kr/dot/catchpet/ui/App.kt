@@ -42,6 +42,8 @@ fun App(openSeq: Int = 0, openTo: String = "pet") {
     androidx.compose.runtime.LaunchedEffect(openSeq) {
         if (openSeq > 0) screen = when (openTo) { "dex" -> Screen.DEX; "catch" -> Screen.CATCH; else -> Screen.PET }
     }
+    // a purchase left over from a crash or a failed draw is finished on start (spec-release 2)
+    androidx.compose.runtime.LaunchedEffect(Unit) { kr.dot.catchpet.billing.Billing.start(ctx) }
     // first launch: the three intro cards, then the catch screen (which asks for the camera)
     var intro by rememberSaveable { mutableStateOf(!Intro.seen(ctx)) }
     if (intro) { IntroScreen { intro = false }; return }

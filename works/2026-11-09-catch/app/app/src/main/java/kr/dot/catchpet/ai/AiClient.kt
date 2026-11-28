@@ -74,8 +74,10 @@ class AiClient(private val base: String, private val deviceId: String, private v
      * Both looks' pose sheets from one request (spec-release 10): one free sheet, or one sheet_both purchase.
      * [looks] = each style's chosen preview. An older Worker answers 400 "bad request" (the caller falls back).
      */
-    suspend fun sheetBoth(png: ByteArray, kind: String, entry: String, token: String?, looks: Map<String, ByteArray>): Result<Map<String, Reply>> {
+    /** [purchase]: a Play purchase token of sheet_both (the Worker checks it with Google); null = a free sheet. */
+    suspend fun sheetBoth(png: ByteArray, kind: String, entry: String, token: String?, looks: Map<String, ByteArray>, purchase: String? = null): Result<Map<String, Reply>> {
         val o = JSONObject(body(png, mapOf("kind" to kind, "device" to deviceId, "entry" to entry, "style" to "both", "layout" to "12")))
+        if (purchase != null) o.put("product", "sheet_both").put("purchaseToken", purchase)
         if (looks.isNotEmpty()) o.put("looks", JSONObject(looks.mapValues { Base64.encodeToString(it.value, Base64.NO_WRAP) }))
         return postJson("/sheet", o.toString(), token, "sheets").mapCatching { parseBoth(it) }
     }

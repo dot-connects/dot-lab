@@ -119,6 +119,23 @@ object AiWork {
         }.onFailure { if ((it as? AiClient.Fail)?.code == "free") lower(app, "q_sheet", 0) }
     }
 
+    /**
+     * One paid sheet_both purchase -> both sheets of [entryId], saved before this returns success (the caller consumes
+     * only then). No fallback to single sheets: the purchase belongs to style "both".
+     */
+    suspend fun buyPaid(ctx: Context, entryId: String, purchase: String): Result<Unit> {
+        val e = Dex.get(ctx, entryId) ?: return Result.failure(IllegalStateException("no entry"))
+        val done = kotlinx.coroutines.CompletableDeferred<Result<Unit>>()
+        val started = run(ctx, e, "sheet-both", { r -> done.complete(r.map { }) }) { app ->
+            val looks = STYLES.mapNotNull { s -> look(app, e, s)?.let { s to it } }.toMap()
+            client(app).sheetBoth(cutOut(app, e), e.kind, e.id, null, looks, purchase).onSuccess { m ->
+                for (s in STYLES) keep(app, e, s, m.getValue(s))
+                Done.notify(app, e.name, "both")
+            }
+        }
+        return if (started) done.await() else Result.failure(IllegalStateException("busy"))
+    }
+
     private val STYLES = listOf("fluff", "figure")
 
     private fun keep(app: Context, e: Dex.Entry, style: String, rep: AiClient.Reply) {
@@ -168,9 +185,10 @@ object AiWork {
 
     private fun ext(mime: String) = when (mime) { "image/png" -> "png"; "image/jpeg" -> "jpg"; else -> "webp" }
 
-    private fun run(ctx: Context, e: Dex.Entry, what: String, work: suspend (Context) -> Result<*>) {
+    /** false = the same drawing is already running. [done] gets the result once the screen has it. */
+    private fun run(ctx: Context, e: Dex.Entry, what: String, done: (Result<*>) -> Unit = {}, work: suspend (Context) -> Result<*>): Boolean {
         val key = "${e.id}|$what"
-        if (busy.containsKey(key)) return
+        if (busy.containsKey(key)) return false
         val app = ctx.applicationContext
         busy[key] = what
         message.remove(e.id)
@@ -182,6 +200,8 @@ object AiWork {
                 r.exceptionOrNull()?.let { message[e.id] = (it as? AiClient.Fail)?.text ?: aiMessage(null, 0) }
                 rev++
             }
+            done(r)   // after the screen's message, so a caller may replace it
         }
+        return true
     }
 }

@@ -89,6 +89,8 @@ dependencies {
     implementation("androidx.camera:camera-view:$camerax")
     implementation("com.google.mediapipe:tasks-vision:0.10.26")
     implementation("com.google.android.play:integrity:1.4.0")
+    // Play Billing: the 700-won sheet_both purchase (spec-release 2). Not billing-ktx: 8.1+ pulls Kotlin stdlib 2.2 (we are on 2.0)
+    implementation("com.android.billingclient:billing:9.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
     // the pet's weather: a 3-hour Open-Meteo fetch and the one-off frame zip download (phase C)
     implementation("androidx.work:work-runtime-ktx:2.9.1")

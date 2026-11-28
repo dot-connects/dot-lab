@@ -49,17 +49,37 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import kr.dot.catchpet.ai.AiWork
 import kotlinx.coroutines.launch
+import kr.dot.catchpet.billing.Billing
 import kr.dot.catchpet.billing.Purchase
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.withFrameMillis
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import kotlin.math.PI
+import kotlin.math.exp
+import kotlin.math.min
+import kotlin.math.sin
 import kr.dot.catchpet.dex.Dex
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -226,7 +246,7 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
     var reporting by remember { mutableStateOf<String?>(null) }   // the look being reported
     reporting?.let { style -> ReportDialog(ctx, e, style) { reporting = null } }
     // operator 11-18: free previews and free pet sheets per device, the counts on the button
-    LaunchedEffect(e.id) { AiWork.refresh(ctx) }
+    LaunchedEffect(e.id) { AiWork.refresh(ctx); Billing.start(ctx) }
     val left = remember(AiWork.rev) { AiWork.left(ctx) }
     val token = remember { Purchase.token(ctx) }
     val dev = AiWork.dev
@@ -251,11 +271,11 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
                         .let { if (redraw) it.clickable { guarded { AiWork.preview(ctx, e, style) } } else it },
                         contentAlignment = Alignment.Center) {
                         val pic = drawn?.let { rememberFile(e.id, it, keyGreen = true) }
+                        // the capsule keeps rocking until the sheet lands, then pops open (a failed draw just stops)
+                        var hatching by remember(e.id) { mutableStateOf(false) }
+                        LaunchedEffect(making, has) { if (making && !has) hatching = true }
                         when {
-                            making && !has -> Wobble(Modifier.fillMaxSize().padding(8.dp)) {
-                                pic?.let { Image(it, null, Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 16.dp).alpha(0.9f), contentScale = ContentScale.Fit) }
-                                Image(painterResource(kr.dot.catchpet.R.drawable.felt_cap), label, Modifier.fillMaxSize().alpha(0.85f), contentScale = ContentScale.Fit)
-                            }
+                            hatching && (making || has) -> HatchTile(pic, opened = has, onOpened = { hatching = false }, modifier = Modifier.fillMaxSize().padding(8.dp))
                             "preview-$style" in busy -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 CircularProgressIndicator(Modifier.size(26.dp), color = Color(0xFF8A6E4C), strokeWidth = 2.dp)
                                 Text("그리는 중…", fontFamily = Book.Display, fontSize = 11.5.sp, color = Color(0xFF8A6E4C))
@@ -290,14 +310,101 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
                 InkButton(if (can) "펫 미리보기" else "무료 미리보기를 다 썼어요", enabled = can) { guarded { missing.forEach { AiWork.preview(ctx, e, it) } } }
                 DtNote("사진으로 털뭉치·피규어 두 가지를 그려 볼게요 · 미리보기는 무료" + if (!dev && left.preview > 0) " (${left.preview}번 남음)" else "")
             }
-            else -> {
-                InkButton(Purchase.makeLabel(left.sheet, dev), enabled = free) { guarded { AiWork.buyBoth(ctx, e, if (dev) token else null) } }
-                // the release app: free sheets first (the Worker counts them); Play purchase comes next version
-                DtNote(if (free) "털뭉치·피규어 둘 다 한 번에 만들어요 · 1장만 써요" else "무료를 다 썼어요. 구매는 다음 버전에서 열려요")
+            free -> {   // free sheets first (the Worker counts them)
+                InkButton(Purchase.makeLabel(left.sheet, dev)) { guarded { AiWork.buyBoth(ctx, e, if (dev) token else null) } }
+                DtNote("털뭉치·피규어 둘 다 한 번에 만들어요 · 1장만 써요")
             }
+            else -> PayButton(Billing.price, kept = e.id in Billing.kept, waiting = Billing.waiting[e.id] == true) { guarded { Billing.buy(ctx, e.id) } }
         }
         AiWork.message[e.id]?.let { DtNote(it, Book.Warn) }
     }
+}
+
+/** The paid button once the free sheets are gone: Play's price, a paid-but-not-drawn retry, or "준비 중" (no product yet). */
+@Composable
+internal fun PayButton(price: String?, kept: Boolean, waiting: Boolean, onBuy: () -> Unit) {
+    when {
+        kept -> { InkButton("펫 만들기 · 결제됨", onClick = onBuy); DtNote("결제한 펫을 다시 그려요 · 새로 결제하지 않아요") }
+        waiting -> { InkButton("결제 확인 중…", enabled = false) {}; DtNote("결제가 끝나면 바로 만들어 줄게요") }
+        price == null -> { InkButton("펫 만들기 · 준비 중", enabled = false) {}; DtNote("무료를 다 썼어요. 구매는 곧 열려요") }
+        else -> { InkButton("펫 만들기 · $price", onClick = onBuy); DtNote("털뭉치·피규어 둘 다 한 번에 만들어요") }
+    }
+}
+
+// the cracks (mockup next7v4 .dt-hatch svg, 100 x 100 over the capsule); each group shows up 1.45 s after the last
+private val CRACKS = listOf(floatArrayOf(52f, 8f, 46f, 20f, 55f, 28f, 48f, 41f), floatArrayOf(48f, 41f, 37f, 49f, 41f, 60f),
+    floatArrayOf(48f, 41f, 61f, 51f, 58f, 66f, 66f, 72f))
+
+/**
+ * The making capsule (mockup next7v4 hatch): it rocks harder as it nears and cracks spread; [opened] squashes it, the
+ * lid flies off, the bottom drops and [pic] jumps out. Then [onOpened].
+ */
+@Composable
+internal fun HatchTile(pic: ImageBitmap?, opened: Boolean, onOpened: () -> Unit, modifier: Modifier = Modifier) {
+    val cap = ImageBitmap.imageResource(kr.dot.catchpet.R.drawable.felt_cap)
+    var s by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(Unit) { val t0 = withFrameMillis { it }; while (true) withFrameMillis { s = (it - t0) / 1000f } }
+    val open = remember { Animatable(0f) }
+    LaunchedEffect(opened) { if (opened) { open.animateTo(1f, tween(760, easing = LinearEasing)); onOpened() } }
+    Canvas(modifier) {
+        val o = open.value
+        val squash = min(1f, o / 0.2f)                       // the first 150 ms of the pop
+        val f = ((o - 0.2f) / 0.8f).coerceIn(0f, 1f)          // the halves flying, the pet jumping
+        val w = size.width * 0.74f; val h = size.height * 0.79f
+        val x0 = (size.width - w) / 2; val y0 = (size.height - h) / 2
+        val k = s % 1.15f; val amp = 4f + min(s, 6f) * 2.2f   // a kick every 1.15 s, stronger as it nears
+        val rock = if (opened) 0f else amp * sin(k / 0.26f * 2f * PI.toFloat()) * exp(-k * 3f)
+        val base = Offset(x0 + w / 2, y0 + h * 0.88f)
+        val sx = 1f + 0.1f * squash * (1f - f); val sy = 1f - 0.14f * squash * (1f - f)
+        withTransform({ rotate(rock, base); scale(sx, sy, base) }) {
+            if (f == 0f) pic?.let { p ->   // the pet inside, before the pop
+                val bw = w * 0.58f; val bh = h * 0.64f; val q = min(bw / p.width, bh / p.height)
+                val pw = p.width * q; val ph = p.height * q
+                drawImage(p, dstOffset = IntOffset((x0 + w / 2 - pw / 2).toInt(), (y0 + h * 0.2f + bh / 2 - ph / 2).toInt()),
+                    dstSize = IntSize(pw.toInt(), ph.toInt()), alpha = 0.9f)
+            }
+            fun half(fromY: Float, toY: Float, dx: Float, dy: Float, deg: Float, a: Float) = withTransform({
+                translate(dx, dy); rotate(deg, Offset(x0 + w / 2, y0 + h / 2))
+            }) {
+                clipRect(x0, y0 + h * fromY, x0 + w, y0 + h * toY) {
+                    drawImage(cap, dstOffset = IntOffset(x0.toInt(), y0.toInt()), dstSize = IntSize(w.toInt(), h.toInt()), alpha = a)
+                }
+            }
+            half(0.52f, 1f, -0.1f * w * f, 0.7f * h * f, -25f * f, 1f - f)
+            half(0f, 0.54f, 0.26f * w * f, -0.9f * h * f, 160f * f, 0.78f * (1f - f))
+            if (!opened) CRACKS.forEachIndexed { i, pts ->
+                val grow = ((s - 1.5f - i * 1.45f) / 0.45f).coerceIn(0f, 1f)
+                if (grow > 0f) {
+                    crack(pts, grow, x0, y0, w, h, Color(0xFF5A4632), 2.4.dp.toPx())
+                    crack(pts, grow, x0 + w / 100f, y0 + h / 100f, w, h, Color(0xCCFFFAF0), 1.2.dp.toPx())
+                }
+            }
+        }
+        if (f > 0f) pic?.let { p ->   // the pet jumps out: squashed low, stretched high, settles
+            val bw = size.width * 0.86f; val q = min(bw / p.width, bw / p.height)
+            val pw = p.width * q; val ph = p.height * q
+            val jump = sin(f * PI.toFloat())
+            val c = Offset(size.width / 2, size.height / 2 + (1f - f) * 30.dp.toPx() - jump * 16.dp.toPx())
+            withTransform({ scale(0.3f + 0.7f * f + 0.1f * jump * (1f - f), 0.5f + 0.5f * f + 0.15f * jump, c) }) {
+                drawImage(p, dstOffset = IntOffset((c.x - pw / 2).toInt(), (c.y - ph / 2).toInt()), dstSize = IntSize(pw.toInt(), ph.toInt()),
+                    alpha = min(1f, f * 2.2f))
+            }
+        }
+    }
+}
+
+/** The first [frac] of one crack polyline (100 x 100 units) over the capsule box. */
+private fun DrawScope.crack(pts: FloatArray, frac: Float, x0: Float, y0: Float, w: Float, h: Float, color: Color, width: Float) {
+    val segs = (2 until pts.size step 2).map { i -> Offset(pts[i - 2], pts[i - 1]) to Offset(pts[i], pts[i + 1]) }
+    var left = segs.sumOf { (a, b) -> (b - a).getDistance().toDouble() }.toFloat() * frac
+    val path = Path().apply { moveTo(x0 + pts[0] * w / 100f, y0 + pts[1] * h / 100f) }
+    for ((a, b) in segs) {
+        if (left <= 0f) break
+        val d = (b - a).getDistance(); val t = min(1f, left / d); left -= d
+        val p = a + (b - a) * t
+        path.lineTo(x0 + p.x * w / 100f, y0 + p.y * h / 100f)
+    }
+    drawPath(path, color, style = Stroke(width, cap = StrokeCap.Round, join = StrokeJoin.Round))
 }
 
 @Composable
