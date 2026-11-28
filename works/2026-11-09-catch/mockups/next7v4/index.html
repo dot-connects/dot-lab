@@ -196,8 +196,8 @@
           <div id="psApps"></div>
         </div>
         <div class="ps-panel felt stitch">
-          <div class="ps-row"><b>말풍선</b><label class="k-sw"><input type="checkbox" checked><i></i></label></div>
-          <p class="ps-note">잠금을 풀거나 충전기를 꽂을 때 녀석이 가끔 혼잣말을 해요. 두 번 톡톡 눌러 여는 말풍선은 그대로예요.</p>
+          <div class="ps-row"><b>말풍선</b><label class="k-sw"><input type="checkbox" id="psTalk" checked><i></i></label></div>
+          <p class="ps-note">잠금을 풀거나 충전기를 꽂을 때 녀석이 가끔 혼잣말을 해요. 끄면 날씨 말풍선("비 와! 우산 챙겨" 같은)도 같이 꺼져요. 두 번 톡톡 눌러 여는 말풍선은 그대로예요.</p>
         </div>
         <div class="ps-panel felt stitch">
           <div class="ps-row"><b>소리</b><label class="k-sw"><input type="checkbox" checked><i></i></label></div>
@@ -218,7 +218,7 @@
       <li>12fps. 행동 → 잠깐 그 모습 → 소품을 거두고 평소로. 그림은 미리 다 불러온 뒤 시작해요.</li>
       <li>톡 반응: 보통은 폴짝 + 하트, 세 번에 한 번쯤 날씨 행동. 소품은 펫과 같은 3D 털 엔진에서 같은 빛으로 구웠어요.</li>
       <li>6가지 모두 몽글·냥솜 둘 다 구웠어요. 아래 "녀석"으로 바꿔 보세요.</li>
-      <li>말풍선은 지금 혼잣말 그대로 한 줄.</li>
+      <li>말풍선은 지금 혼잣말 그대로 한 줄. 펫 설정에서 <b>말풍선을 끄면 날씨 말풍선도 빠지고</b> 행동만 해요.</li>
     </ul>
     <span class="size felt">크기 L · 3D 소품 + 동작 굽기</span>
   </div>
@@ -232,7 +232,7 @@
     </div></div>
     <div class="ctl" role="group" aria-label="날씨" id="wxCtl"></div>
     <div class="ctl" role="group" aria-label="녀석"><span class="lab">녀석</span><button class="chip felt stitch" data-wp="monggeul" aria-pressed="true">몽글</button><button class="chip felt stitch" data-wp="nyangsom" aria-pressed="false">냥솜</button></div>
-    <div class="ctl" role="group" aria-label="펫"><span class="lab">펫</span><button class="chip felt stitch" id="wxTap">톡</button><button class="chip felt stitch" id="wxFirst">오늘 처음 홈 화면</button></div>
+    <div class="ctl" role="group" aria-label="펫"><span class="lab">펫</span><button class="chip felt stitch" id="wxTap">톡</button><button class="chip felt stitch" id="wxFirst">오늘 처음 홈 화면</button><button class="chip felt stitch" id="wxBub" aria-pressed="true">말풍선 켬</button></div>
     <p class="cap">날씨를 바꾸면 한 번 행동 · 톡은 펫을 눌러도 돼요</p>
   </div>
 </section>

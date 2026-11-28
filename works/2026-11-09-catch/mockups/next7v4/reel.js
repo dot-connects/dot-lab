@@ -137,7 +137,7 @@
     else { q("rlDexIn").style.transform = ""; }
 
     // ---- catch: claw moves over, drops, the cut-out shrinks into a capsule, lifts
-    const claw = q("rlClaw"), str = q("rlStr"), cimg = q("rlClawImg"), cut = q("rlCut"), cap = q("rlCap"), cbody = cap.firstElementChild;
+    const claw = q("rlClaw"), clawSync = R._clawSync ??= clawFront(claw), str = q("rlStr"), cimg = q("rlClawImg"), cut = q("rlCut"), cap = q("rlCap"), cbody = cap.firstElementChild;
     const cx = lerp(30, 95, E.io(sg(t, 3.7, 4.6))), drop = lerp(18, 112, E.io(sg(t, 4.85, 5.4))) - lerp(0, 94, E.io(sg(t, 6.6, 7.6)));
     const close = sg(t, 5.45, 5.6);
     claw.style.transform = `translateX(${cx}px) rotate(${pend(2, Math.max(0, t - 4.6) * 1000, .012, 300)}deg)`;
@@ -156,6 +156,7 @@
     cbody.style.transform = `rotate(${fl > 0 ? Math.sin(t * 22) * 6 * sg(t, 8.2, 8.9) : sw}deg)`;
     q("rlCatchBg").style.filter = `blur(${fl * 6}px) brightness(${1 - fl * .25})`;
     for (const el of R.querySelectorAll("#rlCatch .rl-rail,#rlCatch .rl-chips,#rlCatch .rl-btn,#rlCatch .rl-found,#rlClaw")) el.style.opacity = 1 - fl;
+    clawSync();
     // ---- hatch: the big capsule pops, the fluff comes out
     const pop = sg(t, 9.15, 9.3);
     const lid = LID_OPEN * (1 - E.inQ(sg(t, 6.02, 6.2)));

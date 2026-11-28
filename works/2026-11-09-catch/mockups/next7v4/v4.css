@@ -412,3 +412,10 @@
 .rl-wbub{position:absolute;left:50%;top:196px;margin-left:-62px;width:124px;--c:#fffdf6;--r:999px;font:12.5px Jua;color:var(--ink);text-align:center;padding:5px 0;transform-origin:50% 100%;z-index:2}
 .rl-wbub::after{content:"";position:absolute;left:56px;bottom:-9px;width:9px;height:9px;border-radius:50%;background:#fffdf6}
 .rl-wpet{position:absolute;left:50%;top:228px;width:176px;height:176px;margin-left:-88px;object-fit:contain;filter:drop-shadow(0 8px 8px #0004)}
+
+/* outer prongs in front of the capsule / the catch (clawFront in core.js) */
+.k-front{pointer-events:none}
+.k-clawbox.k-front{z-index:85}
+.rl-claw.k-front{z-index:8}
+.k-front .k-str,.k-front .rl-str{visibility:hidden}
+.k-front img{clip-path:polygon(0 100%,0 52%,38% 52%,38% 100%,62% 100%,62% 52%,100% 52%,100% 100%)}

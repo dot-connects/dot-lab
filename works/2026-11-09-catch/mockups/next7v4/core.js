@@ -109,13 +109,24 @@ async function dropAndRoll(c, floorY, screenW, onLand){
 
 /* ---------- claw rig: string + claw image in a box that can swing ---------- */
 const TIP = 108;          // claw image top -> prong tips
+/** a copy of the claw box shown only for the two outer prongs, stacked above the capsule and the catch,
+    so what the claw holds sits between its prongs; returns sync() to call after every style write */
+function clawFront(box){
+  const f = box.cloneNode(true);
+  [f, ...f.querySelectorAll("[id]")].forEach(e => e.removeAttribute("id"));
+  f.classList.add("k-front"); f.setAttribute("aria-hidden", "true"); box.after(f);
+  const a = box.querySelector("img"), b = f.querySelector("img");
+  return () => { f.style.cssText = box.style.cssText; b.style.cssText = a.style.cssText; };
+}
 function makeRig(box){
+  const front = clawFront(box);
   const str = box.querySelector(".k-str"), img = box.querySelector("img.k-claw");
   const g = { x: 132, drop: 40, close: 0, swing: 0, squash: 0 };
   g.draw = () => {
     box.style.transform = `translateX(${g.x}px) rotate(${g.swing}deg)`;
     str.style.height = g.drop + "px"; img.style.top = g.drop + "px";
     img.style.transform = `scale(${1 - .16 * g.close},${1 - g.squash})`;
+    front();
   };
   g.tipY = () => 48 + g.drop + TIP;        // the box hangs from the rail at top 48
   g.cx = () => g.x + 48;

@@ -62,6 +62,7 @@
   /** the one-line monologue: shows while the act plays */
   function talk(on){
     const el = $("wxTalk");
+    if (!$("psTalk").checked) on = false;            // pet settings "말풍선" off = no weather line either
     if (!on) { el.classList.remove("on", "pop"); return; }
     el.textContent = st()[2]; el.classList.remove("pop"); void el.offsetWidth; el.classList.add("on", "pop");
   }
@@ -101,5 +102,10 @@
     document.querySelectorAll("#c7 [data-wp]").forEach(o => o.setAttribute("aria-pressed", o === b)); show(cur); });
   $("wxTap").onclick = tap; cv.onclick = tap;
   $("wxFirst").onclick = () => { if (f) { taps = 0; act(); } };
+  // "말풍선 켬/끔" here is the same switch as in pet settings (6)
+  const bub = $("wxBub"), ps = $("psTalk");
+  const syncBub = () => { bub.setAttribute("aria-pressed", ps.checked); bub.textContent = ps.checked ? "말풍선 켬" : "말풍선 끔"; if (!ps.checked) talk(false); };
+  bub.onclick = () => { ps.checked = !ps.checked; syncBub(); };
+  ps.addEventListener("change", syncBub);
   show(cur);   // starts now, not on window load
 }
