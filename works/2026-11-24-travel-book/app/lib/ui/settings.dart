@@ -59,7 +59,7 @@ class SettingsScreen extends StatelessWidget {
       title: '설정',
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         const OptLabel('책장 기본 보기', top: 0),
-        Sg(const [SgItem(ShelfView.display, '진열'), SgItem(ShelfView.timeline, '연표')], view, onView),
+        Sg([for (final v in ShelfView.values) SgItem(v, v.label)], view, onView),
         const OptLabel('화질 기본값', note: '책마다 바꿀 수 있어요'),
         Sg(const [SgItem('reduced', '조금 낮추기'), SgItem('original', '원본 그대로')], quality, onQuality),
         const SizedBox(height: 16),

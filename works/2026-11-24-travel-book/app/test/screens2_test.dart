@@ -294,8 +294,10 @@ void main() {
     expect(find.text('책장 기본 보기'), findsOneWidget);
     expect(find.text('5권'), findsOneWidget);
     expect(find.text(kw('무료 2권 중 2권 씀 · 다음 책부터 1권 1,500원')), findsOneWidget);
-    await t.tap(find.text('연표'));
-    expect(v, ShelfView.timeline);
+    await t.tap(find.text('연도'));
+    expect(v, ShelfView.year);
+    await t.tap(find.text('한 권씩'));
+    expect(v, ShelfView.one);
   });
 }
 

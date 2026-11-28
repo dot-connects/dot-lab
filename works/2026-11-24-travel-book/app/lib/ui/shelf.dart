@@ -1,13 +1,27 @@
-// D2 shelf home (mockup §2 #shelf): face-out books on oak shelves, a year timeline, the empty shelf,
-// and the long-press menu with an inline delete confirm.
+// D2 shelf home (mockups/r24-home, picked 11-28): three views of the same books -- 진열 (face-out, two per shelf),
+// 연도 (years on one line), 한 권씩 (one book on a stage) -- the empty shelf, and the long-press menu with an inline
+// delete confirm.
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:material_ui/material_ui.dart';
 
 import '../core/library.dart';
 import 'tokens.dart';
 
-enum ShelfView { display, timeline }
+/// The mode button walks these in order: 진열 -> 연도 -> 한 권씩 -> 진열.
+enum ShelfView {
+  display('진열'),
+  year('연도'),
+  one('한 권씩');
+
+  final String label;
+  const ShelfView(this.label);
+  ShelfView get next => values[(index + 1) % values.length];
+}
+
+const _wall2 = Color(0xFFEEE6D9);
+const _ease = Cubic(.2, .8, .2, 1);
 
 class Shelf extends StatefulWidget {
   final List<ShelfBook> books;
@@ -37,6 +51,7 @@ class _ShelfState extends State<Shelf> {
   final _stackKey = GlobalKey();
   (ShelfBook, Rect)? _menu;
   bool _confirm = false;
+  int _page = 0; // 한 권씩: the book in front (index into [_ordered])
 
   void _longPress(ShelfBook b, BuildContext bookCtx) {
     final box = bookCtx.findRenderObject() as RenderBox;
@@ -50,93 +65,179 @@ class _ShelfState extends State<Shelf> {
 
   void _close() => setState(() => _menu = null);
 
+  /// Newest year first, newest trip first: the order of 연도 and 한 권씩.
+  List<ShelfBook> get _ordered => [for (final (_, bs) in groupByYear(widget.books)) ...bs];
+
   @override
   Widget build(BuildContext context) {
     final books = widget.books;
     final photos = books.fold(0, (s, b) => s + b.photos);
+    final view = widget.view;
+    final ordered = _ordered;
+    if (_page >= ordered.length) _page = math.max(0, ordered.length - 1);
+    final ink2 = view == ShelfView.one && books.isNotEmpty ? const Color(0xFF48423A) : C.ink2; // grey on the tinted glow
     return Scaffold(
-      body: SafeArea(
-        child: Stack(key: _stackKey, children: [
-          Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('내 책장', style: ui(24, w: FontWeight.w700).copyWith(letterSpacing: -.5)),
-                    const SizedBox(height: 3),
-                    Text(books.isEmpty ? '아직 비어 있어요' : '${books.length}권 · 사진 ${fmtInt(photos)}장', style: nm(11, color: C.ink2)),
-                  ]),
+      body: Stack(children: [
+        // the wall: light from above (진열, and under the 한 권씩 glow); 연도 sits on plain paper
+        Positioned.fill(
+          child: AnimatedOpacity(
+            opacity: view == ShelfView.year ? 0 : 1,
+            duration: const Duration(milliseconds: 400),
+            child: const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [C.paper, _wall2]),
+              ),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment.topCenter,
+                    radius: 1.2,
+                    colors: [Color(0xFFFAF7F2), Color(0x00FAF7F2)],
+                    stops: [0, .7],
+                  ),
                 ),
-                GestureDetector(
-                  onTap: widget.onSettings,
-                  child: const SizedBox(width: 30, height: 30, child: Icon(Icons.settings_outlined, size: 18, color: C.ink2)),
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 500),
+            child: view == ShelfView.one && ordered.isNotEmpty ? _Glow(ordered[_page], key: const ValueKey('glow')) : const SizedBox.expand(),
+          ),
+        ),
+        SafeArea(
+          child: Stack(key: _stackKey, children: [
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 10, 14, 0),
+                child: Row(children: [
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('내 책장', style: ui(25, w: FontWeight.w800, h: 1.2).copyWith(letterSpacing: -.7)),
+                      const SizedBox(height: 3),
+                      Text(books.isEmpty ? '아직 비어 있어요' : '${books.length}권 · 사진 ${fmtInt(photos)}장',
+                          style: nm(13, color: ink2, ls: -.1)),
+                    ]),
+                  ),
+                  Semantics(
+                    button: true,
+                    label: '설정',
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: widget.onSettings,
+                      child: SizedBox(width: 44, height: 44, child: Icon(Icons.settings_outlined, size: 21, color: ink2)),
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  _mode(),
+                ]),
+              ),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 240),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, a) => _roll(child, a, ValueKey(view), 6 / 700),
+                  layoutBuilder: (cur, prev) => Stack(fit: StackFit.expand, children: [...prev, ?cur]), // fill: 한 권씩 starts at the top
+                  child: KeyedSubtree(key: ValueKey(view), child: _body(view, ordered)),
                 ),
-                const SizedBox(width: 8),
-                _mode(),
-              ]),
-            ),
-            Expanded(
-              child: books.isEmpty
-                  ? (widget.view == ShelfView.display ? _empty() : _emptyTimeline())
-                  : widget.view == ShelfView.display
-                      ? _display()
-                      : _timeline(),
-            ),
+              ),
+            ]),
+            Positioned(right: 20, bottom: 24, child: _fab(books.isEmpty ? '첫 책 만들기' : '새 책')),
+            if (_menu != null) ..._overlay(),
           ]),
-          Positioned(right: 20, bottom: 24, child: _fab(books.isEmpty ? '첫 책 만들기' : '새 책')),
-          if (_menu != null) ..._overlay(),
-        ]),
+        ),
+      ]),
+    );
+  }
+
+  Widget _body(ShelfView v, List<ShelfBook> ordered) => switch (v) {
+        _ when widget.books.isEmpty => v == ShelfView.year ? _emptyTimeline() : _empty(),
+        ShelfView.display => _display(),
+        ShelfView.year => _year(),
+        ShelfView.one => _OneView(
+            books: ordered,
+            initial: _page,
+            onPage: (i) => setState(() => _page = i),
+            book: (b, w, h) => _book(b, w: w, h: h),
+          ),
+      };
+
+  /// The incoming child rises in from below, the outgoing one leaves upwards (mockup: the view lifts 6px and fades;
+  /// the mode glyph rolls up to the next one). [dy] is in child heights.
+  static Widget _roll(Widget child, Animation<double> a, Key current, double dy) {
+    final incoming = child.key == current;
+    return FadeTransition(
+      opacity: a,
+      child: SlideTransition(
+        position: Tween(begin: Offset(0, incoming ? dy : -dy), end: Offset.zero).animate(a),
+        child: child,
       ),
     );
   }
 
-  // operator 11-28: one tap anywhere on the switch flips it (no aiming at the other half), with a bigger target
-  Widget _mode() => Semantics(
-        button: true,
-        label: widget.view == ShelfView.display ? '연표로 보기' : '진열로 보기',
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => widget.onViewChanged(widget.view == ShelfView.display ? ShelfView.timeline : ShelfView.display),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6), // taller hit area than the pill itself
+  // operator 11-28: only the current view's icon, no words, no dots; a tap moves to the next view
+  Widget _mode() {
+    final v = widget.view;
+    return Semantics(
+      button: true,
+      label: '보기: ${v.label}. 누르면 ${v.next.label}',
+      excludeSemantics: true,
+      child: GestureDetector(
+        key: const ValueKey('shelf-mode'),
+        behavior: HitTestBehavior.opaque,
+        onTap: () => widget.onViewChanged(v.next),
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Center(
             child: Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(color: C.tint, borderRadius: BorderRadius.circular(18)),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                for (final (v, l) in [(ShelfView.display, '진열'), (ShelfView.timeline, '연표')])
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: widget.view == v
-                        ? BoxDecoration(
-                            color: C.paper,
-                            borderRadius: BorderRadius.circular(15),
-                            boxShadow: const [BoxShadow(color: Color(0x1A000000), blurRadius: 3, offset: Offset(0, 1))],
-                          )
-                        : BoxDecoration(borderRadius: BorderRadius.circular(15)),
-                    child: Text(l, style: ui(12.5, w: FontWeight.w600, color: widget.view == v ? C.ink : C.ink2)),
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: Color(0xC7FFFFFF),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(color: Color(0x1A2B2621), spreadRadius: 1),
+                  BoxShadow(color: Color(0x2E281A0C), blurRadius: 6, spreadRadius: -2, offset: Offset(0, 2)),
+                ],
+              ),
+              child: ClipRect(
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 340),
+                    switchInCurve: _ease,
+                    switchOutCurve: _ease,
+                    transitionBuilder: (child, a) => _roll(child, a, ValueKey(v), 1.1),
+                    child: CustomPaint(key: ValueKey(v), size: const Size(18, 18), painter: _ModeIcon(v)),
                   ),
-              ]),
+                ),
+              ),
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
 
   Widget _fab(String label) => GestureDetector(
         onTap: widget.onNew,
         child: Container(
-          height: 52,
-          padding: const EdgeInsets.fromLTRB(16, 0, 20, 0),
+          height: 54,
+          padding: const EdgeInsets.fromLTRB(18, 0, 22, 0),
           decoration: BoxDecoration(
             color: C.ink,
-            borderRadius: BorderRadius.circular(26),
-            boxShadow: const [BoxShadow(color: Color(0x4D28190A), blurRadius: 18, offset: Offset(0, 8))],
+            borderRadius: BorderRadius.circular(27),
+            boxShadow: const [BoxShadow(color: Color(0x5928190A), blurRadius: 24, spreadRadius: -10, offset: Offset(0, 12))],
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Text('+', style: ui(22, color: C.paper, h: 1)),
-            const SizedBox(width: 6),
-            Text(label, style: ui(14, w: FontWeight.w600, color: C.paper)),
+            const SizedBox(width: 7),
+            Text(label, style: ui(15, w: FontWeight.w700, color: C.paper).copyWith(letterSpacing: -.2)),
           ]),
         ),
       );
@@ -151,154 +252,194 @@ class _ShelfState extends State<Shelf> {
         builder: (ctx) => GestureDetector(
           onTap: () => widget.onOpen(b),
           onLongPress: () => _longPress(b, ctx),
-          child: _Cover(b, w: w, h: h),
+          child: _Edged(b, child: _Cover(b, w: w, h: h)),
         ),
       );
 
   // ----- 진열 -----
-  Widget _wall(List<Widget> children) => DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [C.paper, C.wallBottom]),
-        ),
-        child: ListView(padding: const EdgeInsets.only(bottom: 110), children: children),
-      );
-
-  Widget _shelfRow(double height, List<Widget> books) => SizedBox(
-        height: height,
-        child: Stack(clipBehavior: Clip.none, children: [
-          Positioned(
-            left: 22,
-            right: 0,
-            bottom: 12,
-            child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              for (final (i, b) in books.indexed) ...[if (i > 0) const SizedBox(width: 26), b],
-            ]),
-          ),
-          const Positioned(left: 0, right: 0, bottom: 0, height: 12, child: _Board()),
-        ]),
-      );
-
-  Widget _display() {
-    final b = widget.books;
-    return _wall([
-      for (var i = 0; i < b.length; i += 2) ...[
-        _shelfRow(i == 0 ? 214 : 198, [
-          for (final x in b.skip(i).take(2)) _Edged(x, child: _book(x)),
-        ]),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            for (final (j, x) in b.skip(i).take(2).indexed) ...[
-              if (j > 0) const SizedBox(width: 26),
-              SizedBox(
-                width: 112,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(x.title, style: ui(12, w: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text('${_short(x.start)} · ${x.pages}쪽', style: nm(11, color: C.ink2)),
-                ]),
-              ),
-            ],
-          ]),
-        ),
-      ],
-    ]);
+  /// Two columns per shelf, as in the mockup grid (left 30, gap 30, right 36); the book fills most of its column.
+  ({double col, double w, double h}) _cell(double width) {
+    final col = (width - 30 - 30 - 36) / 2;
+    final w = math.min(136.0, col - 10).roundToDouble();
+    return (col: col, w: w, h: (w * 4 / 3).roundToDouble());
   }
 
-  Widget _empty() => _wall([
-        _shelfRow(214, [
-          SizedBox(
-            width: 112,
-            height: 150,
-            child: CustomPaint(
-              painter: _Dashed(),
-              child: Center(
-                child: Text('첫 책이\n여기 놓여요', textAlign: TextAlign.center, style: ui(12, color: C.ink2, h: 1.5)),
-              ),
+  /// One shelf: the books stand on the plank's top face (3px into it), each with a soft contact shadow.
+  Widget _shelfRow(double h, List<Widget> books) => Padding(
+        padding: const EdgeInsets.only(top: 34),
+        child: SizedBox(
+          height: h + 12,
+          child: Stack(clipBehavior: Clip.none, children: [
+            const Positioned(left: 16, right: 16, bottom: 0, height: 15, child: _Plank()),
+            Positioned(
+              left: 30,
+              right: 36,
+              bottom: 12,
+              child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                for (final j in [0, 1]) ...[
+                  if (j > 0) const SizedBox(width: 30),
+                  Expanded(child: Align(alignment: Alignment.bottomLeft, child: j < books.length ? books[j] : null)),
+                ],
+              ]),
             ),
-          ),
-        ]),
-        _shelfRow(198, const []),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(22, 22, 22, 0),
-          child: Text('최근 여행 날짜를 골라 보세요.\n처음 2권은 무료예요.', style: ui(13, color: C.body, h: 1.6)),
-        ),
-      ]);
-
-  // ----- 연표 -----
-  /// The empty timeline: this year's heading and a dashed place on the line where the first trip will sit.
-  Widget _emptyTimeline() => ListView(padding: const EdgeInsets.only(bottom: 110), children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
-            Text('${(widget.now ?? DateTime.now()).year}', style: nm(40, w: FontWeight.w300, h: 1, ls: -2, color: C.ink2)),
-            const SizedBox(width: 10),
-            Text('0권', style: nm(11, color: C.ink2)),
           ]),
         ),
-        Stack(children: [
-          Positioned(left: 26, top: 0, bottom: 0, width: 1, child: Container(color: C.line)),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(40, 10, 20, 0),
-            child: Stack(clipBehavior: Clip.none, children: [
-              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                SizedBox(width: 76, height: 101, child: CustomPaint(painter: _Dashed())),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('여행 날짜 · 몇 박', style: nm(10.5, color: C.ink2)),
-                      const SizedBox(height: 2),
-                      Text('첫 여행이 여기 놓여요', style: ui(15, w: FontWeight.w700, color: C.ink2)),
-                    ]),
+      );
+
+  Widget _standing(ShelfBook b, double w, double h) => Stack(clipBehavior: Clip.none, children: [
+        Positioned(
+          left: w * .04,
+          right: -w * .1,
+          bottom: -5,
+          height: 10,
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+            child: Container(
+              decoration: BoxDecoration(color: const Color(0x473C240E), borderRadius: BorderRadius.all(Radius.elliptical(w, 5))),
+            ),
+          ),
+        ),
+        _book(b, w: w, h: h),
+      ]);
+
+  Widget _display() => LayoutBuilder(builder: (context, c) {
+        final (:col, :w, :h) = _cell(c.maxWidth);
+        final b = widget.books;
+        return ListView(padding: const EdgeInsets.fromLTRB(0, 6, 0, 130), children: [
+          for (var i = 0; i < b.length; i += 2) ...[
+            _shelfRow(h, [for (final x in b.skip(i).take(2)) _standing(x, w, h)]),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(30, 14, 36, 0),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                for (final j in [0, 1]) ...[
+                  if (j > 0) const SizedBox(width: 30),
+                  SizedBox(
+                    width: col,
+                    child: i + j >= b.length
+                        ? null
+                        : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(b[i + j].title,
+                                style: ui(14.5, w: FontWeight.w700).copyWith(letterSpacing: -.3), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            const SizedBox(height: 3),
+                            Text('${_short(b[i + j].start)} · ${b[i + j].pages}쪽', style: nm(12.5, color: C.ink2)),
+                          ]),
                   ),
-                ),
+                ],
               ]),
-              Positioned(
-                left: -17,
-                top: 10,
-                child: Container(
-                    width: 7, height: 7, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: C.ink2, width: 1.2))),
+            ),
+          ],
+        ]);
+      });
+
+  Widget _empty() => LayoutBuilder(builder: (context, c) {
+        final (col: _, :w, :h) = _cell(c.maxWidth);
+        return ListView(padding: const EdgeInsets.fromLTRB(0, 6, 0, 130), children: [
+          _shelfRow(h, [
+            SizedBox(
+              width: w,
+              height: h,
+              child: CustomPaint(
+                painter: _Dashed(),
+                child: Center(
+                  child: Text('첫 책이\n여기 놓여요', textAlign: TextAlign.center, style: ui(12.5, color: C.ink2, h: 1.5)),
+                ),
+              ),
+            ),
+          ]),
+          _shelfRow(h, const []),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(30, 26, 30, 0),
+            child: Text('최근 여행 날짜를 골라 보세요.\n처음 2권은 무료예요.', style: ui(13.5, color: C.body, h: 1.6)),
+          ),
+        ]);
+      });
+
+  // ----- 연도 -----
+  Widget _yearHead(int year, String sub, {Color color = C.ink}) => Container(
+        padding: const EdgeInsets.fromLTRB(22, 20, 22, 12),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [C.paper, C.paper, Color(0x00F4EFE7)],
+            stops: [0, .78, 1],
+          ),
+        ),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+          Expanded(child: Text('$year', style: nm(46, w: FontWeight.w300, h: 1, ls: -2.4, color: color))),
+          Text(sub, style: nm(12.5, color: C.ink2)),
+        ]),
+      );
+
+  /// The line down the left with a dot per trip; [children] sit 26px right of it.
+  Widget _line(List<Widget> children) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 22),
+        child: Stack(children: [
+          Positioned(left: 4, top: 0, bottom: 0, width: 1, child: Container(color: C.line)),
+          Padding(padding: const EdgeInsets.fromLTRB(26, 6, 0, 8), child: Column(children: children)),
+        ]),
+      );
+
+  Widget _dot({bool hollow = false}) => Container(
+        width: 9,
+        height: 9,
+        decoration: BoxDecoration(
+          color: hollow ? C.paper : C.ink,
+          shape: BoxShape.circle,
+          border: hollow
+              ? Border.all(color: C.ink2, width: 1.2)
+              : Border.all(color: C.paper, width: 3, strokeAlign: BorderSide.strokeAlignOutside),
+        ),
+      );
+
+  /// The empty 연도: this year's heading and a dashed place on the line where the first trip will sit.
+  Widget _emptyTimeline() => ListView(padding: const EdgeInsets.only(bottom: 130), children: [
+        _yearHead((widget.now ?? DateTime.now()).year, '0권', color: C.ink2),
+        _line([
+          Stack(clipBehavior: Clip.none, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              SizedBox(width: 78, height: 104, child: CustomPaint(painter: _Dashed())),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('여행 날짜 · 몇 박', style: nm(12.5, color: C.ink2)),
+                    const SizedBox(height: 4),
+                    Text('첫 여행이 여기 놓여요', style: ui(17, w: FontWeight.w800, color: C.ink2)),
+                  ]),
+                ),
               ),
             ]),
-          ),
+            Positioned(left: -26, top: 7, child: _dot(hollow: true)),
+          ]),
         ]),
         Padding(
           padding: const EdgeInsets.fromLTRB(22, 26, 22, 0),
-          child: Text('다녀온 순서대로 해마다 쌓여요.\n처음 2권은 무료예요.', style: ui(13, color: C.body, h: 1.6)),
+          child: Text('다녀온 순서대로 해마다 쌓여요.\n처음 2권은 무료예요.', style: ui(13.5, color: C.body, h: 1.6)),
         ),
       ]);
 
-  Widget _timeline() => ListView(padding: const EdgeInsets.only(top: 0, bottom: 110), children: [
-        for (final (year, books) in groupByYear(widget.books)) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
-              Text('$year', style: nm(40, w: FontWeight.w300, h: 1, ls: -2)),
-              const SizedBox(width: 10),
-              Builder(builder: (_) {
+  /// Each year's number sticks to the top while its trips scroll under it, then the next year pushes it away.
+  Widget _year() => CustomScrollView(slivers: [
+        for (final (year, books) in groupByYear(widget.books))
+          SliverMainAxisGroup(slivers: [
+            PinnedHeaderSliver(
+              child: Builder(builder: (_) {
                 final t = yearTotals(books);
-                return Text('${t.books}권 · ${t.places}곳 · ${t.days}일', style: nm(11, color: C.ink2));
+                return _yearHead(year, '${t.books}권 · ${t.places}곳 · ${t.days}일');
               }),
-            ]),
-          ),
-          Stack(children: [
-            Positioned(left: 26, top: 0, bottom: 0, width: 1, child: Container(color: C.line)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(40, 10, 20, 0),
-              child: Column(children: [for (final b in books) _trip(b)]),
             ),
+            SliverToBoxAdapter(child: _line([for (final b in books) _trip(b)])),
           ]),
-        ],
+        const SliverToBoxAdapter(child: SizedBox(height: 130)),
       ]);
 
   Widget _trip(ShelfBook b) {
-    final d = b.days;
-    final span = d == 1 ? '당일' : '${d - 1}박 $d일';
     Widget n(int v, String u) => Text.rich(TextSpan(children: [
-          TextSpan(text: '$v', style: nm(10.5, w: FontWeight.w700)),
+          TextSpan(text: '$v', style: nm(12.5, w: FontWeight.w700)),
           TextSpan(text: u),
-        ]), style: nm(10.5, color: C.ink2));
+        ]), style: nm(12.5, color: C.ink2));
     // the whole row opens the book (operator 11-27: tapping the title did nothing); long press = the book menu
     return Builder(
       builder: (ctx) => GestureDetector(
@@ -306,40 +447,35 @@ class _ShelfState extends State<Shelf> {
         onTap: () => widget.onOpen(b),
         onLongPress: () => _longPress(b, ctx),
         child: Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Stack(clipBehavior: Clip.none, children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _book(b, w: 76, h: 101),
-          const SizedBox(width: 12),
-          Expanded(
-            child: SizedBox(
-              height: 101,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 4, bottom: 2),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('${two(b.start.month)}.${two(b.start.day)} — ${two(b.end.month)}.${two(b.end.day)} · $span',
-                        style: nm(10.5, color: C.ink2)),
-                    const SizedBox(height: 2),
-                    Text(b.title, style: ui(15, w: FontWeight.w700), maxLines: 2, overflow: TextOverflow.ellipsis),
-                  ]),
-                  Row(children: [
-                    n(b.places, '곳'),
-                    const SizedBox(width: 10),
-                    n(b.photos, '장'),
-                    if (b.km != null) ...[const SizedBox(width: 10), n(b.km!, 'km')],
-                  ]),
-                ]),
+          padding: const EdgeInsets.only(bottom: 22),
+          child: Stack(clipBehavior: Clip.none, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _book(b, w: 78, h: 104),
+              const SizedBox(width: 16),
+              Expanded(
+                child: SizedBox(
+                  height: 104,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(_dates(b), style: nm(12.5, color: C.ink2)),
+                      const SizedBox(height: 4),
+                      Text(b.title,
+                          style: ui(17, w: FontWeight.w800, h: 1.3).copyWith(letterSpacing: -.4), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      const Spacer(),
+                      Row(children: [
+                        n(b.places, '곳'),
+                        const SizedBox(width: 12),
+                        n(b.photos, '장'),
+                        if (b.km != null) ...[const SizedBox(width: 12), n(b.km!, 'km')],
+                      ]),
+                    ]),
+                  ),
+                ),
               ),
-            ),
-          ),
-        ]),
-        Positioned(
-          left: -17,
-          top: 10,
-          child: Container(width: 7, height: 7, decoration: const BoxDecoration(color: C.ink, shape: BoxShape.circle)),
-        ),
-      ]),
+            ]),
+            Positioned(left: -26, top: 7, child: _dot()),
+          ]),
         ),
       ),
     );
@@ -433,6 +569,7 @@ class _ShelfState extends State<Shelf> {
   }
 }
 
+
 /// The cover face: the cached cover render, else a plain card with the title.
 class _Cover extends StatelessWidget {
   final ShelfBook b;
@@ -497,16 +634,267 @@ class _Pages extends CustomPainter {
   bool shouldRepaint(_Pages old) => false;
 }
 
-class _Board extends StatelessWidget {
-  const _Board();
+/// "08.02 – 08.05 · 3박 4일", or "10.19 · 당일".
+String _dates(ShelfBook b) {
+  String md(DateTime d) => '${two(d.month)}.${two(d.day)}';
+  final d = b.days;
+  return d == 1 ? '${md(b.start)} · 당일' : '${md(b.start)} – ${md(b.end)} · ${d - 1}박 $d일';
+}
+
+/// 한 권씩: one big book in front; a sideways swipe brings the next, the neighbours tilt back and recede.
+class _OneView extends StatefulWidget {
+  final List<ShelfBook> books; // newest first
+  final int initial;
+  final ValueChanged<int> onPage;
+  final Widget Function(ShelfBook b, double w, double h) book; // the tappable cover (opens, long press = menu)
+  const _OneView({required this.books, required this.initial, required this.onPage, required this.book});
+  @override
+  State<_OneView> createState() => _OneViewState();
+}
+
+class _OneViewState extends State<_OneView> {
+  late final _pc = PageController(initialPage: widget.initial, viewportFraction: .6);
+  late int _i = widget.initial;
+
+  @override
+  void dispose() {
+    _pc.dispose();
+    super.dispose();
+  }
+
+  void _go(int i) => _pc.animateToPage(i, duration: const Duration(milliseconds: 420), curve: _ease);
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, c) {
+        final books = widget.books;
+        final w = math.min(210.0, (c.maxWidth * .54).roundToDouble()), h = (w * 4 / 3).roundToDouble();
+        final b = books[_i];
+        const ink2 = Color(0xFF48423A);
+        return SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 110),
+          child: Column(children: [
+            SizedBox(
+              height: h + 70,
+              child: PageView.builder(
+                controller: _pc,
+                itemCount: books.length,
+                onPageChanged: (i) {
+                  setState(() => _i = i);
+                  widget.onPage(i);
+                },
+                itemBuilder: (context, i) => AnimatedBuilder(
+                  animation: _pc,
+                  builder: (context, child) {
+                    final p = _pc.position.hasContentDimensions ? _pc.page ?? _i.toDouble() : _i.toDouble();
+                    final d = i - p, a = math.min(1.4, d.abs());
+                    return Opacity(
+                      opacity: 1 - .3 * a,
+                      child: Transform(
+                        alignment: Alignment.center,
+                        transform: Matrix4.identity()
+                          ..setEntry(3, 2, 1 / 900)
+                          ..rotateY(-d * 24 * math.pi / 180),
+                        child: Transform.scale(scale: 1 - .16 * a, child: child),
+                      ),
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 30, bottom: 40),
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      // the front book opens; a neighbour comes to the front first
+                      child: i == _i
+                          ? widget.book(books[i], w, h)
+                          : GestureDetector(onTap: () => _go(i), child: AbsorbPointer(child: widget.book(books[i], w, h))),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              child: Padding(
+                key: ValueKey(b.id),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(children: [
+                  Text('${b.start.year}', style: nm(12.5, w: FontWeight.w600, color: ink2, ls: .75)),
+                  const SizedBox(height: 4),
+                  Text(b.title,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: ui(28, w: FontWeight.w800, h: 1.2).copyWith(letterSpacing: -.9)),
+                  const SizedBox(height: 6),
+                  Text(_dates(b), style: nm(13.5, color: ink2)),
+                  const SizedBox(height: 18),
+                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    for (final (j, (v, u)) in [(b.pages, '쪽'), (b.photos, '사진'), (b.places, '곳'), if (b.km != null) (b.km!, 'km')].indexed)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: j == 0 ? null : const BoxDecoration(border: Border(left: BorderSide(color: Color(0x242B2621)))),
+                        child: Column(children: [
+                          Text('$v', style: nm(20, w: FontWeight.w600, ls: -.5)),
+                          Text(u, style: ui(12, color: ink2)),
+                        ]),
+                      ),
+                  ]),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 30),
+            _index(c.maxWidth),
+          ]),
+        );
+      });
+
+  /// Mini covers to jump straight to a book; a small gap where the year changes.
+  Widget _index(double width) {
+    final books = widget.books;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: width - 32),
+        child: SizedBox(
+          height: 50,
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
+            for (final (i, x) in books.indexed) ...[
+              if (i > 0) SizedBox(width: books[i - 1].start.year != x.start.year ? 16 : 7),
+              Semantics(
+                button: true,
+                label: x.title,
+                child: GestureDetector(
+                  onTap: () => _go(i),
+                  child: AnimatedSlide(
+                    offset: Offset(0, i == _i ? -8 / 33 : 0),
+                    duration: const Duration(milliseconds: 250),
+                    curve: _ease,
+                    child: AnimatedScale(
+                      scale: i == _i ? 1.14 : 1,
+                      duration: const Duration(milliseconds: 250),
+                      curve: _ease,
+                      child: AnimatedOpacity(
+                        opacity: i == _i ? 1 : .5,
+                        duration: const Duration(milliseconds: 250),
+                        child: Container(
+                          width: 25,
+                          height: 33,
+                          clipBehavior: Clip.antiAlias,
+                          decoration: const BoxDecoration(
+                            color: C.gridBg,
+                            borderRadius: BorderRadius.horizontal(left: Radius.circular(2), right: Radius.circular(3)),
+                            boxShadow: [BoxShadow(color: Color(0x80281A0C), blurRadius: 6, spreadRadius: -3, offset: Offset(0, 3))],
+                          ),
+                          child: x.cover == null ? null : Image(image: sizedImage(context, x.cover!, 25, 33), fit: BoxFit.cover),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// 한 권씩 background: the front book's cover, blurred into a faint wash that fades to paper at the bottom.
+class _Glow extends StatelessWidget {
+  final ShelfBook b;
+  const _Glow(this.b, {super.key});
+  @override
+  Widget build(BuildContext context) => Stack(fit: StackFit.expand, children: [
+        ClipRect(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 450),
+            child: b.cover == null
+                ? const SizedBox.expand()
+                : Opacity(
+                    key: ValueKey(b.id),
+                    opacity: .75,
+                    child: Transform.scale(
+                      scale: 1.4,
+                      child: ImageFiltered(
+                        imageFilter: ImageFilter.blur(sigmaX: 44, sigmaY: 44, tileMode: TileMode.decal),
+                        child: Image(image: sizedImage(context, b.cover!, 48, 48), fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+                      ),
+                    ),
+                  ),
+          ),
+        ),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0x4DF4EFE7), Color(0x8CF4EFE7), Color(0xF0F4EFE7)],
+              stops: [0, .45, .74],
+            ),
+          ),
+        ),
+      ]);
+}
+
+/// The mode button's glyph, drawn from the mockup's 16x16 SVGs (ico.shelf / ico.year / ico.one).
+class _ModeIcon extends CustomPainter {
+  final ShelfView v;
+  const _ModeIcon(this.v);
+  @override
+  void paint(Canvas c, Size s) {
+    c.scale(s.width / 16);
+    final p = Paint()
+      ..color = C.ink
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final fill = Paint()..color = C.ink;
+    switch (v) {
+      case ShelfView.display:
+        c.drawRRect(RRect.fromLTRBR(2.5, 3, 7, 11, const Radius.circular(.6)), p);
+        c.drawRRect(RRect.fromLTRBR(9, 3, 13.5, 11, const Radius.circular(.6)), p);
+        c.drawLine(const Offset(1, 13.5), const Offset(15, 13.5), p);
+      case ShelfView.year:
+        c.drawLine(const Offset(3.5, 2), const Offset(3.5, 14), p);
+        c.drawCircle(const Offset(3.5, 4.5), 1.4, fill);
+        c.drawCircle(const Offset(3.5, 11), 1.4, fill);
+        c.drawLine(const Offset(7, 4.5), const Offset(14, 4.5), p);
+        c.drawLine(const Offset(7, 11), const Offset(12, 11), p);
+      case ShelfView.one:
+        c.drawRRect(RRect.fromLTRBR(4.5, 1.8, 11.5, 11.8, const Radius.circular(.8)), p);
+        c.drawLine(const Offset(2, 14.2), const Offset(14, 14.2), p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ModeIcon old) => old.v != v;
+}
+
+/// A thin light-oak shelf: a pale top face, then the front edge, and a soft shadow on the wall below.
+class _Plank extends StatelessWidget {
+  const _Plank();
   @override
   Widget build(BuildContext context) => Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [C.oak1, C.oak2]),
-          boxShadow: [BoxShadow(color: Color(0x40462810), blurRadius: 8, offset: Offset(0, 4))],
+          borderRadius: BorderRadius.vertical(top: Radius.circular(2), bottom: Radius.circular(3)),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFEBDCC6), Color(0xFFE3D0B4), Color(0xFFC79F72), Color(0xFFB88E61), Color(0xFFA87E53)],
+            stops: [0, 5 / 15, 5 / 15, .6, 1],
+          ),
+          boxShadow: [BoxShadow(color: Color(0x6B462810), blurRadius: 20, spreadRadius: -12, offset: Offset(0, 16))],
         ),
+        child: Column(children: [
+          Container(height: 1, color: const Color(0x8CFFFFFF)), // lit top edge
+          const SizedBox(height: 4),
+          Container(height: 1, color: const Color(0x47FFFFFF)), // where the top face meets the front
+        ]),
       );
 }
+
 
 class _Dashed extends CustomPainter {
   @override

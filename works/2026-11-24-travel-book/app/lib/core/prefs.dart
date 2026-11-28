@@ -4,7 +4,7 @@ import 'dart:io';
 
 class Prefs {
   final File file;
-  String shelfView = 'display'; // display|timeline
+  String shelfView = 'display'; // display|year|one (ShelfView.name; 'timeline' = year, before 11-28)
   String quality = 'reduced'; // reduced|original — default for new books
   bool onboarded = false;
   bool? spread; // book view: two pages side by side; null = by the screen (wide screens open as spreads)

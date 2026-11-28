@@ -62,11 +62,62 @@ void main() {
     expect(find.text('새 책'), findsOneWidget);
   });
 
-  testWidgets('shelf timeline', (t) async {
-    await pump(t, shelf(sampleBooks, ShelfView.timeline), 'd2-2-timeline');
+  testWidgets('shelf year view', (t) async {
+    await pump(t, shelf(sampleBooks, ShelfView.year), 'd2-2-year');
     expect(find.text('2026'), findsOneWidget);
     expect(find.text('2권 · 14곳 · 6일'), findsOneWidget);
-    expect(find.text('06.12 — 06.14 · 2박 3일'), findsOneWidget);
+    expect(find.text('06.12 – 06.14 · 2박 3일'), findsOneWidget);
+  });
+
+  testWidgets('shelf one-by-one view: newest book in front, swipe brings the next', (t) async {
+    await pump(t, shelf(sampleBooks, ShelfView.one), 'd2-2-one');
+    expect(find.text('제주 2박 3일'), findsOneWidget);
+    expect(find.text('06.12 – 06.14 · 2박 3일'), findsOneWidget);
+    await t.drag(find.byType(PageView), const Offset(-160, 0));
+    await t.pumpAndSettle();
+    expect(find.text('부산, 겨울'), findsOneWidget);
+    expect(find.text('제주 2박 3일'), findsNothing);
+  });
+
+  testWidgets('shelf: the mode button walks 진열 -> 연도 -> 한 권씩 -> 진열, and a book opens in every view', (t) async {
+    var view = ShelfView.display;
+    final seen = <ShelfView>[];
+    final opened = <String>[];
+    await pump(
+        t,
+        StatefulBuilder(
+          builder: (context, set) => Shelf(
+            books: sampleBooks,
+            view: view,
+            onViewChanged: (v) => set(() => seen.add(view = v)),
+            onOpen: (b) => opened.add(b.id),
+            onExport: (_) {},
+            onRename: (_) {},
+            onDelete: (_) {},
+            onNew: no,
+            onSettings: no,
+            now: DateTime(2026, 11, 25),
+          ),
+        ),
+        null,
+        const Size(430, 932));
+    final mode = find.byKey(const ValueKey('shelf-mode'));
+    expect(find.bySemanticsLabel('보기: 진열. 누르면 연도'), findsOneWidget);
+    await shot(t, 'home-display');
+    await t.tap(find.byType(Image).first); // 진열: the first cover
+    await t.tap(mode);
+    await t.pumpAndSettle();
+    expect(find.bySemanticsLabel('보기: 연도. 누르면 한 권씩'), findsOneWidget);
+    await shot(t, 'home-year');
+    await t.tap(find.text('부산, 겨울')); // 연도: the row's title opens it
+    await t.tap(mode);
+    await t.pumpAndSettle();
+    await shot(t, 'home-one');
+    await t.tap(find.byType(Image).at(1)); // 한 권씩: the front cover (0 = the background glow)
+    await t.tap(mode);
+    await t.pumpAndSettle();
+    expect(seen, [ShelfView.year, ShelfView.one, ShelfView.display]);
+    expect(opened, ['jeju', 'busan', 'jeju']);
   });
 
   testWidgets('shelf empty', (t) async {
@@ -76,8 +127,8 @@ void main() {
     expect(find.text('첫 책 만들기'), findsOneWidget);
   });
 
-  testWidgets('shelf empty, timeline view', (t) async {
-    await pump(t, shelf(const [], ShelfView.timeline), 'd2-3-empty-timeline');
+  testWidgets('shelf empty, year view', (t) async {
+    await pump(t, shelf(const [], ShelfView.year), 'd2-3-empty-year');
     expect(find.text('첫 여행이 여기 놓여요'), findsOneWidget);
     expect(find.text('첫 책이\n여기 놓여요'), findsNothing);
   });

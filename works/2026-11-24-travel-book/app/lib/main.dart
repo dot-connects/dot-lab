@@ -66,7 +66,8 @@ class _Root extends StatefulWidget {
 class _RootState extends State<_Root> {
   List<Book> _books = [];
   App get app => widget.app;
-  ShelfView get _view => app.prefs.shelfView == 'timeline' ? ShelfView.timeline : ShelfView.display;
+  // 'timeline' = the year view's name before 11-28
+  ShelfView get _view => app.prefs.shelfView == 'timeline' ? ShelfView.year : ShelfView.values.asNameMap()[app.prefs.shelfView] ?? ShelfView.display;
   int get _free => freeLeft([for (final b in _books) shelfOf(b, app.booksDir)], made: app.prefs.made);
 
   @override
@@ -136,7 +137,7 @@ class _RootState extends State<_Root> {
   }
 
   void _setView(ShelfView v) => setState(() => app.prefs
-    ..shelfView = v == ShelfView.timeline ? 'timeline' : 'display'
+    ..shelfView = v.name
     ..save());
 
   Future<void> _go(Widget w) async {
