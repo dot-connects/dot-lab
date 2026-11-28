@@ -24,7 +24,9 @@ const ROUTES = {
   "/layout": { images: 72, tokens: () => 40000, day: ["dw", "WRITE_DAY", 60] },
 };
 const MAX_CATALOG = 80, MAX_PREV = 100_000;
-const NAMES_MILLS = 2;   // /names: ~300 tokens in and out on the small model, rounded up (never settled)
+// /names worst case on the small model: ~2000 input tokens (12 names x 60 chars + prompt) + 600 output, rounded up;
+// reserved and never settled (over-counts by a few mills), and at most NAMES_DAY calls a day for everyone
+const NAMES_OUT = 600, NAMES_MILLS = Math.ceil(2000 * MINI_IN + NAMES_OUT * MINI_OUT), NAMES_DAY = 300;
 const SYSTEM_NAMES = "여행 책 지도에 쓸 지명을 한국어로 바꾼다. 받은 순서대로 같은 개수의 이름을 낸다. " +
   "한국에서 흔히 쓰는 표기가 있으면 그것(예: 섬 이름은 '~ 섬'을 붙이지 않고 고유 이름만), 없으면 현지 발음대로 한글로 적는다. " +
   "이미 한국어면 그대로. 설명은 붙이지 않는다.";
@@ -257,12 +259,13 @@ export async function handle(req, env, ctx, counts) {
     if (!Array.isArray(list) || !list.length || list.length > 12 || !list.every(n => typeof n === "string" && n.length > 0 && n.length <= 60)) return json({ error: "body" }, 400);
     if (!env.OPENAI_KEY) return json({ error: "off" }, 503);
     const cap = num(env.MONTH_CENTS, 1000) * 10;
+    if (!(await counts.take(`dn|${kst().slice(0, 10)}`, NAMES_DAY))) return json({ error: "off" }, 503);
     if (cap <= 0 || !(await counts.add(`m|${kst().slice(0, 7)}`, NAMES_MILLS, cap))) return json({ error: "off" }, 503);
     try {
       const r = await (env.fetchModel || fetch)(OPENAI_URL, {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${env.OPENAI_KEY}` },
-        body: JSON.stringify({ model: env.SCOUT_MODEL || "gpt-5.4-mini", max_output_tokens: 1500, reasoning: { effort: "low" }, store: false,
+        body: JSON.stringify({ model: env.SCOUT_MODEL || "gpt-5.4-mini", max_output_tokens: NAMES_OUT, reasoning: { effort: "low" }, store: false,
           input: [{ role: "system", content: SYSTEM_NAMES }, { role: "user", content: JSON.stringify(list) }],
           text: { format: { type: "json_schema", name: "names", schema: NAMES_SCHEMA, strict: true } } }),
       });
