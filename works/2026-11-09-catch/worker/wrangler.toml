@@ -19,9 +19,12 @@ FREE_SHEETS = "5"
 FREE_IP_DAY = "6"
 FREE_ALL_DAY = "60"
 PAID_MONTH_CENTS = "5000"
-# /card (AI card line, 1 cent reserved on MONTH_CENTS): a day per device and for everyone
+# /card (AI card line, 1 cent reserved a call): a day per device, per network and for everyone, and its own
+# month ceiling (MONTH_CENTS "0" still stops it)
 CARD_DAY = "40"
-CARD_ALL_DAY = "1000"
+CARD_IP_DAY = "60"
+CARD_ALL_DAY = "300"
+CARD_MONTH_CENTS = "300"
 CERT_SHA256 = "C1:FC:F5:DC:B6:0F:73:0D:92:52:F2:8C:92:A4:ED:15:CB:09:5F:DE:D5:01:A4:C0:92:04:A5:D9:32:00:85:1C"
 
 [[d1_databases]]

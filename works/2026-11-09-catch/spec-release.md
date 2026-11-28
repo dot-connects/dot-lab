@@ -147,10 +147,10 @@ Same headers as `/sheet` and `/transform`: `x-app: catchpet`, `x-integrity` (req
 (or PNG/WebP) of the catch, at most 512 px, <= 300 000 base64 chars.
 → 200 `{ "line": "소파 구석에서 동그랗게 자다 뽑힘. 꿈에서 츄르 먹던 중", "tags": ["잠꾸러기", "말랑함"] }`
 (line <= 34 chars and tags <= 8 chars each, cut by the Worker; always exactly 2 tags).
-Errors: 400 bad request · 403 integrity · 429 `device` (CARD_DAY a day, default 40) / `all` (CARD_ALL_DAY, 1000) /
+Errors: 400 bad request · 403 integrity · 429 `device` (CARD_DAY a day, default 40) / `all` (CARD_IP_DAY 60 a network, CARD_ALL_DAY 300) /
 `slow down` · 503 `off` / `busy` · 502 `model` (also when the model's answer was not a usable card).
 **On any non-200 the app shows its fixed line**; never retry in a loop. Model `gpt-5.4-mini` (llm-registry
-`lab.catch_card`), detail low; 1 cent reserved on MONTH_CENTS per call (real ~0.2-0.4 cents, ~3-6 won).
+`lab.catch_card`), detail low; 1 cent reserved per call on its own CARD_MONTH_CENTS (300; MONTH_CENTS "0" still stops it) (real ~0.2-0.4 cents, ~3-6 won).
 
 **POST /sheet with `style: "both"`** - fur-ball and figurine pose sheets from ONE request: one free sheet, or one
 purchase of product `sheet_both` (700 won). Body as today plus optional `looks: { fluff, figure }` (each style's chosen

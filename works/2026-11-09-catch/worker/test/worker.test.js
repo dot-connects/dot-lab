@@ -682,7 +682,7 @@ test("cardLine: trims, cuts to 34 characters, keeps two tags of at most 8, refus
 const cardBody = (extra = {}) => ({ kind: "cat", device: "dev-aaaaaaaa", image: "/9j/" + "A".repeat(100), ...extra });
 const cardCall = (b = cardBody(), headers = APP) => call(b, { path: "/card", headers });
 
-test("/card: returns {line, tags}, integrity first, 1 cent on the public month ceiling", async () => {
+test("/card: returns {line, tags}, integrity first, 1 cent on its own month ceiling", async () => {
   const seen = [];
   env.callCard = async job => { seen.push(job); return { line: "창틀에서 비둘기 감시하다 뽑힘", tags: ["경비대장", "새멍"] }; };
   assert.equal((await cardCall(cardBody(), { "x-app": "catchpet" })).status, 403);
@@ -690,12 +690,29 @@ test("/card: returns {line, tags}, integrity first, 1 cent on the public month c
   assert.equal(r.status, 200);
   assert.deepEqual(r.body, { line: "창틀에서 비둘기 감시하다 뽑힘", tags: ["경비대장", "새멍"] });
   assert.deepEqual(seen.map(j => j.kind), ["cat"]);
-  assert.equal(counts.m.get("usd|2026-11"), 1);
+  assert.equal(counts.m.get("cardusd|2026-11"), 1);
+  assert.equal(counts.m.get("usd|2026-11"), undefined, "the public month is untouched");
   assert.equal(calls.length, 0, "no image call");
   for (const b of [cardBody({ kind: "dragon" }), cardBody({ device: "x" }), cardBody({ image: "A".repeat(300_001) }), cardBody({ image: "<x>" })])
     assert.equal((await cardCall(b)).status, 400);
-  env.MONTH_CENTS = "1";
-  assert.deepEqual((await cardCall()).body, { error: "off" });
+  env.CARD_MONTH_CENTS = "1";
+  assert.deepEqual((await cardCall()).body, { error: "off" }, "the card ceiling is full");
+  assert.equal(await ledger.freeLeft("pv:dev-aaaaaaaa", 5), 5);
+  assert.equal((await call(ok())).status, 200, "previews still draw");
+  env.CARD_MONTH_CENTS = "100"; env.MONTH_CENTS = "0";
+  assert.deepEqual((await cardCall()).body, { error: "off" }, "the master switch stops cards too");
+});
+
+test("/card: one network stops at CARD_IP_DAY a day, whatever device ids it makes up; refused slots go back", async () => {
+  env.CARD_IP_DAY = "2";
+  env.callCard = async () => ({ line: "a", tags: ["b", "c"] });
+  const from = (ip, device) => call(cardBody({ device }), { path: "/card", headers: { ...APP, "cf-connecting-ip": ip } });
+  assert.equal((await from("203.0.113.7", "dev-ipcard01")).status, 200);
+  assert.equal((await from("203.0.113.7", "dev-ipcard02")).status, 200);
+  assert.deepEqual((await from("203.0.113.7", "dev-ipcard03")).body, { error: "all" });
+  assert.equal(counts.m.get("2026-11-11|card:dev-ipcard03"), undefined, "the device slot was never taken");
+  assert.equal(counts.m.get("2026-11-11|cardall"), 2, "the refused call gave the site slot back");
+  assert.equal((await from("2001:db8:1:2::1", "dev-ipcard04")).status, 200, "another network");
 });
 
 test("/card: CARD_DAY a device; a failed call is 502 and gives the slot back unless refused or billed", async () => {

@@ -258,7 +258,9 @@ const goodDevice = s => /^dev-[a-z0-9]{8,32}$/.test(s || "");
 // dev = the operator's debug token (the dev app): its own month ceiling DEV_MONTH_CENTS, so testing never eats the
 // public ceiling and the public never blocks testing; MONTH_CENTS = "0" still stops both (operator 11-16).
 // bucket "paid" = bought sheets, on PAID_MONTH_CENTS (a runaway guard only): free testers can never block a buyer (review M3)
-const BUCKETS = { pub: ["usd", "MONTH_CENTS", 500], dev: ["devusd", "DEV_MONTH_CENTS", 2000], paid: ["paidusd", "PAID_MONTH_CENTS", 5000] };
+const BUCKETS = { pub: ["usd", "MONTH_CENTS", 500], dev: ["devusd", "DEV_MONTH_CENTS", 2000], paid: ["paidusd", "PAID_MONTH_CENTS", 5000],
+  // card lines (security review 11-28): their own ceiling, so they can never eat the previews' and free sheets' month
+  card: ["cardusd", "CARD_MONTH_CENTS", 300] };
 // several jobs (style "both") are reserved as one sum and drawn in parallel -> {off} or [{img} | {err}] in job order
 async function paidCalls(jobs, cents, env, counts, day, dev = false) {
   const [key, capVar, capDefault] = BUCKETS[dev === true ? "dev" : dev || "pub"];
@@ -320,7 +322,7 @@ async function transform(b, req, env, counts, day, origin, dev, ledger) {
   return json({ mime: r.img.mime, image: r.img.data, left: await ledger.freeLeft(kDev, perDev).catch(() => null) }, 200, origin);
 }
 
-// a card line per catch: CARD_DAY a device and CARD_ALL_DAY for everyone a day, on the public month ceiling
+// a card line per catch: CARD_DAY a device, CARD_IP_DAY a network, CARD_ALL_DAY for everyone a day, on CARD_MONTH_CENTS
 async function card(b, req, env, counts, day, dev, text) {
   const goodSmall = typeof b.image === "string" && !!b.image && b.image.length <= CARD_IMAGE_MAX && /^[A-Za-z0-9+/=]+$/.test(b.image);
   if (!validKind(b.kind) || !goodDevice(b.device) || !goodSmall) return json({ error: "bad request" }, 400);
@@ -331,10 +333,14 @@ async function card(b, req, env, counts, day, dev, text) {
   const ig = await integrity(req, env, "/card", b, text);
   if (ig === "off" || ig === "busy") return json({ error: ig }, 503);
   if (ig !== "ok") return json({ error: "integrity" }, 403);
-  const kAll = `${day}|cardall`, kDev = `${day}|card:${b.device}`;
-  if (!(await counts.take(kAll, num(env.CARD_ALL_DAY, 1000)))) return json({ error: "all" }, 429);
-  if (!(await counts.take(kDev, num(env.CARD_DAY, 40)))) { await counts.give(kAll); return json({ error: "device" }, 429); }
-  return answer(await paidCall(job, CENTS.card, env, counts, day, async e => { if (refundable(e)) { await counts.give(kDev); await counts.give(kAll); } }));
+  // a device id is app-made: one network is capped a day too, like the free sheets (security review 11-28)
+  const kAll = `${day}|cardall`, kIp = `${day}|cardip:${ipKey(req.headers.get("cf-connecting-ip"))}`, kDev = `${day}|card:${b.device}`;
+  const taken = [];
+  for (const [k, lim, err] of [[kAll, num(env.CARD_ALL_DAY, 300), "all"], [kIp, num(env.CARD_IP_DAY, 60), "all"], [kDev, num(env.CARD_DAY, 40), "device"]]) {
+    if (!(await counts.take(k, lim))) { for (const t of taken) await counts.give(t); return json({ error: err }, 429); }
+    taken.push(k);
+  }
+  return answer(await paidCall(job, CENTS.card, env, counts, day, async e => { if (refundable(e)) for (const t of taken) await counts.give(t); }, "card"));
 }
 
 function sheetJob(b, style) {
