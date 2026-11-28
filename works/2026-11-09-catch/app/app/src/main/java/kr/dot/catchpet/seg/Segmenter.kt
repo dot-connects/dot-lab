@@ -336,6 +336,47 @@ class Segmenter(private val ctx: Context) {
     private var selfieBig: ImageSegmenter? = null
     private var selfieSmall: ImageSegmenter? = null
 
+    /**
+     * The grabbed animal's alpha for the frame cut to [src] (its box + 15 %), [inner] the raw box, [claw] the claw
+     * tip (all frame px): DeepLab once on the crop, magic touch once on the whole frame (long side <= 720), combined
+     * by [AnimalCut]. null = use the grid cut. Model thread only; reuses the loop's two models.
+     */
+    fun animalAlpha(frame: Bitmap, src: android.graphics.Rect, inner: android.graphics.Rect, claw: android.graphics.PointF?): Bitmap? {
+        val t0 = System.currentTimeMillis()
+        val fw = frame.width.toFloat(); val fh = frame.height.toFloat()
+        val crop = Bitmap.createBitmap(frame, src.left, src.top, src.width(), src.height())
+        val ci = BitmapImageBuilder(crop).build()
+        val masks = try { segmenter().segment(ci).confidenceMasks().orElse(null) } finally { ci.close(); crop.recycle() } ?: return null
+        val cw = masks[0].width; val ch = masks[0].height
+        val conf = FloatArray(cw * ch)
+        for ((c, _) in ANIMALS) { val f = floats(masks[c]); for (i in conf.indices) conf[i] += f[i] }
+        for (i in conf.indices) conf[i] = min(1f, conf[i])
+        masks.forEach { it.close() }
+        fun nx(x: Int) = (x - src.left).toFloat() / src.width()
+        fun ny(y: Int) = (y - src.top).toFloat() / src.height()
+        val seed = AnimalCut.seed(conf, cw, ch, floatArrayOf(nx(inner.left), ny(inner.top), nx(inner.right), ny(inner.bottom)),
+            claw?.let { floatArrayOf((it.x - src.left) / src.width(), (it.y - src.top) / src.height()) })
+        val s = 720f / max(frame.width, frame.height)
+        val small = if (s < 1f) Bitmap.createScaledBitmap(frame, (fw * s).roundToInt(), (fh * s).roundToInt(), true) else frame
+        val img = BitmapImageBuilder(small).build()
+        val roi = InteractiveSegmenter.RegionOfInterest.create(NormalizedKeypoint.create(
+            (src.left + seed[0] * src.width()) / fw, (src.top + seed[1] * src.height()) / fh))
+        val m = try { touch().segment(img, roi).categoryMask().orElse(null) } finally { img.close(); if (small !== frame) small.recycle() } ?: return null
+        val tw = m.width; val th = m.height
+        val buf = ByteBufferExtractor.extract(m)
+        val touched = FloatArray(tw * th) { if (buf.get(it).toInt() == 0) 1f else 0f }   // category 0 = the touched thing
+        m.close()
+        val kx = tw / fw; val ky = th / fh
+        val x0 = (src.left * kx).toInt(); val y0 = (src.top * ky).toInt()
+        val ow = max(1, (src.right * kx).toInt() - x0); val oh = max(1, (src.bottom * ky).toInt() - y0)
+        val a = AnimalCut.combine(touched, tw, th, x0, y0, ow, oh, conf, cw, ch, seed)
+        Log.i(TAG, "animalAlpha ${System.currentTimeMillis() - t0} ms ${if (a == null) "fallback" else "ok"}")
+        a ?: return null
+        val px = IntArray(ow * oh) { (a[it] * 255).roundToInt() shl 24 }
+        val bmp = Bitmap.createBitmap(px, ow, oh, Bitmap.Config.ARGB_8888)
+        return Bitmap.createScaledBitmap(bmp, src.width(), src.height(), true).also { if (it !== bmp) bmp.recycle() }
+    }
+
     private fun floats(m: MPImage): FloatArray {
         val fb = ByteBufferExtractor.extract(m).order(ByteOrder.nativeOrder()).asFloatBuffer()
         return FloatArray(fb.remaining()).also { fb.get(it) }
