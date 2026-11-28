@@ -1,0 +1,502 @@
+{
+ "v": 1,
+ "fps": 12,
+ "critters": {
+  "bamtol": {
+   "zip": "bamtol.zip",
+   "size": 638540,
+   "sha256": "2fd3607f957d613b6707e6df8dc591f6182bd5a993a2aae476be272fe88ea1a0",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  },
+  "bodeul": {
+   "zip": "bodeul.zip",
+   "size": 819844,
+   "sha256": "d572a602aef5092e6f85246eba2c37fbeff531c9ce40755996fa44755079ba1c",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  },
+  "dalsom": {
+   "zip": "dalsom.zip",
+   "size": 510958,
+   "sha256": "a70a109fb9ccc620f8ddded128abae0762a5f0699101501af4edf7302ce9079e",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  },
+  "gomsom": {
+   "zip": "gomsom.zip",
+   "size": 640286,
+   "sha256": "5c224559a5c801164a7dbcd32bde4e6b2d4ceec4cbc4dc7354860bf9e6fc808b",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  },
+  "huhu": {
+   "zip": "huhu.zip",
+   "size": 936710,
+   "sha256": "56095c26729d55dae311aa8b9cbbfcbd45622a3b4582ac1bdcf577c60368c7cc",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  },
+  "kkulkkul": {
+   "zip": "kkulkkul.zip",
+   "size": 628456,
+   "sha256": "a0330abe47c8ed242f1c448c6c7ef9472d63e275c06c57fff93755afa70f2e00",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  },
+  "meongsom": {
+   "zip": "meongsom.zip",
+   "size": 614526,
+   "sha256": "840c407b58660d55c11ba26e5e0ed8e7eb8901f277b509fb432d62b8c83ccb58",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  },
+  "mieo": {
+   "zip": "mieo.zip",
+   "size": 570578,
+   "sha256": "90dd1d3b2582390aa8f67c7d4ac390d88a032ffbb3addf5bde885c58b7615aba",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  },
+  "monggeul": {
+   "zip": "monggeul.zip",
+   "size": 610516,
+   "sha256": "5b352cd2d98fbc3d02cf763915906b326a6f636b13d8a8429a0c766049c1fad9",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  },
+  "mungge": {
+   "zip": "mungge.zip",
+   "size": 669468,
+   "sha256": "340faad9e4d459449f82143d70fef6423ab0c04b432df8eea2d0bcb952a883ca",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  },
+  "nyangsom": {
+   "zip": "nyangsom.zip",
+   "size": 551440,
+   "sha256": "88c71767e7381ec91523d8aa2e68ec13a08a1abbbb1214fa20fbaa362aae2131",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  },
+  "pengsom": {
+   "zip": "pengsom.zip",
+   "size": 706082,
+   "sha256": "7f55303f168221ac02e22484ac4c4e9d8e447f6491b906e96bf8f6491007286e",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  },
+  "ppiyak": {
+   "zip": "ppiyak.zip",
+   "size": 649538,
+   "sha256": "46e0de013ca65cc7fa994a4f7078150e60444fbfb57bfa56c200412c10244699",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  },
+  "rara": {
+   "zip": "rara.zip",
+   "size": 668382,
+   "sha256": "587b8680d00908408768b54c4e9b959a3e89d69247bbda5be6be0f261ca5c776",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  },
+  "sallang": {
+   "zip": "sallang.zip",
+   "size": 1161140,
+   "sha256": "0f90ade7b822cca210099585953ab5f63a90ee4e8af0f045c17462b4a2378d6a",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  },
+  "silta": {
+   "zip": "silta.zip",
+   "size": 544876,
+   "sha256": "54633c1570b826a82a5c91654c7bbb45b5c5020c544a15cd6c3dd4f772948a9e",
+   "states": {
+    "sun": {
+     "act": 24,
+     "loop": 8
+    },
+    "hot": {
+     "act": 26,
+     "loop": 6
+    },
+    "cold": {
+     "act": 24,
+     "loop": 6
+    },
+    "snow": {
+     "act": 26,
+     "loop": 8
+    },
+    "rain": {
+     "act": 26,
+     "loop": 8
+    },
+    "dust": {
+     "act": 24,
+     "loop": 8
+    }
+   }
+  }
+ }
+}

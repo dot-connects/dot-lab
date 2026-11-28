@@ -98,6 +98,9 @@ class PetLook(private val cells: Map<String, Bitmap>) {
     private val label = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF33363D.toInt(); isFakeBoldText = true; textAlign = Paint.Align.CENTER }
     private val dst = RectF()
 
+    /** The front picture's height (px) in a box of s px: the weather frames are scaled to match it. */
+    fun frontHeight(s: Float): Float = cells.getValue("front").height * s / unit
+
     /** How far the pet hops off its line now (in units of its size). */
     fun lift(b: PetBrain, t: Float): Float = when (b.act) {
         PetBrain.Act.SMILE -> abs(sin(t % 700f / 700f * PI)).toFloat() * 0.2f
@@ -115,7 +118,7 @@ class PetLook(private val cells: Map<String, Bitmap>) {
         val bmp = cells[b.frame(t)] ?: cells.getValue("front")
         var sx = 1f; var sy = 1f; var sway = 0f
         when (b.act) {
-            PetBrain.Act.IDLE -> { val br = sin(t / 420f) * 0.035f; sx = 1 - br * 0.5f; sy = 1 + br }
+            PetBrain.Act.IDLE, PetBrain.Act.WX -> { val br = sin(t / 420f) * 0.035f; sx = 1 - br * 0.5f; sy = 1 + br }
             PetBrain.Act.SLEEP -> { val br = sin(t / 900f) * 0.03f; sx = 1 + br * 0.4f; sy = 1 - br }
             PetBrain.Act.THINK -> sway = sin(t / 300f) * 8f
             PetBrain.Act.WIGGLE -> sway = sin(b.actMs / 55f) * 14f * (1f - b.actMs / 900f).coerceAtLeast(0f)

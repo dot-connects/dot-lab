@@ -25,7 +25,7 @@ import kotlin.math.roundToInt
  * A tap closes it; [Talk.SHOW_MS] closes it too.
  */
 @SuppressLint("ViewConstructor", "ClickableViewAccessibility")
-class TalkBubble(ctx: Context, text: String, private val side: PetBrain.Zone, private val onTap: () -> Unit) : View(ctx) {
+class TalkBubble(ctx: Context, text: String, private val side: PetBrain.Zone, private val showMs: Long = Talk.SHOW_MS, private val onTap: () -> Unit) : View(ctx) {
     private val d = resources.displayMetrics.density
     private val wall = side == PetBrain.Zone.LEFT || side == PetBrain.Zone.RIGHT
     private val ink = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -48,7 +48,7 @@ class TalkBubble(ctx: Context, text: String, private val side: PetBrain.Zone, pr
 
     init { setLayerType(LAYER_TYPE_SOFTWARE, null) }   // shadow layers need software drawing
 
-    fun expired() = SystemClock.uptimeMillis() - born > Talk.SHOW_MS
+    fun expired() = SystemClock.uptimeMillis() - born > showMs
 
     override fun onDraw(c: Canvas) {
         r.set(ox, pad, ox + bodyW, pad + bodyH)

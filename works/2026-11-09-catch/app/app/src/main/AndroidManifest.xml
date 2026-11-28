@@ -11,6 +11,8 @@
     <!-- "home only": the pet hides while another app is on top (usage access, granted in Settings) -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
     <uses-feature android:name="android.hardware.camera.ar" android:required="false" />
+    <!-- the pet's weather (phase C, opt-in in pet settings): coarse only, taken while the app is open -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <!-- "home only" asks which apps are launchers (package visibility, Android 11+) -->
     <queries>

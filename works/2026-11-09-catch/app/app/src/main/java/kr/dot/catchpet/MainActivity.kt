@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         kr.dot.catchpet.pet.PetPrefs.setOpenedAt(this, System.currentTimeMillis())   // the pet's "보고 싶었어" counts from here
+        kr.dot.catchpet.pet.Weather.locate(this)   // weather on: the coarse location, only while the app is open
     }
 
     private fun take(i: Intent?) {

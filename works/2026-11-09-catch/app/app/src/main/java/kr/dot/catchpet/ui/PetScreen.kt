@@ -198,6 +198,8 @@ fun PetScreen(onBack: () -> Unit) {
             Note("잠금을 풀거나 충전기를 꽂을 때 녀석이 가끔 혼잣말을 해요. 끄면 날씨 말풍선(\"비 와! 우산 챙겨\" 같은)도 같이 꺼져요. 두 번 톡톡 눌러 여는 말풍선은 그대로예요.")
         }
 
+        WeatherPanel(pet?.critterId)
+
         Panel {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("소리", fontFamily = Book.Display, fontSize = 18.sp, modifier = Modifier.weight(1f))
@@ -215,6 +217,48 @@ fun PetScreen(onBack: () -> Unit) {
         Text("기기 번호 ${remember { kr.dot.catchpet.ai.AiClient.deviceId(ctx) }}", fontFamily = Book.Body, fontSize = 12.sp, color = Book.Muted,
             modifier = Modifier.align(Alignment.CenterHorizontally))
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+/**
+ * "날씨" (phase C): off until the user turns it on, which is where the coarse location is asked. Denied = stays off,
+ * the app works as before. A critter's act frames come once over Wi-Fi; "지금 받기" takes any network.
+ */
+@Composable
+private fun WeatherPanel(critter: String?) {
+    val ctx = LocalContext.current
+    var on by remember { mutableStateOf(kr.dot.catchpet.pet.Weather.on(ctx)) }
+    var denied by remember { mutableStateOf(false) }
+    var now by remember { mutableStateOf(kr.dot.catchpet.pet.Weather.now(ctx)) }
+    var ready by remember(critter) { mutableStateOf(critter == null || kr.dot.catchpet.pet.WxPack.ready(ctx, critter) != null) }
+    var asked by remember(critter) { mutableStateOf(false) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        now = kr.dot.catchpet.pet.Weather.now(ctx)
+        ready = critter == null || kr.dot.catchpet.pet.WxPack.ready(ctx, critter) != null
+    }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        denied = !ok
+        if (ok) { kr.dot.catchpet.pet.Weather.setOn(ctx, true); on = true; critter?.let { kr.dot.catchpet.pet.WxPack.request(ctx, it) } }
+    }
+    Panel {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("날씨", fontFamily = Book.Display, fontSize = 18.sp, modifier = Modifier.weight(1f))
+            InkSwitch(on) {
+                if (it) ask.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                else { kr.dot.catchpet.pet.Weather.setOn(ctx, false); on = false; now = null }
+            }
+        }
+        Note(when {
+            denied -> "위치를 허용해야 날씨를 알 수 있어요. 허용하지 않아도 다른 건 그대로 돼요."
+            !on -> "켜면 녀석이 지금 날씨에 맞춰 우산을 펴거나 목도리를 둘러요. 날씨가 바뀌거나 그날 처음 홈에 오면 한 번, 그 뒤엔 톡 누를 때 가끔요."
+            now != null -> "지금 날씨는 ${now!!.label}. 녀석이 그에 맞게 움직여요. 날씨는 3시간에 한 번만 확인해요."
+            else -> "날씨를 확인하는 중이에요. 3시간에 한 번만 확인해요."
+        })
+        if (on || denied) Note("대략적인 위치는 폰 안에만 두고, 날씨를 물을 때만 Open-Meteo 에 보내요.")
+        if (on && !ready) {
+            Note(if (asked) "몸짓 그림을 받는 중이에요." else "털뭉치의 날씨 몸짓 그림(1MB 안팎)은 와이파이에 연결되면 받아요.")
+            if (!asked) Row { InkPill("지금 받기", Book.Sun, onClick = { critter?.let { kr.dot.catchpet.pet.WxPack.request(ctx, it, anyNetwork = true) }; asked = true }) }
+        }
     }
 }
 

@@ -90,6 +90,8 @@ dependencies {
     implementation("com.google.mediapipe:tasks-vision:0.10.26")
     implementation("com.google.android.play:integrity:1.4.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
+    // the pet's weather: a 3-hour Open-Meteo fetch and the one-off frame zip download (phase C)
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
     // AR critters behind the developer switch (manifest: AR optional, the app runs without ARCore)
     implementation("com.google.ar:core:1.48.0")
 

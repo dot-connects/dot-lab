@@ -21,7 +21,7 @@ class PetBrain(
     private val rnd: () -> Float,
 ) {
     enum class Zone { FLOOR, LEFT, RIGHT, BEHIND }
-    enum class Act { IDLE, WALK, THINK, SMILE, PONDER, SLEEP, CLIMB, HANG, FALL, DIZZY, HOP, WIGGLE }
+    enum class Act { IDLE, WALK, THINK, SMILE, PONDER, SLEEP, CLIMB, HANG, FALL, DIZZY, HOP, WIGGLE, WX }
 
     var zone = zone; private set
     var act = Act.IDLE; private set
@@ -131,7 +131,7 @@ class PetBrain(
                 return
             }
             Act.SLEEP -> return   // until touched
-            Act.SMILE, Act.HOP, Act.WIGGLE -> if (t < len) return
+            Act.SMILE, Act.HOP, Act.WIGGLE, Act.WX -> if (t < len) return
             Act.PONDER -> return   // until the cloud closes
             Act.DIZZY -> if (t < len) return else if (upHigh && !onWall) { goUp(); return }
             Act.WALK -> {
@@ -159,6 +159,9 @@ class PetBrain(
             else -> start(Act.WIGGLE, 900f)
         }
     }
+
+    /** The weather act plays (phase C): it stands still on its line for [ms]. */
+    fun hold(ms: Float) { if (act != Act.FALL && act != Act.HANG) start(Act.WX, ms) }
 
     /** Its talk cloud was tapped away: a smile (not on a flying pet). */
     fun smile() { if (act != Act.FALL && act != Act.HANG) start(Act.SMILE, 1400f) }
@@ -204,7 +207,7 @@ class PetBrain(
         Act.FALL -> "holdA"
         Act.DIZZY -> if (t < 700f) "fall" else "dazed"                         // flat on the belly, then sits up dazed
         Act.SMILE, Act.HOP -> "smile"
-        Act.WIGGLE -> "front"
+        Act.WIGGLE, Act.WX -> "front"
         Act.PONDER -> "front"
         Act.WALK, Act.CLIMB -> "walk${(tMs / 130f).toInt() % 4 + 1}"   // contact, passing, contact, passing
         Act.SLEEP -> if (onWall) "curl" else "sleep"

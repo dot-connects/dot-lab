@@ -141,8 +141,10 @@ class PetService : Service() {
             brain?.step(min(now - lastMs, 250L).toFloat(), (now - touchedAt).toFloat(), PetPrefs.night(), charging)
             lastMs = now
             if (!hidden) render()
+            wxTick(now, home)
             handler.postDelayed(this, when {
                 hidden -> 1000L   // hidden: check the top app once a second
+                wx != null -> 42L   // the 12 fps weather act
                 brain?.act == PetBrain.Act.SLEEP -> 200L
                 brain?.act == PetBrain.Act.IDLE -> 66L
                 else -> 50L   // walking: 20 fps is enough at pet size (heat review 11-15)
@@ -181,7 +183,7 @@ class PetService : Service() {
         val b = brain ?: return
         // on home only; without usage access we cannot tell, then a pet that is not up high counts as home
         val onHome = if (usageOk) home else !b.upHigh
-        if (!onHome || b.upHigh || bubble != null || talk != null || view?.visibility != View.VISIBLE) return
+        if (!onHome || b.upHigh || bubble != null || talk != null || wx != null || view?.visibility != View.VISIBLE) return
         if (b.act == PetBrain.Act.HANG || b.act == PetBrain.Act.FALL || b.act == PetBrain.Act.PONDER) { wantTalkAt = 0L; return }
         wantTalkAt = 0L
         val friend = PetPrefs.friend(this)
@@ -303,6 +305,8 @@ class PetService : Service() {
         val group = getSharedPreferences("catchpet", MODE_PRIVATE).getString("pet", null)?.let { kr.dot.catchpet.dex.Dex.get(this, it) }?.kind?.contains('+') == true
         size = PetPrefs.size(this) * (if (group) 1.4f else 1f)
         petName = getSharedPreferences("catchpet", MODE_PRIVATE).getString("pet", null)?.let { kr.dot.catchpet.dex.Dex.get(this, it)?.name }.orEmpty()
+        critter = getSharedPreferences("catchpet", MODE_PRIVATE).getString("pet", null)?.let { kr.dot.catchpet.dex.Dex.get(this, it)?.critterId }
+        wxAsked = false
         usageOk = PetPrefs.usageGranted(this)
         homeOnly = PetPrefs.homeOnly(this) && usageOk
         // every installed launcher counts (the default one may be unset, i.e. the chooser); our own app hides the pet
@@ -367,6 +371,7 @@ class PetService : Service() {
     private fun closeBubble() { bubble?.let { runCatching { wm.removeView(it) }; brain?.ponder(false) }; bubble = null }
 
     private fun hide() {
+        endWx()
         closeBubble(); closeTalk()
         handler.removeCallbacksAndMessages(null)   // a pending long-press would grab the next brain (review 11-16)
         pause()
@@ -377,6 +382,7 @@ class PetService : Service() {
     }
 
     private fun pause() {
+        endWx()   // screen off: nothing animates, the frames are freed
         running = false
         handler.removeCallbacks(tick)
     }
@@ -386,6 +392,95 @@ class PetService : Service() {
         running = true
         lastMs = SystemClock.uptimeMillis()
         handler.post(tick)
+    }
+
+    // --- weather act (phase C, mockup next7v4 wx.js) ---
+    private var wx: WxActView? = null
+    private var wxFrame = -1
+    private var wxToken = 0      // a decode that ends after the act was dropped (screen off, pet changed) is thrown away
+    private var wxCheckedAt = 0L
+    private var wxTaps = 0
+    private var wxAsked = false  // the frame zip was asked for once in this showing
+    private var critter: String? = null
+
+    /** Standing on the floor, at home, doing nothing special: the frames are upright, so no act on a wall. */
+    private fun canAct(b: PetBrain, home: Boolean) =
+        b.zone == PetBrain.Zone.FLOOR && !b.upHigh && (!usageOk || home) && bubble == null && view?.visibility == View.VISIBLE &&
+            b.act in setOf(PetBrain.Act.IDLE, PetBrain.Act.WALK, PetBrain.Act.THINK, PetBrain.Act.SLEEP)
+
+    /** Plays the act on a new weather state or on the first home visit of the day; drives a playing act. */
+    private fun wxTick(now: Long, home: Boolean) {
+        wx?.let { w ->
+            if (w.done() || brain?.act != PetBrain.Act.WX || view?.visibility != View.VISIBLE) endWx()
+            else { val f = w.frameAt(w.elapsed()); if (!w.framed || f != wxFrame) { wxFrame = f; w.invalidate() } }
+            return
+        }
+        if (now - wxCheckedAt < 1000) return
+        wxCheckedAt = now
+        val st = Weather.now(this) ?: return
+        val b = brain ?: return
+        val today = java.time.LocalDate.now().toEpochDay()
+        if (Weather.played(this) == (st.key to today) || !canAct(b, home)) return
+        playWx(st) { Weather.setPlayed(this, st.key, today) }
+    }
+
+    /** A tap: usually the old smile / hop / wiggle; every third one plays today's weather act. */
+    private fun tap(b: PetBrain) {
+        if (wx != null) return
+        val st = Weather.now(this)
+        if (++wxTaps % 3 == 0 && st != null && b.zone == PetBrain.Zone.FLOOR && !b.upHigh && playWx(st) {}) return
+        b.tap()
+    }
+
+    /** Decodes the frames off the main thread, then starts. False when a critter's frames are not here yet. */
+    private fun playWx(st: Weather.State, onStart: () -> Unit): Boolean {
+        val c = critter
+        if (c != null && WxPack.ready(this, c) == null) {
+            if (!wxAsked) { wxAsked = true; WxPack.request(this, c) }   // Wi-Fi by itself; settings has "지금 받기"
+            return false
+        }
+        onStart()
+        val my = ++wxToken
+        Thread {
+            val fr = c?.let { WxPack.frames(this, it, st.key) }
+            handler.post {
+                if (my != wxToken || wx != null || !running || brain == null || (c != null && fr == null)) {
+                    fr?.let { (a, l) -> (a + l).forEach(android.graphics.Bitmap::recycle) }
+                } else startWx(st, fr)
+            }
+        }.start()
+        return true
+    }
+
+    private fun startWx(st: Weather.State, fr: Pair<List<android.graphics.Bitmap>, List<android.graphics.Bitmap>>?) {
+        val b = brain ?: return
+        val v = view ?: return
+        val pet = petRect()
+        val w = WxActView(winCtx ?: this, st, fr?.first.orEmpty(), fr?.second.orEmpty(), pet, v.look.frontHeight(pet.width().toFloat()))
+        val p = w.params()
+        if (runCatching { wm.addView(w, p) }.isFailure) { w.recycle(); return }
+        wx = w; wxFrame = -1
+        touchedAt = SystemClock.uptimeMillis()
+        b.hold(w.lengthMs.toFloat())
+        if (w.framed) v.alpha = 0f   // the frames are the pet while it acts
+        closeTalk()
+        if (PetPrefs.talkOn(this)) {
+            val t = TalkBubble(winCtx ?: this, st.line, b.zone, w.lengthMs) { closeTalk() }
+            val screen = wm.currentWindowMetrics.bounds
+            // above the act's window: an umbrella or a cap reaches over the pet's box
+            val over = if (w.framed) android.graphics.Rect(pet.left, p.y, pet.right, p.y + w.hPx) else pet
+            runCatching { wm.addView(t, t.params(over, screen.width(), screen.height())) }.onSuccess { talk = t }
+        }
+    }
+
+    private fun endWx() {
+        wxToken++
+        val w = wx ?: return
+        wx = null
+        runCatching { wm.removeViewImmediate(w) }
+        w.recycle()
+        view?.alpha = 1f
+        closeTalk()
     }
 
     /** The window is the pet's 48 dp box; hopping moves the window, not the drawing (so nothing is clipped). */
@@ -474,7 +569,7 @@ class PetService : Service() {
                     }
                     else if (!moved && e.actionMasked == MotionEvent.ACTION_UP) {
                         val now = SystemClock.uptimeMillis()
-                        if (now - lastTap <= DOUBLE_MS) doubleTap(b) else b.tap()
+                        if (now - lastTap <= DOUBLE_MS) doubleTap(b) else tap(b)
                         lastTap = now
                     }
                     holding = false
