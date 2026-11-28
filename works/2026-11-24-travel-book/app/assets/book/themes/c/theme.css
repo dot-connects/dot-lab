@@ -48,3 +48,9 @@
 .t-c .rt{font:400 3.1cqw/var(--g) var(--f);color:var(--dim)}
 .t-c .col{font:400 2.9cqw/var(--g) var(--f);color:var(--dim);white-space:pre-line}
 .t-c .kraft .per,.t-c .kraft .col{color:var(--kink)}
+
+/* ---------- pose series: one '연속' group (poses seconds apart) per page; no time pen, the photos say it ---------- */
+/* seq-pick: the red-pen circles as on a contact sheet, the chosen one filled */
+.t-c .seq-pick .no{z-index:1;isolation:isolate;color:#fff}
+.t-c .seq-pick .no::before{z-index:-1;border-color:#fff}
+.t-c .seq-pick .no.pk::before{background:var(--red);border-color:var(--red)}

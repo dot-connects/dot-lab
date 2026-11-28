@@ -119,6 +119,9 @@ class AiClient {
   /// The layout job's state: {status: pending} | the plan {title, plan, pages} | {error} (AiFailed).
   Future<AiResult> result(String job) => _post('/result', {'job': job});
 
+  /// 다닌 길: OpenStreetMap shapes for [box] (south, west, north, east) from the Worker; no model, no money.
+  Future<AiResult> map(List<double> box, {bool detail = false}) => _post('/map', {'box': box, 'detail': detail});
+
   Future<AiResult> rewrite(List<AiImage> images, Map<String, String> page, String shape, {List<Map<String, String?>> notes = const []}) =>
       _post('/rewrite', {'images': images, 'page': page, 'notes': notes, 'shape': shape});
 

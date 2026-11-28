@@ -3,6 +3,7 @@
 import 'dart:convert';
 
 import 'book.dart';
+import 'book_layout.dart';
 import 'models.dart';
 
 /// A book font: [css] is the runtime's family (null = the theme's own), [preview] the app's cut-down copy for the card.
@@ -125,10 +126,10 @@ class BookEdit {
     if (slot >= p.ids.length) return RemoveResult.kept;
     final d = _def[p.layout];
     final rest = d == null || slot >= d.slots.length ? const <String>[] : ([...d.slots]..removeAt(slot));
-    // a page closing up never turns into a 네 컷 strip (that one is only for a pose series)
+    // a page closing up turns into a pose-series page only if it was one (those are only for a 연속 group)
     final fit = rest.isEmpty
         ? null
-        : defs.where((x) => x.kind == d!.kind && x.id != d.id && !x.id.endsWith('/fourcut') && _same(x.slots, rest)).firstOrNull;
+        : defs.where((x) => x.kind == d!.kind && x.id != d.id && (!isSeriesLayout(x) || isSeriesLayout(d)) && _same(x.slots, rest)).firstOrNull;
     final old = p.ids[slot];
     if (fit != null) {
       _remember();

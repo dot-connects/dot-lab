@@ -29,6 +29,9 @@ const layoutRules = {
 
 bool isIndexLayout(LayoutDef d) => d.id.contains('/ix');
 
+/// Pose-series pages (<t>/seq-*): only for a /pick 연속 group, never a home for other photos.
+bool isSeriesLayout(LayoutDef d) => d.id.contains('/seq-');
+
 /// What the model chooses from (index pages are appended by code, never chosen).
 List<Map<String, Object>> layoutCatalog(List<LayoutDef> defs) => [
       for (final d in defs)

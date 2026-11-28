@@ -617,7 +617,8 @@ class Pipeline {
   Future<AiState> write(Book b, {List<NoteInput> notes = const [], void Function(WriteStage stage, int done, int total)? onStage}) async {
     final pool = _pool(b);
     final picked = [for (final p in b.picks) pool[p.id]].whereType<Candidate>().toList();
-    final defs = offered(await _layouts(b.theme), b);
+    late final List<LayoutDef> defs;
+    final mapping = _routeMap(b); // Overpass takes ~40 s: it runs beside the previews
     final theme = layoutRules.containsKey(b.theme) ? b.theme : 'a';
     final rules = layoutRules[theme]!;
     final byId = {for (final c in picked) c.id: c};
@@ -666,6 +667,9 @@ class Pipeline {
         (job) async => ai.layout(await previews(), shots,
             job: job, theme: theme, catalog: layoutCatalog(defs), rules: rules.toJson(picked.length), scenes: outlineJson(scenes), notes: _notes(notes),
             opts: b.opts.toJson(), fix: fix, prev: prev));
+    await previews();
+    await mapping;
+    defs = offered(await _layouts(b.theme), b);
     final r = await run();
     if (r is! AiOk) return r is AiOff ? AiState.off : AiState.failed;
     var body = r.body;
@@ -690,6 +694,34 @@ class Pipeline {
     b.job = null;
     await store.save(b);
     return AiState.ok;
+  }
+
+  /// 다닌 길: the route and its maps, fetched once and saved in the book. No map (offline, Overpass busy) -> no route
+  /// page this time; b.map stays null so the next write asks again. Never throws.
+  Future<void> _routeMap(Book b) async {
+    if (b.map != null) return;
+    try {
+      final r = routeOf(b.pool);
+      if (r == null) {
+        b.map = {};
+        return;
+      }
+      final legs = (r['legs'] as List).cast<Map<String, Object?>>();
+      final got = await Future.wait([
+        ai.map((r['box'] as List).cast<double>()),
+        for (final l in legs) ai.map((l['box'] as List).cast<double>(), detail: true),
+      ]);
+      final base = got.first;
+      if (base is! AiOk) return;
+      final m = <String, dynamic>{...r, 'base': base.body};
+      nameStops(m, base.body);
+      for (final (i, l) in legs.indexed) {
+        final g = got[i + 1];
+        if (g is AiOk) l['map'] = g.body;
+      }
+      legs.retainWhere((l) => l['map'] != null && (l['n'] as int) > 0);
+      b.map = m;
+    } catch (_) {}
   }
 
   /// Start a layout job (unless b.job already names one) and wait for its plan. The job name is saved before the call,
@@ -891,18 +923,50 @@ Future<List<({double sharp, double luma, int dhash})>> _measureAll(List<Uint8Lis
 }
 
 /// What book.js renders: {id, theme, format, pages, media:{id:{src, video?}}}; files are served under /books/.
-/// The layouts this book may use. 네 컷 and 다닌 길 are held back (operator 11-27: the strip and the tile-less line
-/// looked cheap); pose series go into the themes' own multi-photo pages until diary / note versions and a real map
-/// are designed. Flip [_newPages] back on then.
-const _newPages = false;
+/// The layouts this book may use. Pose-series pages (<t>/seq-*) only when /pick found a 연속 group with 3+ picked
+/// shots. 다닌 길 (<t>/route, route-pins, route-legs) only with its map fetched; close-ups (legs) need 2 places.
+/// The map pages' `when` gets this trip's facts, so the editor can judge which of the three fits (operator 11-28).
 List<LayoutDef> offered(List<LayoutDef> defs, Book b) {
   final picked = {for (final p in b.picks) p.id};
-  final series = _newPages && b.groups.any((g) => g.$1 == '연속' && g.$2.where(picked.contains).length >= 3);
-  final route = _newPages && routeOf(b.pool) != null;
+  final series = b.groups.any((g) => g.$1 == '연속' && g.$2.where(picked.contains).length >= 3);
+  final m = b.map;
+  final route = m != null && m['base'] != null;
+  final legs = route && ((m['legs'] as List?)?.length ?? 0) >= 2;
+  final stops = route ? [for (final s in (m['stops'] as List)) (s as Map)['label']] : const [];
+  final stays = legs ? [for (final l in (m['legs'] as List)) (l as Map)['label']] : const [];
+  final facts = route
+      ? ' (이 여행: ${stops.join(' → ')}, 들른 곳 ${stops.length}곳, 이동 약 ${m['km']} km${legs ? ', 오래 머문 곳 ${stays.join('·')}' : ''})'
+      : '';
+  bool isMap(LayoutDef d) => d.id.endsWith('/route') || d.id.endsWith('/route-pins') || d.id.endsWith('/route-legs');
   return [
     for (final d in defs)
-      if ((!d.id.endsWith('/fourcut') || series) && (!d.id.endsWith('/route') || route)) d,
+      if ((!isSeriesLayout(d) || series) && (!isMap(d) || route) && (!d.id.endsWith('/route-legs') || legs))
+        isMap(d) ? LayoutDef(d.id, d.kind, d.slots, texts: d.texts, limits: d.limits, when: d.when + facts, formats: d.formats) : d,
   ];
+}
+
+/// 다닌 길 pins (style b): of the photos in the book with a position, the best one nearest each stop (at most 5).
+List<Map<String, Object>> _pins(Book b, Map<String, Candidate> pool, Set<String> ids) {
+  final stops = ((b.map?['stops'] as List?) ?? const []).cast<Map>();
+  final score = {for (final p in b.picks) p.id: p.score};
+  final best = <int, (String, double, double, num)>{};
+  for (final id in ids) {
+    final c = pool[id];
+    if (c == null || c.shot.isVideo || c.shot.lat == null || c.shot.lng == null || stops.isEmpty) continue;
+    var near = 0;
+    var nd = double.infinity;
+    for (final (i, s) in stops.indexed) {
+      final d = km((c.shot.lat!, c.shot.lng!), ((s['lat'] as num).toDouble(), (s['lng'] as num).toDouble()));
+      if (d < nd) {
+        near = i;
+        nd = d;
+      }
+    }
+    final sc = score[id] ?? 0;
+    if (best[near] == null || sc > best[near]!.$4) best[near] = (id, c.shot.lat!, c.shot.lng!, sc);
+  }
+  final keys = best.keys.toList()..sort();
+  return [for (final k in keys.take(5)) {'id': best[k]!.$1, 'lat': best[k]!.$2, 'lng': best[k]!.$3}];
 }
 
 Map<String, Object?> bookJs(Book b, {String base = '/books'}) {
@@ -915,7 +979,7 @@ Map<String, Object?> bookJs(Book b, {String base = '/books'}) {
     'toneMatch': b.opts.toneMatch,
     'pages': [for (final p in b.pages) p.toJson()],
     'style': {'font': b.font, 'size': textScale[b.textSize] ?? 1.0, 'cover': b.coverColor},
-    if (b.pages.any((p) => p.layout.endsWith('/route'))) 'route': routeOf(b.pool),
+    if (b.map?['base'] != null && b.pages.any((p) => p.layout.contains('/route'))) 'route': {...b.map!, 'pins': _pins(b, pool, ids)},
     'media': {
       for (final id in ids)
         id: {

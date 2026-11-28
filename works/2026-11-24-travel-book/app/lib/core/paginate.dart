@@ -5,6 +5,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'book_layout.dart';
 import 'models.dart';
 
 int recommendPages(int photos, int days) => 2 + days + (photos / 1.8).ceil();
@@ -56,7 +57,7 @@ double travelKm(List<Candidate> xs) {
 }) {
   final usable = defs.where((d) => d.formats.contains(o.format)).toList();
   LayoutDef? kind(String k) => usable.where((d) => d.kind == k).firstOrNull;
-  final photoDefs = usable.where((d) => d.kind == 'photo').toList();
+  final photoDefs = usable.where((d) => d.kind == 'photo' && !isSeriesLayout(d)).toList(); // series pages need a /pick group
   final videoDef = o.extras.contains('video') ? kind('video') : null;
   final score = {for (final x in p.picks) x.id: x.score};
   final caption = {for (final x in p.picks) x.id: x.caption};

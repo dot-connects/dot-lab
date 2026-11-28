@@ -6,6 +6,7 @@
 // Model: OpenAI Responses API (operator 11-25: use the GPT key already on hand); the MODEL var picks the model.
 // Money unit = mills (1/10 cent, integers). Reserve the worst case before the call, settle the real cost after.
 import { MemoryCounts, D1Counts } from "./counts.js";
+import { handleMap } from "./map.js";
 import { SYSTEM_PICK, SYSTEM_SCOUT, SCOUT_SCHEMA, systemWrite, systemRewrite, PICK_SCHEMA, WRITE_SCHEMA, REWRITE_SCHEMA,
   THEMES, systemLayout, LAYOUT_SCHEMA } from "./prompt.js";
 
@@ -233,9 +234,16 @@ const chars = body => JSON.stringify({ s: body.shots, n: body.notes, o: body.opt
 
 export async function handle(req, env, ctx, counts) {
   const url = new URL(req.url);
-  const route = ROUTES[url.pathname], result = url.pathname === "/result", made = url.pathname === "/made";
-  if (req.method !== "POST" || !(route || result || made)) return json({ error: "not found" }, 404);
+  const route = ROUTES[url.pathname], result = url.pathname === "/result", made = url.pathname === "/made", map = url.pathname === "/map";
+  if (req.method !== "POST" || !(route || result || made || map)) return json({ error: "not found" }, 404);
   if (!env.APP_TOKEN || req.headers.get("x-app-token") !== env.APP_TOKEN) return json({ error: "token" }, 401);
+  if (map) {   // 다닌 길: OpenStreetMap shapes for a box, no model, no money (map.js); 1-4 calls a book
+    if (env.SCOUT_LIMIT && !(await env.SCOUT_LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" })).success) return json({ error: "slow" }, 429);
+    let b;
+    try { b = await req.json(); } catch { return json({ error: "body" }, 400); }
+    const r = await handleMap(b, ctx);
+    return json(r.body, r.status);
+  }
   if (made) {   // the app's written books (idempotent) in, how many this phone has ever made out
     let b;
     try { b = await req.json(); } catch { return json({ error: "body" }, 400); }

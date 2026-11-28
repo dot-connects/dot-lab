@@ -163,3 +163,36 @@
 .t-mag .back .ph{inset:0}
 .t-mag .back .sb{position:absolute;inset:auto 0 0 0;height:30%;background:linear-gradient(0deg,rgba(10,10,10,.6),rgba(10,10,10,0))}
 .t-mag .back .mast{left:0;right:0;bottom:10cqw;text-align:center;color:#fff;font-size:6cqw;letter-spacing:.34em;text-indent:.34em}
+
+/* ---------- pose series: one '연속' group (poses seconds apart) per page ---------- */
+/* the best pose full bleed at the top, the other three on the columns under it */
+.t-mag .seq-hero .p0{left:0;right:0;top:0;height:70cqw}
+.t-mag .seq-hero .s{top:72cqw;width:27.333cqw;height:36.4cqw}
+.t-mag .seq-hero .p1{left:var(--M)}.t-mag .seq-hero .p2{left:36.333cqw}.t-mag .seq-hero .p3{left:65.667cqw}
+.t-mag .seq-hero .cp{left:var(--M);width:70cqw;top:111cqw}
+/* head + a short paragraph, four tall frames edge to edge across the page (triptych grammar) */
+.t-mag .seq-row .hd{left:var(--M);top:var(--T);font-size:5cqw;white-space:nowrap}
+.t-mag .seq-row .bd{left:var(--M);right:var(--M);top:17.5cqw;columns:1}
+.t-mag .seq-row .ph{top:46cqw;height:58cqw;width:24.625cqw}
+.t-mag .seq-row .p0{left:0}.t-mag .seq-row .p1{left:25.125cqw}.t-mag .seq-row .p2{left:50.25cqw}.t-mag .seq-row .p3{right:0}
+.t-mag .seq-row .cp{left:var(--M);width:70cqw;top:106.5cqw}
+/* three frames butted down one edge, a serif numeral and one short line beside each */
+.t-mag :is(.seq-lines,.seq-flip){counter-reset:s}
+.t-mag :is(.seq-lines,.seq-flip) .ph{height:44cqw}
+.t-mag :is(.seq-lines,.seq-flip) .p0{top:0}.t-mag :is(.seq-lines,.seq-flip) .p1{top:44.66cqw}.t-mag :is(.seq-lines,.seq-flip) .p2{top:89.33cqw}
+.t-mag .sl{font:500 3.3cqw/1.6 var(--f);letter-spacing:-.02em;counter-increment:s}
+.t-mag .sl::before{content:counter(s);display:block;font:400 6cqw/1.1 var(--s);color:var(--soft)}
+.t-mag :is(.seq-lines,.seq-flip) .l1{bottom:93.33cqw}.t-mag :is(.seq-lines,.seq-flip) .l2{bottom:48.67cqw}.t-mag :is(.seq-lines,.seq-flip) .l3{bottom:4cqw}
+.t-mag .seq-lines .ph{left:0;width:58cqw}
+.t-mag .seq-lines .sl{left:63cqw;right:var(--M)}
+.t-mag .seq-flip .ph{left:36.333cqw;right:0}
+.t-mag .seq-flip .sl{left:var(--M);width:25cqw}
+/* the chosen pose on four columns, the other three stacked in the last two, serif numerals */
+.t-mag .seq-pick .p0{left:var(--M);top:var(--T);width:56.333cqw;height:92cqw}
+.t-mag .seq-pick .s{left:65.667cqw;right:var(--M);height:29.78cqw}
+.t-mag .seq-pick .p1{top:var(--T)}.t-mag .seq-pick .p2{top:40.11cqw}.t-mag .seq-pick .p3{top:71.22cqw}
+.t-mag .sn{width:6cqw;height:6cqw;display:flex;align-items:center;justify-content:center;background:var(--paper);color:var(--ink);font:400 4.4cqw/1 var(--s)}
+.t-mag .sn.pk{background:var(--ink);color:var(--paper)}
+.t-mag .seq-pick .n0{left:var(--M);top:95cqw}.t-mag .seq-pick .n1{left:65.667cqw;top:32.78cqw}
+.t-mag .seq-pick .n2{left:65.667cqw;top:63.89cqw}.t-mag .seq-pick .n3{left:65.667cqw;top:95cqw}
+.t-mag .seq-pick .cp{left:var(--M);width:70cqw;top:104cqw}

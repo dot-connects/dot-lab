@@ -32,3 +32,7 @@
 .t-album .per{font:600 4.2cqw/1.2 var(--f);letter-spacing:.02em;white-space:nowrap}
 .t-album .col{font:500 3cqw/1.6 var(--f);white-space:pre-line;color:var(--dim)}
 .t-album .cloth .col{color:#CFC6B4}
+
+/* ---------- pose series: one '연속' group (poses seconds apart) per page ---------- */
+/* seq-pick: prints numbered on the lab border, the chosen one ringed in pen */
+.t-album .seq-pick .stp.pk::before{content:"";position:absolute;inset:-.9cqw -1.3cqw;border:.3cqw solid var(--lab);border-radius:50%}

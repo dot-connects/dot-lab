@@ -1,0 +1,46 @@
+{
+ "busan1": {
+  "title": "File:Colorful houses in Gamcheon Culture Village at sunset in Busan South Korea.jpg",
+  "url": "https://commons.wikimedia.org/wiki/File:Colorful_houses_in_Gamcheon_Culture_Village_at_sunset_in_Busan_South_Korea.jpg",
+  "license": "CC BY-SA 4.0",
+  "author": "Basile Morin"
+ },
+ "osaka1": {
+  "title": "File:Dotonbori, Osaka, at night, November 2016.jpg",
+  "url": "https://commons.wikimedia.org/wiki/File:Dotonbori,_Osaka,_at_night,_November_2016.jpg",
+  "license": "CC BY-SA 4.0",
+  "author": "Martin Falbisoner"
+ },
+ "gyeongju1": {
+  "title": "File:Bulguksa temple Gyeongju South Korea 20091111 104912.jpg",
+  "url": "https://commons.wikimedia.org/wiki/File:Bulguksa_temple_Gyeongju_South_Korea_20091111_104912.jpg",
+  "license": "CC BY 2.0",
+  "author": "UNC - CFC - USFK"
+ },
+ "kyoto2": {
+  "title": "File:Shinnyodo, Kyoto - Shinnyodo7781.jpg",
+  "url": "https://commons.wikimedia.org/wiki/File:Shinnyodo,_Kyoto_-_Shinnyodo7781.jpg",
+  "license": "CC0",
+  "author": "Daderot (Wikimedia Commons)"
+ },
+ "udo": {
+  "url": "https://unsplash.com/photos/xRtl5d0yNwQ",
+  "author": "Drew Bae",
+  "license": "Unsplash License"
+ },
+ "d2": {
+  "url": "https://unsplash.com/photos/0fn738pHrgQ",
+  "author": "oning",
+  "license": "Unsplash License"
+ },
+ "hyeopjae": {
+  "title": "File:Hyeopjae Beach Scenery.jpg",
+  "license": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Hyeopjae_Beach_Scenery.jpg"
+ },
+ "seongsan": {
+  "title": "File:Hydrangea macrophylla in front of Seongsan Ilchulbong volcano at blue hour in Jeju Island South Korea.jpg",
+  "license": "CC BY-SA 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Hydrangea_macrophylla_in_front_of_Seongsan_Ilchulbong_volcano_at_blue_hour_in_Jeju_Island_South_Korea.jpg"
+ }
+}

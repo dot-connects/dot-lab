@@ -119,3 +119,33 @@
 .t-diary .end .rule{top:100.6cqw}
 .t-diary .end .colt{top:103.6cqw}
 .t-diary .end .col{top:109.4cqw}
+
+/* ---------- pose series: one '연속' group (poses seconds apart) per page, frames butted ---------- */
+/* the best pose off the top and sides, the other three in one row on the margin lines */
+.t-diary .seq-hero .p0{left:0;right:0;top:0;height:74cqw}
+.t-diary .seq-hero .s{top:75.2cqw;width:25.73cqw;height:34.3cqw}
+.t-diary .seq-hero .p1{left:var(--M)}.t-diary .seq-hero .p2{left:37.13cqw}.t-diary .seq-hero .p3{right:var(--M)}
+.t-diary .seq-hero .bd{top:114.6cqw}
+/* four tall frames edge to edge across the page, the entry above and under */
+.t-diary .seq-row .bd{top:var(--T)}
+.t-diary .seq-row .ph{top:30cqw;height:54cqw;width:24.625cqw}
+.t-diary .seq-row .p0{left:0}.t-diary .seq-row .p1{left:25.125cqw}.t-diary .seq-row .p2{left:50.25cqw}.t-diary .seq-row .p3{right:0}
+.t-diary .seq-row .b2{top:90cqw}
+/* three frames butted down one edge, one short line beside each (seq-lines left, seq-flip right) */
+.t-diary :is(.seq-lines,.seq-flip) .ph{height:44cqw}
+.t-diary :is(.seq-lines,.seq-flip) .p0{top:0}.t-diary :is(.seq-lines,.seq-flip) .p1{top:44.66cqw}.t-diary :is(.seq-lines,.seq-flip) .p2{top:89.33cqw}
+.t-diary .sl{font:400 3.5cqw/1.86 var(--f);letter-spacing:-.025em}
+.t-diary :is(.seq-lines,.seq-flip) .l1{bottom:93.33cqw}.t-diary :is(.seq-lines,.seq-flip) .l2{bottom:48.67cqw}.t-diary :is(.seq-lines,.seq-flip) .l3{bottom:4cqw}
+.t-diary .seq-lines .ph{left:0;width:58cqw}
+.t-diary .seq-lines .sl{left:63cqw;right:6cqw}
+.t-diary .seq-flip .ph{left:38cqw;right:0}
+.t-diary .seq-flip .sl{left:var(--M);width:24cqw}
+/* the chosen pose big off the left edge, the other three butted off the right, numbered like a contact sheet */
+.t-diary .seq-pick .p0{left:0;top:0;width:63cqw;height:96cqw}
+.t-diary .seq-pick .s{left:63.66cqw;right:0;height:31.55cqw}
+.t-diary .seq-pick .p1{top:0}.t-diary .seq-pick .p2{top:32.22cqw}.t-diary .seq-pick .p3{top:64.45cqw}
+.t-diary .sn{width:5.2cqw;height:5.2cqw;display:flex;align-items:center;justify-content:center;background:var(--paper);color:var(--ink);font:700 2.8cqw/1 var(--f)}
+.t-diary .sn.pk{background:var(--ink);color:var(--paper)}
+.t-diary .seq-pick .n0{left:0;top:90.8cqw}.t-diary .seq-pick .n1{left:63.66cqw;top:26.35cqw}
+.t-diary .seq-pick .n2{left:63.66cqw;top:58.57cqw}.t-diary .seq-pick .n3{left:63.66cqw;top:90.8cqw}
+.t-diary .seq-pick .bd{top:103cqw}

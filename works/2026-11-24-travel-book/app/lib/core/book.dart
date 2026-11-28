@@ -26,6 +26,9 @@ class Book {
   List<String> spare;
   String? job; // the AI editor's server job while it runs (survives the app being closed); null when idle
   List<(String kind, List<String> ids)> groups; // /pick's page groups (연속 · 음식), handed to the layout editor
+  // 다닌 길: route.dart's routeOf + the Worker's maps (base, legs[i].map), fetched once before the layout;
+  // {} = this trip has no route; null = not asked yet (or the map could not be fetched: asked again next time)
+  Map<String, dynamic>? map;
 
   Book({
     required this.id,
@@ -51,6 +54,7 @@ class Book {
     this.spare = const [],
     this.job,
     this.groups = const [],
+    this.map,
   })  : mustInclude = mustInclude ?? {},
         texts = texts ?? {};
 
@@ -64,6 +68,7 @@ class Book {
           'coverColor': coverColor, 'font': font, 'size': textSize, 'pages': [for (final p in pages) p.toJson()],
         'original': [for (final p in original) p.toJson()], 'spare': spare, 'job': job,
         'groups': [for (final (k, ids) in groups) {'kind': k, 'ids': ids}],
+        if (map != null) 'map': map,
       };
 
   factory Book.fromJson(Map<String, dynamic> j) => Book(
@@ -91,6 +96,7 @@ class Book {
         original: [for (final p in j['original'] as List) PageSpec.fromJson(p as Map<String, dynamic>)],
         spare: (j['spare'] as List).cast<String>(),
         job: j['job'] as String?,
+        map: j['map'] as Map<String, dynamic>?,
         groups: [
           for (final g in (j['groups'] as List? ?? const []))
             if (g is Map) (g['kind'] as String, (g['ids'] as List).cast<String>()),

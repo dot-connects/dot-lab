@@ -324,3 +324,51 @@ test("/pick: main-scene marks and the 'about N, at most M' line reach the model"
   assert.ok(text.includes('"물속 거북이" 9장'));
   assert.ok(text.includes("약 8장, 많아도 10장"));
 });
+
+// ---- /map (다닌 길): box checks and the coast -> land polygons
+import { cleanBox, landOf, joinChains, clipLine, shapeMap } from "../src/map.js";
+
+test("map: a box is rounded outward and bounded", () => {
+  assert.deepEqual(cleanBox([-8.694, 115.431, -8.661, 115.468]), [-8.7, 115.43, -8.66, 115.47]);
+  assert.equal(cleanBox([0, 0, 20, 20]), null);          // wider than 12°
+  assert.equal(cleanBox([1, 2, 3]), null);
+  assert.equal(cleanBox([0, 0, "1", 1]), null);
+});
+
+test("map: ways that continue each other join in any order", () => {
+  const a = [[0, 0], [0, 1]], b = [[0, 1], [0, 2]], c = [[0, 2], [0, 3]];
+  const out = joinChains([b, c, a]);
+  assert.equal(out.length, 1);
+  assert.deepEqual(out[0], [[0, 0], [0, 1], [0, 2], [0, 3]]);
+});
+
+test("map: a coast crossing the box closes along the edge on the land side", () => {
+  const box = [0, 0, 10, 10];
+  // a coast running south to north along x=5: land on the left (west half)
+  const { land, sea } = landOf([[[-1, 5], [11, 5]]], box);
+  assert.equal(sea, true);
+  assert.equal(land.length, 1);
+  const lngs = land[0].map(p => p[1]);
+  assert.ok(Math.max(...lngs) <= 5 + 1e-9 && Math.min(...lngs) === 0); // the west half, edge corners included
+});
+
+test("map: a closed island crossing the edge is still one ring (clipped from outside)", () => {
+  const box = [0, 0, 10, 10];
+  const ring = [[5, 8], [5, 12], [7, 12], [7, 8], [5, 8]].map(([la, lo]) => [la, lo]); // starts inside the box
+  // counter-clockwise (land on the left) in lat/lng: reorder to (lat,lng) going CCW
+  const ccw = [[5, 8], [5, 12], [7, 12], [7, 8], [5, 8]];
+  const { land } = landOf([ccw], box);
+  assert.equal(land.length, 1);
+  assert.ok(land[0].every(p => p[1] <= 10 + 1e-9));
+});
+
+test("map: no coast means an inland box (land everywhere)", () => {
+  const m = shapeMap({ elements: [] }, [0, 0, 1, 1], false);
+  assert.equal(m.sea, false);
+  assert.deepEqual(m.land, []);
+});
+
+test("map: lines are cut at the box", () => {
+  const runs = clipLine([[5, -5], [5, 5], [5, 15]], [0, 0, 10, 10]);
+  assert.deepEqual(runs, [[[5, 0], [5, 5], [5, 10]]]);
+});

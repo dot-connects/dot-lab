@@ -147,3 +147,31 @@
 .t-b .end-photo .last{left:var(--M);width:76cqw;top:79cqw;font:500 4.2cqw/1.55 var(--f);letter-spacing:-.03em}
 .t-b .end-photo .colo{left:var(--M);width:70cqw;bottom:9cqw}
 .t-b .colo{white-space:pre-line}
+
+/* ---------- pose series: one '연속' group (poses seconds apart) per page, edge to edge like e-grid4 ---------- */
+.t-b .seq-hero .p0{left:0;right:0;top:0;height:74cqw}
+.t-b .seq-hero .s{top:75.2cqw;width:32.53cqw;height:40cqw}
+.t-b .seq-hero .p1{left:0}.t-b .seq-hero .p2{left:33.73cqw}.t-b .seq-hero .p3{right:0}
+.t-b .seq-hero .cp{left:var(--M);width:72cqw;top:119.4cqw}
+/* entry head, four tall frames across the page, the memo under them */
+.t-b .seq-row .col{left:var(--M);right:var(--M);top:9cqw}
+.t-b .seq-row .ph{top:34cqw;height:54cqw;width:24.625cqw}
+.t-b .seq-row .p0{left:0}.t-b .seq-row .p1{left:25.125cqw}.t-b .seq-row .p2{left:50.25cqw}.t-b .seq-row .p3{right:0}
+.t-b .seq-row .mm{left:var(--M);width:69.6cqw;top:92cqw}
+/* three frames butted down one edge, one short line beside each */
+.t-b :is(.seq-lines,.seq-flip) .ph{height:44cqw}
+.t-b :is(.seq-lines,.seq-flip) .p0{top:0}.t-b :is(.seq-lines,.seq-flip) .p1{top:44.66cqw}.t-b :is(.seq-lines,.seq-flip) .p2{top:89.33cqw}
+.t-b :is(.seq-lines,.seq-flip) .l1{bottom:93.33cqw}.t-b :is(.seq-lines,.seq-flip) .l2{bottom:48.67cqw}.t-b :is(.seq-lines,.seq-flip) .l3{bottom:4cqw}
+.t-b .seq-lines .ph{left:0;width:58cqw}
+.t-b .seq-lines .sl{left:63.2cqw;right:var(--M)}
+.t-b .seq-flip .ph{left:36.8cqw;right:0}
+.t-b .seq-flip .sl{left:var(--M);width:24cqw}
+/* the chosen pose big, the other three butted on the right, numbered in the accent */
+.t-b .seq-pick .p0{left:0;top:0;width:63cqw;height:110cqw}
+.t-b .seq-pick .s{left:64.2cqw;right:0;height:36.27cqw}
+.t-b .seq-pick .p1{top:0}.t-b .seq-pick .p2{top:36.87cqw}.t-b .seq-pick .p3{top:73.73cqw}
+.t-b .sn{width:5.2cqw;height:5.2cqw;display:flex;align-items:center;justify-content:center;background:var(--paper);color:var(--acc);font:700 2.8cqw/1 var(--f)}
+.t-b .sn.pk{background:var(--acc);color:var(--paper)}
+.t-b .seq-pick .n0{left:0;top:104.8cqw}.t-b .seq-pick .n1{left:64.2cqw;top:31.07cqw}
+.t-b .seq-pick .n2{left:64.2cqw;top:67.94cqw}.t-b .seq-pick .n3{left:64.2cqw;top:104.8cqw}
+.t-b .seq-pick .cp{left:var(--M);width:72cqw;top:115.4cqw}

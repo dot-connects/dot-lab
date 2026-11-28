@@ -52,3 +52,11 @@
 .t-photo .last .g{inset:auto 0 0 auto;width:70cqw;height:93.33cqw}
 .t-photo .ix12 .g{grid-template:repeat(4,1fr)/repeat(3,1fr)}
 .t-photo .ix20 .g{grid-template:repeat(5,1fr)/repeat(4,1fr)}
+
+/* ---------- pose series: one '연속' group (poses seconds apart) per page, no words ---------- */
+.t-photo .seq-hero .g{grid-template:2.6fr 1fr/repeat(3,1fr)}.t-photo .seq-hero .g>div:first-child{grid-column:1/4}
+/* four tall frames across, paper above (a breath inside the day) */
+.t-photo .seq-row .g{top:50cqw;grid-template:1fr/repeat(4,1fr)}
+.t-photo .seq-lines .g{inset:0 25cqw 0 0;grid-template:repeat(3,1fr)/1fr}
+.t-photo .seq-flip .g{inset:0 0 0 25cqw;grid-template:repeat(3,1fr)/1fr}
+.t-photo .seq-pick .g{grid-template:repeat(3,1fr)/2.2fr 1fr}.t-photo .seq-pick .g>div:first-child{grid-row:1/4}

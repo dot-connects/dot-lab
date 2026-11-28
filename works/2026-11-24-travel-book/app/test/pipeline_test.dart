@@ -130,6 +130,9 @@ class FakeAi implements AiClient {
   final polled = <String>[];
 
   @override
+  Future<AiResult> map(List<double> box, {bool detail = false}) async => const AiFailed('no map');
+
+  @override
   Future<AiResult> result(String job) async {
     polled.add(job);
     if (pendingFor > 0) {

@@ -1,0 +1,121 @@
+/* kfonts: Spoqa Han Sans Neo:400;500;700 */
+/* diary 「일기」 r11d: a travel diary printed as a prose book (refs11/diary). Words lead, photos keep them company.
+   Page 100 x 133.33cqw on warm book paper. One frame for every template:
+   - side margins M 10.5cqw -> text measure 79cqw (~23 Korean chars a line, refs 02·10·13 run 26-31 on paper)
+   - text starts on the top line T 12cqw; folio bottom outer, 2.8cqw
+   - photos either bleed off one or more page edges, or sit on the margin lines (79 wide); none float
+   Type: body 3.5 / lh 1.86, paragraph = one empty line (ref 02) / caption 3.1 / day head 5.8 bold / cover 13-18. */
+.t-diary{--paper:#F7F4EE;--ink:#22211F;--soft:#67625A;--rule:#C9C2B6;--tone:#DDD7CC;
+  --M:10.5cqw;--T:12cqw;--G:2.4cqw;--f:"Spoqa Han Sans Neo",sans-serif}
+.t-diary .pg{container-type:inline-size;position:relative;overflow:hidden;background:var(--paper);color:var(--ink);
+  font-family:var(--f);word-break:keep-all;overflow-wrap:break-word}
+.t-diary .pg p,.t-diary .pg h3{margin:0;position:absolute}
+.t-diary .ph{position:absolute;overflow:hidden;background:var(--tone)}
+.t-diary .ph img,.t-diary .ph video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+
+/* type */
+.t-diary .bd{left:var(--M);right:var(--M);font:400 3.5cqw/1.86 var(--f);letter-spacing:-.025em;white-space:pre-line;text-wrap:pretty}
+.t-diary .cp{font:400 3.1cqw/1.6 var(--f);letter-spacing:-.015em;color:var(--soft)}
+.t-diary .hd{left:var(--M);top:var(--T);font:700 5.8cqw/1.2 var(--f);letter-spacing:-.04em;white-space:nowrap}
+.t-diary .pl{left:var(--M);top:20.6cqw;font:400 3.2cqw/1.4 var(--f);color:var(--soft);letter-spacing:-.01em;white-space:nowrap}
+/* lead word of a short note: same size as the body, bold (diary entries split by time of day) */
+.t-diary .lw{left:var(--M);font:700 3.5cqw/1.86 var(--f);letter-spacing:-.02em}
+.t-diary .pg.fo::after{content:attr(data-page);position:absolute;right:var(--M);bottom:5cqw;font:400 2.8cqw/1 var(--f);color:var(--soft)}
+/* words over a photo: white on a soft top shade (contrast checked >= 4.5) */
+.t-diary .shade{position:absolute;left:0;right:0;top:0;height:48%;background:linear-gradient(180deg,rgba(14,13,11,.7),rgba(14,13,11,.5) 55%,rgba(14,13,11,0))}
+.t-diary .on{color:#fff}
+
+/* ---------- covers ---------- */
+/* photo off the top and sides, title on the paper under it */
+.t-diary .c-window .ph{left:0;right:0;top:0;height:88cqw}
+.t-diary .c-window .ttl{left:calc(var(--M) - .05em);top:97cqw;font:700 13cqw/1 var(--f);letter-spacing:-.06em;white-space:nowrap}
+.t-diary .c-window .sub{left:var(--M);top:115cqw;font-size:3.2cqw}
+/* title words stacked on the paper, a tall photo off the bottom-right corner */
+.t-diary .c-paper .ttl{left:calc(var(--M) - .05em);top:12cqw;width:60cqw;font:700 17cqw/1.04 var(--f);letter-spacing:-.06em}
+.t-diary .c-paper .sub{left:var(--M);top:52cqw;font-size:3.2cqw}
+.t-diary .c-paper .ph{left:34cqw;right:0;top:62cqw;bottom:0}
+/* full bleed, title in the sky (ref 03) */
+.t-diary .c-over .ph{inset:0}
+.t-diary .c-over .ttl{left:calc(var(--M) - .05em);top:var(--T);font:700 15cqw/1 var(--f);letter-spacing:-.06em;white-space:nowrap}
+.t-diary .c-over .sub{left:var(--M);top:30cqw;font:500 3.4cqw/1.4 var(--f)}
+
+/* ---------- day openers: the date leads, as in a diary ---------- */
+/* date + place, the day's first wide photo off the right edge, the entry starts under it (ref 01) */
+.t-diary .op-photo .ph{left:var(--M);right:0;top:30cqw;height:56cqw}
+.t-diary .op-photo .bd{top:92cqw}
+/* date + place + a long first paragraph, a wide strip off the bottom */
+.t-diary .op-text .bd{top:30cqw}
+.t-diary .op-text .ph{left:0;right:0;top:88cqw;bottom:0}
+/* the day's strongest photo full bleed, date in white at the top (ref 03) */
+.t-diary .op-bleed .ph{inset:0}
+
+/* ---------- inside ---------- */
+.t-diary .text .bd{top:var(--T)}
+
+.t-diary .text-photo .bd{top:var(--T)}
+.t-diary .text-photo .ph{left:0;right:0;top:77cqw;bottom:0}
+
+.t-diary .photo-text .ph{left:0;right:0;top:0;height:66cqw}
+.t-diary .photo-text .bd{top:73cqw}
+
+.t-diary .plate .ph{left:var(--M);right:var(--M);top:10cqw;height:104cqw}
+.t-diary .plate .cp{left:var(--M);right:var(--M);top:116.6cqw}
+
+.t-diary .bleed .ph{inset:0}
+
+/* a tall photo off the left edge, a short note at the foot of the right column (ref 21) */
+.t-diary .side .ph{left:0;top:0;bottom:0;width:60cqw}
+.t-diary .side .cp{left:65cqw;right:var(--M);bottom:12cqw}
+
+.t-diary .stack .ph{left:var(--M);right:var(--M);height:50cqw}
+.t-diary .stack .p0{top:10cqw}.t-diary .stack .p1{top:62.4cqw}
+.t-diary .stack .cp{left:var(--M);right:var(--M);top:115cqw}
+
+/* two portraits side by side, the entry under them (ref 21: date page facing two photos) */
+.t-diary .pair .ph{top:10cqw;width:38.3cqw;height:51cqw}
+.t-diary .pair .p0{left:var(--M)}.t-diary .pair .p1{right:var(--M)}
+.t-diary .pair .bd{top:67cqw}
+
+/* one remembered line, then the photo it belongs to off three edges (ref 11) */
+.t-diary .quote .ln{left:var(--M);right:var(--M);top:var(--T);font:500 4.6cqw/1.5 var(--f);letter-spacing:-.035em}
+.t-diary .quote .ph{left:0;right:0;top:34cqw;bottom:0}
+
+.t-diary .lead3 .p0{left:var(--M);right:var(--M);top:10cqw;height:52.7cqw}
+.t-diary .lead3 .s{top:65.1cqw;width:38.3cqw;height:38.3cqw}
+.t-diary .lead3 .p1{left:var(--M)}.t-diary .lead3 .p2{right:var(--M)}
+.t-diary .lead3 .bd{top:107cqw}
+
+.t-diary .strip3 .ph{left:var(--M);right:var(--M);height:30.4cqw}
+.t-diary .strip3 .p0{top:10cqw}.t-diary .strip3 .p1{top:42.8cqw}.t-diary .strip3 .p2{top:75.6cqw}
+.t-diary .strip3 .bd{top:109.6cqw}
+
+.t-diary .grid4 .ph{width:38.3cqw;height:38.3cqw}
+.t-diary .grid4 .p0,.t-diary .grid4 .p2{left:var(--M)}.t-diary .grid4 .p1,.t-diary .grid4 .p3{right:var(--M)}
+.t-diary .grid4 .p0,.t-diary .grid4 .p1{top:10cqw}.t-diary .grid4 .p2,.t-diary .grid4 .p3{top:50.7cqw}
+.t-diary .grid4 .bd{top:95cqw}
+
+/* a near-square photo on the margin with a pencil-size note beside it, the entry under both */
+.t-diary .memo .ph{left:var(--M);top:var(--T);width:47cqw;height:47cqw}
+.t-diary .memo .cp{left:61cqw;right:var(--M);top:calc(var(--T) - .6cqw)}
+.t-diary .memo .bd{top:66cqw}
+
+/* one photo, then two short entries led by a word for the time of day */
+.t-diary .notes .ph{left:0;right:0;top:0;height:58cqw}
+.t-diary .notes .w1{top:64cqw}.t-diary .notes .b1{top:70.6cqw}
+.t-diary .notes .w2{top:94cqw}.t-diary .notes .b2{top:100.6cqw}
+
+/* ---------- the end ---------- */
+.t-diary .rule{position:absolute;left:var(--M);width:24cqw;border-top:.25cqw solid var(--rule)}
+.t-diary .col{left:var(--M);right:var(--M);white-space:pre-line}
+.t-diary .colt{left:var(--M);font:700 3.5cqw/1.4 var(--f)}
+
+.t-diary .end-photo .ph{left:var(--M);right:var(--M);top:var(--T);height:53cqw}
+.t-diary .end-photo .bd{top:71cqw}
+.t-diary .end-photo .rule{top:100.6cqw}
+.t-diary .end-photo .colt{top:103.6cqw}
+.t-diary .end-photo .col{top:109.4cqw}
+
+.t-diary .end .bd{top:40cqw}
+.t-diary .end .rule{top:100.6cqw}
+.t-diary .end .colt{top:103.6cqw}
+.t-diary .end .col{top:109.4cqw}
