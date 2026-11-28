@@ -373,3 +373,14 @@ test("map: lines are cut at the box", () => {
   const runs = clipLine([[5, -5], [5, 5], [5, 15]], [0, 0, 10, 10]);
   assert.deepEqual(runs, [[[5, 0], [5, 5], [5, 10]]]);
 });
+
+test("names: Korean names in the same order; a wrong count from the model is an error, bad input 400", async () => {
+  env.fetchModel = fakeFetch({ reply: ok({ ko: ["렘봉안", "길리 트라왕안"] }) });
+  const r = await call({ names: ["Nusa Lembongan", "Gili Trawangan"] }, { path: "/names" });
+  assert.deepEqual(r.body, { ko: ["렘봉안", "길리 트라왕안"] });
+  assert.ok(month() > 0);
+  env.fetchModel = fakeFetch({ reply: ok({ ko: ["렘봉안"] }) });
+  assert.deepEqual((await call({ names: ["a", "b"] }, { path: "/names" })).body, { error: "model" });
+  assert.equal((await call({ names: Array(13).fill("x") }, { path: "/names" })).status, 400);
+  assert.equal((await call({ names: [] }, { path: "/names" })).status, 400);
+});

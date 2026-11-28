@@ -122,6 +122,9 @@ class AiClient {
   /// 다닌 길: OpenStreetMap shapes for [box] (south, west, north, east) from the Worker; no model, no money.
   Future<AiResult> map(List<double> box, {bool detail = false}) => _post('/map', {'box': box, 'detail': detail});
 
+  /// 다닌 길: map place names (Latin script) in Korean, same order ({ko: [...]}); public names only.
+  Future<AiResult> names(List<String> names) => _post('/names', {'names': names});
+
   Future<AiResult> rewrite(List<AiImage> images, Map<String, String> page, String shape, {List<Map<String, String?>> notes = const []}) =>
       _post('/rewrite', {'images': images, 'page': page, 'notes': notes, 'shape': shape});
 

@@ -34,6 +34,9 @@ Map<String, Object>? routeOf(List<Candidate> pool) {
   final mid = (_median([for (final c in xs) c.shot.lat!]), _median([for (final c in xs) c.shot.lng!]));
   final dist = [for (final c in xs) km(at(c), mid)]..sort();
   final reach = math.max(50.0, dist[((dist.length - 1) * 0.75).floor()] * 3);
+  // where the trip started from (the first photo far away, before the trip): the locator inset's other end
+  final firstNear = xs.indexWhere((c) => km(at(c), mid) <= reach);
+  final from = firstNear > 0 ? at(xs[firstNear - 1]) : null;
   xs = [for (final c in xs) if (km(at(c), mid) <= reach) c];
   if (xs.length < 3) return null;
   final all = [for (final c in xs) at(c)];
@@ -100,6 +103,7 @@ Map<String, Object>? routeOf(List<Candidate> pool) {
         {'lat': _r5(_centre(x.s.pts).$1), 'lng': _r5(_centre(x.s.pts).$2), 'n': x.n, 'label': x.s.label, 'sub': _days(x.s.days)},
     ],
     'visits': visits,
+    if (from != null && km(from, mid) > 300) 'from': [_r5(from.$1), _r5(from.$2)],
     'box': boxAround(all),
     'km': total.round(),
     'legs': [

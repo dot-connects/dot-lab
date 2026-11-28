@@ -24,6 +24,11 @@ const ROUTES = {
   "/layout": { images: 72, tokens: () => 40000, day: ["dw", "WRITE_DAY", 60] },
 };
 const MAX_CATALOG = 80, MAX_PREV = 100_000;
+const NAMES_MILLS = 2;   // /names: ~300 tokens in and out on the small model, rounded up (never settled)
+const SYSTEM_NAMES = "여행 책 지도에 쓸 지명을 한국어로 바꾼다. 받은 순서대로 같은 개수의 이름을 낸다. " +
+  "한국에서 흔히 쓰는 표기가 있으면 그것(예: 섬 이름은 '~ 섬'을 붙이지 않고 고유 이름만), 없으면 현지 발음대로 한글로 적는다. " +
+  "이미 한국어면 그대로. 설명은 붙이지 않는다.";
+const NAMES_SCHEMA = { type: "object", additionalProperties: false, required: ["ko"], properties: { ko: { type: "array", items: { type: "string" } } } };
 const SHAPES = ["short", "diary", "mag"];
 const MAX_B64 = 400_000;           // one 512 px JPEG is ~40-80 KB as base64
 // gpt-5.4: $2.50 / M input = 0.0025 mills a token, $15 / M output (reasoning included) = 0.015 mills a token
@@ -234,8 +239,8 @@ const chars = body => JSON.stringify({ s: body.shots, n: body.notes, o: body.opt
 
 export async function handle(req, env, ctx, counts) {
   const url = new URL(req.url);
-  const route = ROUTES[url.pathname], result = url.pathname === "/result", made = url.pathname === "/made", map = url.pathname === "/map";
-  if (req.method !== "POST" || !(route || result || made || map)) return json({ error: "not found" }, 404);
+  const route = ROUTES[url.pathname], result = url.pathname === "/result", made = url.pathname === "/made", map = url.pathname === "/map", names = url.pathname === "/names";
+  if (req.method !== "POST" || !(route || result || made || map || names)) return json({ error: "not found" }, 404);
   if (!env.APP_TOKEN || req.headers.get("x-app-token") !== env.APP_TOKEN) return json({ error: "token" }, 401);
   if (map) {   // 다닌 길: OpenStreetMap shapes for a box, no model, no money (map.js); 1-4 calls a book
     if (env.SCOUT_LIMIT && !(await env.SCOUT_LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" })).success) return json({ error: "slow" }, 429);
@@ -243,6 +248,30 @@ export async function handle(req, env, ctx, counts) {
     try { b = await req.json(); } catch { return json({ error: "body" }, 400); }
     const r = await handleMap(b, ctx);
     return json(r.body, r.status);
+  }
+  if (names) {   // 다닌 길: the map's place names in Korean (public names only, ≤ 12 a book, small model)
+    if (env.SCOUT_LIMIT && !(await env.SCOUT_LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" })).success) return json({ error: "slow" }, 429);
+    let b;
+    try { b = await req.json(); } catch { return json({ error: "body" }, 400); }
+    const list = b?.names;
+    if (!Array.isArray(list) || !list.length || list.length > 12 || !list.every(n => typeof n === "string" && n.length > 0 && n.length <= 60)) return json({ error: "body" }, 400);
+    if (!env.OPENAI_KEY) return json({ error: "off" }, 503);
+    const cap = num(env.MONTH_CENTS, 1000) * 10;
+    if (cap <= 0 || !(await counts.add(`m|${kst().slice(0, 7)}`, NAMES_MILLS, cap))) return json({ error: "off" }, 503);
+    try {
+      const r = await (env.fetchModel || fetch)(OPENAI_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${env.OPENAI_KEY}` },
+        body: JSON.stringify({ model: env.SCOUT_MODEL || "gpt-5.4-mini", max_output_tokens: 1500, reasoning: { effort: "low" }, store: false,
+          input: [{ role: "system", content: SYSTEM_NAMES }, { role: "user", content: JSON.stringify(list) }],
+          text: { format: { type: "json_schema", name: "names", schema: NAMES_SCHEMA, strict: true } } }),
+      });
+      const out = JSON.parse((await r.json()).output?.find(o => o.type === "message")?.content?.[0]?.text ?? "{}");
+      const ko = Array.isArray(out.ko) && out.ko.length === list.length && out.ko.every(k => typeof k === "string" && k.length <= 30) ? out.ko : null;
+      return json(ko ? { ko } : { error: "model" });
+    } catch {
+      return json({ error: "model" });
+    }
   }
   if (made) {   // the app's written books (idempotent) in, how many this phone has ever made out
     let b;

@@ -164,6 +164,34 @@
     g.append(t);
   }
 
+  /** Where the trip is on the globe: Natural Earth land (land110.js), a line from where it started (style a). */
+  function locator(g, r, x, y, w, h) {
+    const land = window.LAND110;
+    if (!land || !r.from) return;
+    const to = [r.stops.reduce((a, s) => a + s.lat, 0) / r.stops.length, r.stops.reduce((a, s) => a + s.lng, 0) / r.stops.length];
+    const la0 = Math.min(r.from[0], to[0]), la1 = Math.max(r.from[0], to[0]), lo0 = Math.min(r.from[1], to[1]), lo1 = Math.max(r.from[1], to[1]);
+    const span = Math.max(la1 - la0, (lo1 - lo0) * h / w, 8) * 1.5, k = h / span, cla = (la0 + la1) / 2, clo = (lo0 + lo1) / 2;
+    const P = (la, lo) => [x + w / 2 + (lo - clo) * k, y + h / 2 - (la - cla) * k];
+    const box = sv("svg", { x, y, width: w, height: h, viewBox: `${x} ${y} ${w} ${h}`, overflow: "hidden" });
+    box.append(sv("rect", { x, y, width: w, height: h, "stroke-width": 0.6 }, `fill:${MAPC.sea};stroke:${MAPC.coast}`));
+    let d = "";
+    for (const ring of land) {
+      let s = "", lx = 1e9;
+      for (let i = 0; i < ring.length; i += 2) {
+        const [px, py] = P(ring[i + 1], ring[i]);
+        s += (s ? "L" : "M") + px.toFixed(1) + "," + py.toFixed(1);
+        lx = px;
+      }
+      d += s + "Z";
+    }
+    box.append(sv("path", { d }, `fill:${MAPC.coast};opacity:.55`));
+    const [ax, ay] = P(r.from[0], r.from[1]), [bx, by] = P(to[0], to[1]);
+    const mx = (ax + bx) / 2 + (by - ay) * 0.2, my = (ay + by) / 2 - (bx - ax) * 0.2;
+    box.append(sv("path", { d: `M${ax.toFixed(1)},${ay.toFixed(1)}Q${mx.toFixed(1)},${my.toFixed(1)} ${bx.toFixed(1)},${by.toFixed(1)}`, fill: "none", "stroke-width": 1 }, `stroke:${MAPC.ink}`));
+    box.append(sv("circle", { cx: ax, cy: ay, r: 1.8 }, `fill:${MAPC.ink}`), sv("circle", { cx: bx, cy: by, r: 2.4 }, `fill:${MAPC.ink}`));
+    g.append(box);
+  }
+
   function numDot(g, x, y, n, r = 7.5) {
     g.append(sv("circle", { cx: x, cy: y, r }, `fill:${MAPC.ink}`));
     const t = sv("text", { x, y: y + r * 0.42, "text-anchor": "middle", "font-size": r * 1.25, "font-weight": 700 }, `fill:${MAPC.land}`);
@@ -248,8 +276,11 @@
       for (const [s, x, y] of dots) placeLabel(svg, P, x, y, [s.label], taken, { size: 11 });
       return;
     }
+    const lw = W * 0.2, lh = W * 0.25;
+    if (r.from) taken.push([W - lw - 18, H - lh - 30, W, H]);
     for (const [s, x, y] of dots) placeLabel(svg, P, x, y, s.sub ? [s.label, s.sub] : [s.label], taken);
     scaleBar(svg, P, 18, H - 24, r.stops[0].lat);
+    locator(svg, r, W - lw - 16, H - lh - 28, lw, lh);
   }
 
   function fill(pg, spec, book, n) {

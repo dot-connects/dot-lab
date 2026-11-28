@@ -715,6 +715,7 @@ class Pipeline {
       if (base is! AiOk) return;
       final m = <String, dynamic>{...r, 'base': base.body};
       nameStops(m, base.body);
+      await _koreanNames(m);
       for (final (i, l) in legs.indexed) {
         final g = got[i + 1];
         if (g is AiOk) l['map'] = g.body;
@@ -722,6 +723,23 @@ class Pipeline {
       legs.retainWhere((l) => l['map'] != null && (l['n'] as int) > 0);
       b.map = m;
     } catch (_) {}
+  }
+
+  /// The map's names that are not Korean (OSM has no name:ko for 렘봉안) in Korean, from a small model; kept as they
+  /// are when that fails.
+  Future<void> _koreanNames(Map<String, dynamic> m) async {
+    final hangul = RegExp(r'[가-힣]');
+    final all = [...(m['stops'] as List), ...(m['legs'] as List)].cast<Map>();
+    final latin = {for (final s in all) s['label'] as String}.where((n) => !hangul.hasMatch(n)).take(12).toList();
+    if (latin.isEmpty) return;
+    final r = await ai.names(latin);
+    if (r is! AiOk || r.body['ko'] is! List) return;
+    final ko = (r.body['ko'] as List).whereType<String>().toList();
+    if (ko.length != latin.length) return;
+    final to = {for (final (i, n) in latin.indexed) if (ko[i].trim().isNotEmpty) n: ko[i].trim()};
+    for (final s in all) {
+      s['label'] = to[s['label']] ?? s['label'];
+    }
   }
 
   /// Start a layout job (unless b.job already names one) and wait for its plan. The job name is saved before the call,
